@@ -9,8 +9,12 @@ import { loadCatalogProducts } from "@/lib/catalog-products";
 import {
   ACTIVITY_COVER,
   pickByRail,
+  pickFeaturedAccessoriesRail,
+  pickFeaturedApparel,
+  pickFeaturedDesignerRail,
   pickNewAtExch,
   pickRecommended,
+  pickTrendingSneakers,
   resolveRecentProducts,
   SHOP_ACTIVITIES,
 } from "@/lib/home-feed";
@@ -32,7 +36,7 @@ export function HomePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const { products, error: err } = await loadCatalogProducts({ limit: 120 });
+      const { products, error: err } = await loadCatalogProducts({ limit: 400 });
       if (!cancelled) {
         setAll(products);
         setError(err);
@@ -58,12 +62,12 @@ export function HomePage() {
     const recentHandles = recent.map((r) => r.handle);
     const recentProducts = resolveRecentProducts(all, recent);
     const recommendedPool = pickRecommended(all, signedIn ? recentHandles : [], N);
-    const trending = pickByRail(all, "trending-sneakers", N, recentHandles);
-    const apparel = pickByRail(all, "featured-apparel", N, recentHandles);
-    const designer = pickByRail(all, "featured-designer", N, recentHandles);
+    const trending = pickTrendingSneakers(all, N, recentHandles);
+    const apparel = pickFeaturedApparel(all, N, recentHandles);
+    const designer = pickFeaturedDesignerRail(all, N, recentHandles);
     const popular = pickByRail(all, "popular-local", N, recentHandles);
     const below = pickByRail(all, "below-retail", N, recentHandles);
-    const accessories = pickByRail(all, "featured-accessories", N, recentHandles);
+    const accessories = pickFeaturedAccessoriesRail(all, N, recentHandles);
     const newAt = pickNewAtExch(all, 6);
     return {
       recentProducts,
@@ -166,7 +170,7 @@ export function HomePage() {
             variant="market"
             title="Recommended for you"
             subtitle={signedIn ? "Outside your recent history." : "Curated from the catalog."}
-            titleInfo="Placeholder rail — replace with personalization or your own ranking."
+            titleInfo="Placeholder rail — Jordan / Nike / key collabs surface first; then Yeezy, UGG, Balenciaga."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.recommended} emptyMessage="Nothing to recommend yet." layout="homeSix" />
@@ -175,7 +179,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Trending sneakers"
-            titleInfo="Products tagged home-trending-sneakers or matched from titles."
+            titleInfo="Footwear only. Jordan, Nike and collabs (e.g. Travis Scott, Dior) preferred; then Yeezy, UGG, Balenciaga ahead of generic Adidas."
             action={{ label: "See all →", to: "/catalog/men" }}
           >
             <ProductGrid products={rails.trending} layout="homeSix" />
@@ -184,7 +188,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Featured apparel"
-            titleInfo="Jackets, hoodies, shorts, and layers."
+            titleInfo="Clothing only — jackets, hoodies, pants, etc. Shoes never appear here."
             action={{ label: "See all →", to: "/catalog/women" }}
           >
             <ProductGrid products={rails.apparel} layout="homeSix" />
@@ -249,7 +253,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Featured accessories"
-            titleInfo="Bags, hats, watches, and add-ons."
+            titleInfo="Bags, hats, watches, and add-ons — not sneakers or apparel."
             action={{ label: "See all →", to: "/catalog/accessories" }}
           >
             <ProductGrid products={rails.accessories} layout="homeSix" />
