@@ -1,4 +1,5 @@
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { hasCatalogFeaturedImage } from "@/lib/catalog-images";
 
 export const SHOP_ACTIVITIES = [
   { slug: "soccer", title: "Soccer" },
@@ -112,6 +113,9 @@ export function homeBrandPriorityScore(p: CatalogProductSummary): number {
 
 export function sortHomeProducts(products: CatalogProductSummary[]): CatalogProductSummary[] {
   return [...products].sort((a, b) => {
+    const ia = hasCatalogFeaturedImage(a) ? 1 : 0;
+    const ib = hasCatalogFeaturedImage(b) ? 1 : 0;
+    if (ib !== ia) return ib - ia;
     const pb = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
     if (pb !== 0) return pb;
     const tr = (b.trendScore ?? 0) - (a.trendScore ?? 0);

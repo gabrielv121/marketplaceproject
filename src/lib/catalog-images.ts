@@ -16,6 +16,13 @@ export function resolveFeaturedImageUrl(
   return getDemoSummaryByHandle(product.handle)?.featuredImageUrl ?? null;
 }
 
+/** True when the card will at least attempt to load a photo (matches ProductCard / rails). */
+export function hasCatalogFeaturedImage(
+  product: Pick<CatalogProductSummary, "handle" | "featuredImageUrl" | "imageGallery">,
+): boolean {
+  return Boolean(resolveFeaturedImageUrl(product));
+}
+
 export function withResolvedFeaturedImage<T extends CatalogProductSummary>(product: T): T {
   const url = resolveFeaturedImageUrl(product);
   if (!url || url === product.featuredImageUrl) return product;
