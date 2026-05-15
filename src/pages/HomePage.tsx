@@ -61,8 +61,11 @@ export function HomePage() {
     if (!all.length) return null;
     const recentHandles = recent.map((r) => r.handle);
     const recentProducts = resolveRecentProducts(all, recent);
-    const recommendedPool = pickRecommended(all, signedIn ? recentHandles : [], N);
+    // Trending = top footwear by sort; Recommended must not repeat the same six (same sort made them identical).
     const trending = pickTrendingSneakers(all, N, recentHandles);
+    const trendingHandles = trending.map((p) => p.handle);
+    const recommendedExclude = [...(signedIn ? recentHandles : []), ...trendingHandles];
+    const recommendedPool = pickRecommended(all, recommendedExclude, N);
     const apparel = pickFeaturedApparel(all, N, recentHandles);
     const designer = pickFeaturedDesignerRail(all, N, recentHandles);
     const popular = pickByRail(all, "popular-local", N, recentHandles);
@@ -170,7 +173,7 @@ export function HomePage() {
             variant="market"
             title="Recommended for you"
             subtitle={signedIn ? "Outside your recent history." : "Curated from the catalog."}
-            titleInfo="Placeholder rail — Jordan / Nike / key collabs surface first; then Yeezy, UGG, Balenciaga."
+            titleInfo="Same ranking rules as the rest of the home feed, but excludes the six pairs in Trending sneakers so this row is not a duplicate."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.recommended} emptyMessage="Nothing to recommend yet." layout="homeSix" />

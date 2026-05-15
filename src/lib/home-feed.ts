@@ -95,19 +95,63 @@ function isDesignerHomeProduct(p: CatalogProductSummary): boolean {
   return false;
 }
 
-/** Higher score surfaces first on home (Jordan / Nike / key collabs, then Yeezy, UGG, Balenciaga, etc.). */
+/** Higher score = earlier on home rails (after “has image”). Tuned for lifestyle / priority brands vs. generic performance runners. */
 export function homeBrandPriorityScore(p: CatalogProductSummary): number {
   const brand = (p.brand ?? "").toLowerCase();
   const title = (p.title ?? "").toLowerCase();
-  const blob = `${brand} ${title}`;
+  const tags = (p.tags ?? []).join(" ").toLowerCase();
+  const blob = `${brand} ${title} ${tags}`;
+  const apparel = isCatalogApparel(p);
+
   let s = 0;
-  if (brand.includes("jordan") || /\bjordan\b/.test(title)) s += 220;
-  if (/\bnike\b/.test(brand)) s += 220;
-  if (/travis scott|\bx\s*travis|fragment|off-white|off white|sacai|fear of god|union\s*la|\bdior\b|kaws|supreme|undefeated|atmos|concepts\b/.test(blob)) s += 160;
-  if (/yeezy/.test(blob)) s += 130;
-  if (/\bugg\b/.test(brand) || /\bugg\b/.test(title)) s += 130;
-  if (/balenciaga/.test(blob)) s += 130;
-  if (/\badidas\b/.test(brand) && !/yeezy/.test(blob)) s += 25;
+
+  // Tier 1 — basketball / lifestyle anchors
+  if (brand.includes("jordan") || /\bjordan\b/.test(title)) s += 260;
+  if (/\bnike\b/.test(brand)) s += 260;
+
+  // Tier 1b — headline collabs & partners (title/brand/tags)
+  if (
+    /travis scott|\bx\s*travis|fragment|off-white|off white|sacai|\bdior\b|kaws|supreme|union\s*la|undefeated|atmos|concepts|stussy|comme des garcons|cdg|ambush|clot|social status|a ma maniere|levis|levi's|tiffany|strange.?love|grateful dead|union jordan/.test(
+      blob,
+    )
+  ) {
+    s += 200;
+  }
+
+  // Tier 2 — requested lifestyle / street footwear & luxury
+  if (/yeezy/.test(blob)) s += 210;
+  if (/\bnew balance\b/.test(brand) || /\bnew balance\b/.test(title)) s += 205;
+  if (/\basics\b/.test(brand) || /\basics\b/.test(title) || /\basics\b/.test(tags)) s += 200;
+  if (/\bugg\b/.test(brand) || /\bugg\b/.test(title)) s += 200;
+  if (/timberland|\btimbs\b|6-?inch boot|6\" boot/.test(blob)) s += 200;
+  if (/balenciaga/.test(blob)) s += 210;
+
+  // Tier 3 — apparel / street labels (extra when product is apparel)
+  const streetApparel =
+    /fear of god|\bessentials\b|bape|bathing ape|gallery dept|gallery department|sp5der|\bspider\b|carhartt|carhartt wip|tracksuit|track suit|track jacket|sweatsuit|chrome hearts|denim tears|palace|rhude|amiri|corteiz|aime leon dore|aime leon|bape sta|stussy|kith|nocta|tech fleece|nike hoodie|jordan hoodie|bape hoodie|supreme box|box logo/.test(
+      blob,
+    );
+  if (apparel && streetApparel) s += 185;
+  else if (streetApparel) s += 95;
+
+  // Adidas lifestyle (non-Yeezy) — above anonymous imports, below priority list
+  if (/\badidas\b/.test(brand) && !/yeezy/.test(blob)) s += 45;
+
+  // Light penalty: obvious marathon / race silhouettes (still shown, but after Jordans etc.)
+  if (isCatalogFootwear(p)) {
+    if (
+      /\badizero|takumi sen|takumi|vaporfly|alphafly|metaspeed|adios pro|fuelcell supercomp|endorphin pro|endorphin elite|zoomx streakfly|streakfly|marathon elite|pro\s*3\s*running|racing flat\b/.test(
+        blob,
+      )
+    ) {
+      s -= 120;
+    }
+    // Soccer / football / tennis cleats & court — slightly below lifestyle sneakers for home trending
+    if (/\b(copa|predator|phantom|mercurial|tiempo|nemeziz|vapor edge|alpha menace|barricade|gel.?resolution|phantom gx|fg\b|mg\b|sg\b|cleat)\b/.test(blob)) {
+      s -= 55;
+    }
+  }
+
   return s;
 }
 
