@@ -1,5 +1,8 @@
 .page {
   max-width: 1120px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .hero {
@@ -569,6 +572,8 @@
 
 .tableWrap {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
