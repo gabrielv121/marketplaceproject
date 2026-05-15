@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
+import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
 import { fetchMyProfile } from "@/lib/account-data";
 import { buildMockOrderBook, buildMockSizeRows } from "@/lib/orderbook-mock";
@@ -30,6 +31,7 @@ import type { CatalogProductDetail } from "@/lib/catalog-product";
 import { recordProductView } from "@/lib/recently-viewed";
 import { startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
+import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 import { isP2pConfigured } from "@/lib/supabase";
 import type { BookEntry, SizeRow } from "@/types/marketplace";
 import styles from "./ProductPage.module.css";
@@ -410,8 +412,8 @@ export function ProductPage() {
       ) : null}
       <div className={styles.grid}>
         <div className={styles.media}>
-          {product.featuredImageUrl ? (
-            <img src={product.featuredImageUrl} alt="" className={styles.image} />
+          {resolveFeaturedImageUrl(product) ? (
+            <CatalogProductImage product={product} alt="" className={styles.image} />
           ) : (
             <div className={styles.ph} />
           )}

@@ -1,7 +1,9 @@
+import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { ReturnLink } from "@/components/ReturnLink";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { formatMoney } from "@/lib/money-format";
 import type { Money } from "@/types/marketplace";
+import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 import { getDepartmentBySlug } from "@/lib/catalog-taxonomy";
 import styles from "./ProductCard.module.css";
 
@@ -25,7 +27,7 @@ function mockLastSale(p: CatalogProductSummary): Money {
 }
 
 export function ProductCard({ product, visual = "default" }: Props) {
-  const img = product.featuredImageUrl;
+  const hasImage = Boolean(resolveFeaturedImageUrl(product));
   const low = {
     amount: product.priceRange.min,
     currencyCode: product.priceRange.currency,
@@ -39,8 +41,8 @@ export function ProductCard({ product, visual = "default" }: Props) {
       <div className={styles.cardStockx}>
         <ReturnLink to={`/product/${product.handle}`} className={styles.cardStockxLink}>
           <div className={styles.imageWell}>
-            {img ? (
-              <img src={img} alt={product.title} className={styles.imageStockx} loading="lazy" />
+            {hasImage ? (
+              <CatalogProductImage product={product} className={styles.imageStockx} />
             ) : (
               <div className={styles.placeholderStockx} aria-hidden />
             )}
@@ -86,8 +88,8 @@ export function ProductCard({ product, visual = "default" }: Props) {
     <ReturnLink to={`/product/${product.handle}`} className={styles.card}>
       <div className={styles.imageWrap}>
         {dept ? <span className={styles.badge}>{dept.title}</span> : null}
-        {img ? (
-          <img src={img} alt="" className={styles.image} loading="lazy" />
+        {hasImage ? (
+          <CatalogProductImage product={product} alt="" className={styles.image} />
         ) : (
           <div className={styles.placeholder} aria-hidden />
         )}

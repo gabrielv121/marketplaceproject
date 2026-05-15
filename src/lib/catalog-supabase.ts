@@ -1,4 +1,5 @@
 import type { CatalogProductDetail, CatalogProductSummary } from "./catalog-product";
+import { withResolvedFeaturedImage } from "./catalog-images";
 import { buildProductDetailFromSummary, getDemoProductByHandle } from "./demo-catalog";
 import { getSupabase } from "./supabase";
 
@@ -51,7 +52,7 @@ export function rowToSummary(r: CatalogProductRow): CatalogProductSummary {
     homeRails: r.home_rails ?? [],
     activities: r.activities ?? [],
     variantSizePreset: r.variant_size_preset ?? undefined,
-    featuredImageUrl: r.featured_image_url,
+    featuredImageUrl: r.featured_image_url?.trim() || null,
     trendScore: r.trend_score == null ? 0 : Number(r.trend_score) || 0,
     imageGallery: r.image_gallery ?? [],
     sourceUrl: r.source_url ?? null,
@@ -108,7 +109,7 @@ export async function fetchCatalogSummariesFromSupabase(opts: CatalogLoadQuery =
   const lim = Math.min(Math.max(opts.limit ?? 100, 1), 2000);
   const { data, error } = await q.limit(lim);
   if (error) throw error;
-  let list = (data ?? []).map((row) => rowToSummary(row as CatalogProductRow));
+  let list = (data ?? []).map((row) => withResolvedFeaturedImage(rowToSummary(row as CatalogProductRow)));
   const activity = opts.activitySlug;
   if (activity) list = list.filter((p) => (p.activities ?? []).includes(activity));
   return list;
@@ -126,7 +127,7 @@ export async function resolveProductDetailByHandle(handle: string): Promise<Cata
     if (error) throw error;
     if (!data) return null;
     const row = data as CatalogProductRow;
-    const summary = rowToSummary(row);
+    const summary = withResolvedFeaturedImage(rowToSummary(row));
     const desc = row.description?.trim();
     return buildProductDetailFromSummary(summary, {
       description: desc || undefined,

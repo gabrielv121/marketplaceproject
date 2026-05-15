@@ -1,5 +1,6 @@
 import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
+import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { enrichProductsForHome } from "@/lib/home-feed";
 import { fetchCatalogSummariesFromSupabase } from "@/lib/catalog-supabase";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
@@ -64,10 +65,12 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
       limit: opts.limit ?? 72,
     });
     if (raw !== null) {
-      const mapped = raw.map((p) => ({
-        ...p,
-        departmentSlug: p.departmentSlug ?? inferDepartmentSlugFromTags(p.tags ?? []) ?? null,
-      }));
+      const mapped = raw.map((p) =>
+        withResolvedFeaturedImage({
+          ...p,
+          departmentSlug: p.departmentSlug ?? inferDepartmentSlugFromTags(p.tags ?? []) ?? null,
+        }),
+      );
       const enriched = enrichProductsForHome(mapped);
       const filtered = filterList(opts.sortNew ? enriched : trendSort(enriched), opts);
       return { products: filtered, error: null, catalogSource: "supabase" };

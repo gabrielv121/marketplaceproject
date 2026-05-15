@@ -1,0 +1,19 @@
+.banner {
+  margin: 0 auto 1rem;
+  max-width: 1200px;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border));
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface));
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.banner code {
+  font-size: 0.8em;
+}
+
+.banner strong {
+  color: #fbbf24;
+}

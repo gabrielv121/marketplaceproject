@@ -38,7 +38,8 @@ export function LoginPage() {
           <p className={styles.eyebrow}>Sign in</p>
           <h1 className={styles.h1}>Supabase is not configured</h1>
           <p className={styles.lead}>
-            Add your Supabase URL and anon key to <code>.env.local</code>, restart the dev server, then come back here.
+            Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code> (local) or
+            Vercel Environment Variables (production), then redeploy.
           </p>
           <BackButton fallback="/" className={styles.secondaryLink}>
             Back

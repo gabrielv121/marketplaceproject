@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AuthBar } from "@/components/AuthBar";
+import { SetupBanner } from "@/components/SetupBanner";
 import {
   IconClose,
   IconGrid,
@@ -167,6 +168,7 @@ export function Layout() {
       </header>
 
       <main className={styles.main}>
+        <SetupBanner />
         <Outlet />
       </main>
       <footer className={styles.footer}>

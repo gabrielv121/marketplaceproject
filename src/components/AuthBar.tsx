@@ -25,7 +25,30 @@ export function AuthBar({ variant = "header", onDismiss }: AuthBarProps) {
     });
   };
 
-  if (!isP2pConfigured()) return null;
+  if (!isP2pConfigured()) {
+    if (menu) {
+      return (
+        <div className={styles.wrapMenu}>
+          <Link to="/account" className={styles.menuAccountLink} onClick={onDismiss}>
+            Account
+          </Link>
+          <Link to="/login" className={styles.menuLoginLink} onClick={onDismiss}>
+            Sign in
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className={styles.wrap}>
+        <Link to="/account" className={styles.loginBtn}>
+          Account
+        </Link>
+        <Link to="/login" className={styles.loginBtn}>
+          Sign in
+        </Link>
+      </div>
+    );
+  }
 
   if (loading) {
     return <span className={menu ? styles.loadingMenu : styles.wrap}>Session…</span>;
