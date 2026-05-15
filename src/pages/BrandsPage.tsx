@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { listBrandsFromProducts, loadCatalogProducts } from "@/lib/catalog-products";
+import { loadCatalogBrands } from "@/lib/catalog-products";
 import styles from "./BrandsPage.module.css";
 
 export function BrandsPage() {
@@ -11,9 +11,9 @@ export function BrandsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { products } = await loadCatalogProducts({ limit: 1500 });
+      const { brands } = await loadCatalogBrands();
       if (!cancelled) {
-        setBrands(listBrandsFromProducts(products));
+        setBrands(brands);
         setLoading(false);
       }
     })();

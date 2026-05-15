@@ -3,17 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
-import { listBrandsFromProducts, loadCatalogProducts } from "@/lib/catalog-products";
+import { loadCatalogBrands, loadCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./CategoryCatalogPage.module.css";
-
-function normalizeBrand(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export function BrandCatalogPage() {
   const { brandSlug = "" } = useParams();
@@ -26,9 +18,9 @@ export function BrandCatalogPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { products: all } = await loadCatalogProducts({});
-      const meta = listBrandsFromProducts(all).find((b) => b.slug === want);
-      const list = all.filter((p) => p.brand && normalizeBrand(p.brand) === want);
+      const { products: list } = await loadCatalogProducts({ brandSlug: want, limit: 5000 });
+      const { brands } = await loadCatalogBrands();
+      const meta = brands.find((b) => b.slug === want);
       if (!cancelled) {
         setProducts(list);
         if (meta) setBrandName(meta.name);

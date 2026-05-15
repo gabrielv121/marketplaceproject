@@ -2,7 +2,11 @@ import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { enrichProductsForHome } from "@/lib/home-feed";
-import { fetchCatalogSummariesFromSupabase } from "@/lib/catalog-supabase";
+import {
+  fetchCatalogSummariesFromSupabase,
+  listCatalogBrandsFromSupabase,
+  searchCatalogSummariesFromSupabase,
+} from "@/lib/catalog-supabase";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 
 export type CatalogLoadOptions = {
@@ -61,6 +65,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
     const raw = await fetchCatalogSummariesFromSupabase({
       departmentSlug: opts.departmentSlug,
       activitySlug: opts.activitySlug,
+      brandSlug: opts.brandSlug,
       sortNew: Boolean(opts.sortNew),
       limit: opts.limit ?? 72,
     });
@@ -88,6 +93,65 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
   const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
   if (opts.sortNew) demo.reverse();
   return { products: filterList(opts.sortNew ? demo : trendSort(demo), opts), error: null, catalogSource: "local" };
+}
+
+export async function loadCatalogBrands(): Promise<{
+  brands: { name: string; slug: string; count: number }[];
+  catalogSource: "supabase" | "local";
+}> {
+  try {
+    const fromDb = await listCatalogBrandsFromSupabase();
+    if (fromDb !== null) {
+      return { brands: fromDb, catalogSource: "supabase" };
+    }
+  } catch {
+    /* fall through to local seed */
+  }
+  const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
+  return { brands: listBrandsFromProducts(demo), catalogSource: "local" };
+}
+
+export async function searchCatalogProducts(query: string): Promise<{
+  products: CatalogProductSummary[];
+  error: string | null;
+  catalogSource: "supabase" | "local";
+}> {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) {
+    return loadCatalogProducts({ limit: 500 });
+  }
+
+  try {
+    const raw = await searchCatalogSummariesFromSupabase(query);
+    if (raw !== null) {
+      const mapped = raw.map((p) =>
+        withResolvedFeaturedImage({
+          ...p,
+          departmentSlug: p.departmentSlug ?? inferDepartmentSlugFromTags(p.tags ?? []) ?? null,
+        }),
+      );
+      const enriched = enrichProductsForHome(mapped);
+      return { products: trendSort(enriched), error: null, catalogSource: "supabase" };
+    }
+  } catch (e) {
+    const demoBase = enrichProductsForHome([...DEMO_PRODUCTS]);
+    const list = demoBase.filter((p) => {
+      const text = [p.title, p.brand, p.handle, ...(p.tags ?? [])].filter(Boolean).join(" ").toLowerCase();
+      return terms.every((t) => text.includes(t));
+    });
+    return {
+      products: trendSort(list),
+      error: e instanceof Error ? e.message : "Search error",
+      catalogSource: "local",
+    };
+  }
+
+  const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
+  const list = demo.filter((p) => {
+    const text = [p.title, p.brand, p.handle, ...(p.tags ?? [])].filter(Boolean).join(" ").toLowerCase();
+    return terms.every((t) => text.includes(t));
+  });
+  return { products: trendSort(list), error: null, catalogSource: "local" };
 }
 
 export function listBrandsFromProducts(products: CatalogProductSummary[]): { name: string; slug: string; count: number }[] {

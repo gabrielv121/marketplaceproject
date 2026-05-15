@@ -1,29 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ProductGrid } from "@/components/ProductGrid";
-import { loadCatalogProducts } from "@/lib/catalog-products";
+import { searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./SearchPage.module.css";
 
 const QUICK_SEARCHES = ["Jordan", "Nike", "UGG", "New Balance", "ASICS", "Apparel"];
-
-function haystack(product: CatalogProductSummary): string {
-  return [
-    product.title,
-    product.brand,
-    product.handle,
-    product.productType,
-    product.departmentSlug,
-    product.category,
-    product.gender,
-    ...(product.tags ?? []),
-    ...(product.activities ?? []),
-    ...(product.homeRails ?? []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -42,7 +24,7 @@ export function SearchPage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const { products: list, error: err } = await loadCatalogProducts({ limit: 1500 });
+      const { products: list, error: err } = await searchCatalogProducts(q);
       if (!cancelled) {
         setProducts(list);
         setError(err);
@@ -52,16 +34,9 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [q]);
 
-  const results = useMemo(() => {
-    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return products;
-    return products.filter((product) => {
-      const text = haystack(product);
-      return terms.every((term) => text.includes(term));
-    });
-  }, [products, q]);
+  const results = products;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

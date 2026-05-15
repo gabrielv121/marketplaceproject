@@ -6,9 +6,44 @@ import { getSupabase } from "./supabase";
 export type CatalogLoadQuery = {
   departmentSlug?: string;
   activitySlug?: string;
+  /** Normalized slug (e.g. `ugg`, `new-balance`) — matched case-insensitively on `brand`. */
+  brandSlug?: string;
   sortNew?: boolean;
   limit?: number;
 };
+
+const CATALOG_PAGE_SIZE = 1000;
+
+function brandSlugToIlikePattern(brandSlug: string): string {
+  return brandSlug.trim().replace(/-/g, " ");
+}
+
+async function fetchPublishedCatalogRows(
+  sb: NonNullable<ReturnType<typeof getSupabase>>,
+  opts: CatalogLoadQuery,
+  maxRows: number,
+): Promise<CatalogProductRow[]> {
+  const rows: CatalogProductRow[] = [];
+  let offset = 0;
+
+  while (rows.length < maxRows) {
+    const pageSize = Math.min(CATALOG_PAGE_SIZE, maxRows - rows.length);
+    let q = sb.from("catalog_products").select("*").eq("published", true);
+    if (opts.departmentSlug) q = q.eq("department_slug", opts.departmentSlug);
+    if (opts.activitySlug) q = q.contains("activities", [opts.activitySlug]);
+    if (opts.brandSlug) q = q.ilike("brand", brandSlugToIlikePattern(opts.brandSlug));
+    if (opts.sortNew) q = q.order("updated_at", { ascending: false });
+    else q = q.order("title");
+    const { data, error } = await q.range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as CatalogProductRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return rows;
+}
 
 type CatalogProductRow = {
   id: string;
@@ -101,18 +136,123 @@ export async function fetchCatalogSummariesFromSupabase(opts: CatalogLoadQuery =
   if (!sb) return null;
   if (!(await catalogUsesSupabase())) return null;
 
-  let q = sb.from("catalog_products").select("*").eq("published", true);
-  if (opts.departmentSlug) q = q.eq("department_slug", opts.departmentSlug);
-  if (opts.activitySlug) q = q.contains("activities", [opts.activitySlug]);
-  if (opts.sortNew) q = q.order("updated_at", { ascending: false });
-  else q = q.order("title");
-  const lim = Math.min(Math.max(opts.limit ?? 100, 1), 2000);
-  const { data, error } = await q.limit(lim);
-  if (error) throw error;
-  let list = (data ?? []).map((row) => withResolvedFeaturedImage(rowToSummary(row as CatalogProductRow)));
+  const lim = Math.min(Math.max(opts.limit ?? 100, 1), 5000);
+  const data = await fetchPublishedCatalogRows(sb, opts, lim);
+  let list = data.map((row) => withResolvedFeaturedImage(rowToSummary(row)));
   const activity = opts.activitySlug;
   if (activity) list = list.filter((p) => (p.activities ?? []).includes(activity));
   return list;
+}
+
+function catalogSearchHaystack(product: CatalogProductSummary): string {
+  return [
+    product.title,
+    product.brand,
+    product.handle,
+    product.productType,
+    product.departmentSlug,
+    product.category,
+    product.gender,
+    ...(product.tags ?? []),
+    ...(product.activities ?? []),
+    ...(product.homeRails ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+/** Server-side catalog search (avoids loading the full catalog client-side). */
+export async function searchCatalogSummariesFromSupabase(query: string): Promise<CatalogProductSummary[] | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  if (!(await catalogUsesSupabase())) return null;
+
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return fetchCatalogSummariesFromSupabase({ limit: 500 });
+
+  const primary = terms[0]!;
+  const pattern = `%${primary}%`;
+  const orFilter = [
+    `title.ilike.${pattern}`,
+    `brand.ilike.${pattern}`,
+    `handle.ilike.${pattern}`,
+    `product_type.ilike.${pattern}`,
+    `category.ilike.${pattern}`,
+    `description.ilike.${pattern}`,
+  ].join(",");
+
+  const rows: CatalogProductRow[] = [];
+  let offset = 0;
+  const maxRows = 500;
+
+  while (rows.length < maxRows) {
+    const pageSize = Math.min(CATALOG_PAGE_SIZE, maxRows - rows.length);
+    const { data, error } = await sb
+      .from("catalog_products")
+      .select("*")
+      .eq("published", true)
+      .or(orFilter)
+      .order("title")
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as CatalogProductRow[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  let list = rows.map((row) => withResolvedFeaturedImage(rowToSummary(row)));
+  if (terms.length > 1) {
+    list = list.filter((product) => terms.every((term) => catalogSearchHaystack(product).includes(term)));
+  }
+  return list;
+}
+
+export type CatalogBrandRow = { name: string; slug: string; count: number };
+
+function normalizeBrandSlug(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Distinct brands with counts — paginates lightweight `brand` column reads. */
+export async function listCatalogBrandsFromSupabase(): Promise<CatalogBrandRow[] | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  if (!(await catalogUsesSupabase())) return null;
+
+  const counts = new Map<string, { name: string; count: number }>();
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await sb
+      .from("catalog_products")
+      .select("brand")
+      .eq("published", true)
+      .not("brand", "is", null)
+      .order("brand")
+      .range(offset, offset + CATALOG_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    for (const row of page) {
+      const name = (row.brand as string | null)?.trim();
+      if (!name) continue;
+      const slug = normalizeBrandSlug(name);
+      const cur = counts.get(slug);
+      if (cur) cur.count += 1;
+      else counts.set(slug, { name, count: 1 });
+    }
+    if (page.length < CATALOG_PAGE_SIZE) break;
+    offset += CATALOG_PAGE_SIZE;
+  }
+
+  return [...counts.entries()]
+    .map(([slug, v]) => ({ slug, name: v.name, count: v.count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 export async function resolveProductDetailByHandle(handle: string): Promise<CatalogProductDetail | null> {
