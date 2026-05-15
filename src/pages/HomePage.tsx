@@ -36,7 +36,7 @@ export function HomePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const { products, error: err } = await loadCatalogProducts({ limit: 400 });
+      const { products, error: err } = await loadCatalogProducts({ limit: 3000 });
       if (!cancelled) {
         setAll(products);
         setError(err);
@@ -200,7 +200,6 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Designer & avant-garde"
-            subtitle="Rick Owens, Margiela, Guidi, and more."
             titleInfo="Tagged home-featured-designer in catalog_products."
             action={{ label: "Browse brands →", to: "/brands" }}
           >

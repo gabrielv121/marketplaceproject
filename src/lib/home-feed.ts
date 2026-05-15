@@ -73,7 +73,7 @@ export function isCatalogAccessory(p: CatalogProductSummary): boolean {
   if (p.variantSizePreset === "accessory") return true;
   const blob = `${p.title} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
   if (
-    /\b(watch|watches|cap|hat|beanie|bag|tote|backpack|wallet|belt|sunglass|glove|sock|scarf|keychain|pin|jewelry|necklace|ring\b|earring|headwear|strap)\b/.test(
+    /\b(watch|watches|cap|hat|beanie|bag|tote|backpack|duffle|duffel|sling|crossbody|messenger|satchel|wallet|belt|sunglass|glove|sock|scarf|keychain|pin|jewelry|necklace|ring\b|earring|headwear|strap)\b/.test(
       blob,
     )
   )
@@ -301,6 +301,12 @@ function qualifiesFeaturedAccessory(p: CatalogProductSummary): boolean {
   return (p.homeRails ?? []).includes("featured-accessories");
 }
 
+function looseAccessoryMatch(p: CatalogProductSummary): boolean {
+  if (isCatalogFootwear(p) || isCatalogApparel(p)) return false;
+  const blob = `${p.title} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
+  return /\b(duffle|duffel|tote|wallet|watch|backpack|crossbody|sling|messenger|satchel|beanie|headwear|keychain|lanyard|pin|patch)\b/.test(blob);
+}
+
 /** Bags, hats, watches, etc. — not shoes or clothing. */
 export function pickFeaturedAccessoriesRail(
   products: CatalogProductSummary[],
@@ -308,7 +314,10 @@ export function pickFeaturedAccessoriesRail(
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const pool = products.filter((p) => qualifiesFeaturedAccessory(p) && !isCatalogApparel(p) && !ex.has(p.handle));
+  let pool = products.filter((p) => qualifiesFeaturedAccessory(p) && !isCatalogApparel(p) && !ex.has(p.handle));
+  if (!pool.length) {
+    pool = products.filter((p) => looseAccessoryMatch(p) && !ex.has(p.handle));
+  }
   const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = pool.filter((p) => !taggedSet.has(p.handle));
