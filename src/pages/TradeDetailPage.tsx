@@ -340,6 +340,10 @@ export function TradeDetailPage() {
     (trade.status === "paid" || trade.status === "seller_notified");
   const canCreateBuyerLabel = trade.access === "admin" && trade.status === "verification_passed" && !trade.buyer_label_url;
   const canReleasePayout = trade.access === "admin" && trade.status === "payout_available";
+  const canOpenSellerLabel =
+    Boolean(trade.seller_label_url) && (trade.role === "seller" || trade.access === "admin");
+  const canOpenBuyerLabel =
+    Boolean(trade.buyer_label_url) && (trade.role === "buyer" || trade.access === "admin");
 
   return (
     <div className={styles.page}>
@@ -399,8 +403,8 @@ export function TradeDetailPage() {
                 {busy === "checkout" ? "Opening..." : "Resume payment"}
               </button>
             ) : null}
-            {trade.seller_label_url ? (
-              <a className={styles.payBtn} href={trade.seller_label_url} target="_blank" rel="noreferrer">
+            {canOpenSellerLabel ? (
+              <a className={styles.payBtn} href={trade.seller_label_url!} target="_blank" rel="noreferrer">
                 Open seller label
               </a>
             ) : null}
@@ -414,8 +418,8 @@ export function TradeDetailPage() {
                 {busy === "seller-shipped" ? "Saving..." : "Mark shipped to EXCH."}
               </button>
             ) : null}
-            {trade.buyer_label_url ? (
-              <a className={styles.ghostBtn} href={trade.buyer_label_url} target="_blank" rel="noreferrer">
+            {canOpenBuyerLabel ? (
+              <a className={styles.ghostBtn} href={trade.buyer_label_url!} target="_blank" rel="noreferrer">
                 Open buyer label
               </a>
             ) : null}
@@ -439,8 +443,8 @@ export function TradeDetailPage() {
             !canMarkSellerShipped &&
             !canCreateBuyerLabel &&
             !canReleasePayout &&
-            !trade.seller_label_url &&
-            !trade.buyer_label_url ? (
+            !canOpenSellerLabel &&
+            !canOpenBuyerLabel ? (
               <p className={styles.empty}>No action needed from you right now.</p>
             ) : null}
           </div>
