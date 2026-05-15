@@ -22,6 +22,7 @@ export const ACTIVITY_COVER: Record<string, string> = {
 export type HomeRailSlug =
   | "trending-sneakers"
   | "featured-apparel"
+  | "featured-designer"
   | "popular-local"
   | "below-retail"
   | "featured-accessories"
@@ -45,6 +46,7 @@ function heuristicRails(p: CatalogProductSummary): string[] {
   const blob = `${title} ${tags}`;
   if (/\bsneaker|shoe|runner|trainer|footwear|cleat|boot\b/.test(blob)) rails.push("trending-sneakers");
   if (/\bjacket|hoodie|tee|apparel|shorts|jersey|top|tank|singlet\b/.test(blob)) rails.push("featured-apparel");
+  if (/\bdesigner|avant-garde|margiela|rick owens|guidi|bbs\b/.test(blob)) rails.push("featured-designer");
   if (/\bwatch|cap|hat|bag|tote|accessor/.test(blob)) rails.push("featured-accessories");
   if (/\bsale|deal|clearance|below|discount\b/.test(blob)) rails.push("below-retail");
   rails.push("popular-local");

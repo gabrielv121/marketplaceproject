@@ -32,7 +32,7 @@ export function HomePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const { products, error: err } = await loadCatalogProducts({ limit: 80 });
+      const { products, error: err } = await loadCatalogProducts({ limit: 120 });
       if (!cancelled) {
         setAll(products);
         setError(err);
@@ -60,6 +60,7 @@ export function HomePage() {
     const recommendedPool = pickRecommended(all, signedIn ? recentHandles : [], N);
     const trending = pickByRail(all, "trending-sneakers", N, recentHandles);
     const apparel = pickByRail(all, "featured-apparel", N, recentHandles);
+    const designer = pickByRail(all, "featured-designer", N, recentHandles);
     const popular = pickByRail(all, "popular-local", N, recentHandles);
     const below = pickByRail(all, "below-retail", N, recentHandles);
     const accessories = pickByRail(all, "featured-accessories", N, recentHandles);
@@ -69,6 +70,7 @@ export function HomePage() {
       recommended: recommendedPool,
       trending,
       apparel,
+      designer,
       popular,
       below,
       accessories,
@@ -186,6 +188,16 @@ export function HomePage() {
             action={{ label: "See all →", to: "/catalog/women" }}
           >
             <ProductGrid products={rails.apparel} layout="homeSix" />
+          </HomeSection>
+
+          <HomeSection
+            variant="market"
+            title="Designer & avant-garde"
+            subtitle="Rick Owens, Margiela, Guidi, and more."
+            titleInfo="Tagged home-featured-designer in catalog_products."
+            action={{ label: "Browse brands →", to: "/brands" }}
+          >
+            <ProductGrid products={rails.designer} layout="homeSix" emptyMessage="Designer picks loading soon." />
           </HomeSection>
 
           <HomeSection
