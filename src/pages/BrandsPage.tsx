@@ -11,7 +11,7 @@ export function BrandsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { products } = await loadCatalogProducts({});
+      const { products } = await loadCatalogProducts({ limit: 1500 });
       if (!cancelled) {
         setBrands(listBrandsFromProducts(products));
         setLoading(false);
