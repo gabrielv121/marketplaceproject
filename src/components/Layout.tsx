@@ -109,8 +109,20 @@ export function Layout() {
             aria-modal="true"
             aria-label="Site menu"
           >
-            <div className={styles.mobileMenuCard}>
-              <nav className={styles.mobileMenuNav} aria-label="Main">
+            <div className={styles.mobileMenuTop}>
+              <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
+                EXCH<span className={styles.logoAccent}>.</span>
+              </NavLink>
+              <button
+                type="button"
+                className={`${styles.menuBtn} ${styles.menuBtnOpen}`}
+                aria-label="Close menu"
+                onClick={() => setMenuOpen(false)}
+              >
+                <IconClose width={22} height={22} />
+              </button>
+            </div>
+            <nav className={styles.mobileMenuNav} aria-label="Main">
                 {MOBILE_SITEMAP.map(({ to, label, end, icon: Icon }) => (
                   <NavLink
                     key={to}
@@ -128,9 +140,8 @@ export function Layout() {
                   </NavLink>
                 ))}
               </nav>
-              <div className={styles.mobileMenuAuth}>
-                <AuthBar variant="menu" onDismiss={() => setMenuOpen(false)} />
-              </div>
+            <div className={styles.mobileMenuAuth}>
+              <AuthBar variant="menu" onDismiss={() => setMenuOpen(false)} />
             </div>
           </div>
         </>
