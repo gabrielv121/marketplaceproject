@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="Football player vector">
+  <rect width="640" height="420" fill="#ffffff"/>
+  <path fill="#0a0a0b" d="M191 128c49-41 130-55 205-25 69 27 113 82 126 141-51 39-131 52-205 23-70-27-114-81-126-139z"/>
+  <path fill="#ffffff" d="M224 141c43 39 98 70 166 92 38 12 74 18 108 18-9 13-20 25-34 35-31-2-66-9-103-22-72-25-132-60-179-106 10-7 24-14 42-17z"/>
+  <path fill="#0a0a0b" d="M202 260c-46 2-82 17-107 45l31 28c22-20 52-29 91-26z"/>
+  <path fill="#0a0a0b" d="M461 129c36-4 66-20 91-48l-31-28c-20 20-46 31-80 34z"/>
+  <path fill="#ffffff" d="M352 146h112v17H352zM356 188h89v15h-89z"/>
+  <path fill="#9d00ff" d="M92 346h456v12H92z"/>
+</svg>

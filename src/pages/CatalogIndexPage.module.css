@@ -1,0 +1,74 @@
+.h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 0 0 2rem;
+  color: var(--muted);
+  max-width: 52ch;
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.tile:hover {
+  border-color: #3f3f46;
+  transform: translateY(-2px);
+}
+
+.tileTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.tileDesc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.tileCta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.hint {
+  margin: 2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+.code {
+  font-size: 0.72em;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+}

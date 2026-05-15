@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="Training athlete vector">
+  <rect width="640" height="420" fill="#ffffff"/>
+  <path fill="#0a0a0b" d="M120 150h38v128h-38zM482 150h38v128h-38zM166 182h34v64h-34zM440 182h34v64h-34zM208 200h224v28H208z"/>
+  <circle cx="318" cy="93" r="27" fill="#0a0a0b"/>
+  <path fill="#0a0a0b" d="M288 130h62l43 71-35 20-22-36v63h-38v-63l-22 36-35-20z"/>
+  <path fill="#0a0a0b" d="M298 248h38l31 91h-40l-10-42-15 42h-40z"/>
+  <path fill="#9d00ff" d="M112 330h416v12H112z"/>
+  <path stroke="#9d00ff" stroke-width="10" stroke-linecap="round" fill="none" d="M220 118c28-30 69-45 114-40"/>
+</svg>

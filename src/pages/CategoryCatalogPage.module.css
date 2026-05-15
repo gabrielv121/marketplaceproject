@@ -1,0 +1,28 @@
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 0;
+  color: var(--muted);
+  max-width: 52ch;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.warn {
+  color: var(--warning);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}

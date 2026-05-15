@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="Tennis player vector">
+  <rect width="640" height="420" fill="#ffffff"/>
+  <circle cx="475" cy="86" r="30" fill="#9d00ff"/>
+  <ellipse cx="196" cy="111" rx="60" ry="86" transform="rotate(-34 196 111)" fill="none" stroke="#0a0a0b" stroke-width="18"/>
+  <path stroke="#0a0a0b" stroke-width="20" stroke-linecap="round" d="m232 177 78 88"/>
+  <circle cx="360" cy="120" r="27" fill="#0a0a0b"/>
+  <path fill="#0a0a0b" d="M341 158c-43 14-74 42-91 82l35 21 28-43 48 34-22 88h45l32-96c4-13 0-27-11-35l-47-34 71-19-9-41z"/>
+  <path fill="#0a0a0b" d="m314 219-83 22-59 69 34 27 57-55 75-18z"/>
+  <path fill="#0a0a0b" d="m403 210 71 46 69-19 12 39-82 34c-12 5-25 3-36-4l-57-40z"/>
+  <path fill="#9d00ff" d="M110 350h420v12H110z"/>
+</svg>

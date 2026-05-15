@@ -1,0 +1,220 @@
+.hero {
+  margin-bottom: 2rem;
+}
+
+.kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 0;
+  color: var(--muted);
+  max-width: 60ch;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.warn {
+  color: var(--warning);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.code {
+  font-size: 0.78em;
+  padding: 0.08em 0.3em;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.deptSection {
+  margin-bottom: 2.5rem;
+}
+
+.sectionTitle {
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.deptRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.deptPill,
+.deptPillSecondary {
+  display: inline-block;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.deptPill {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.deptPill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.deptPillSecondary {
+  background: transparent;
+  color: var(--muted);
+}
+
+.deptPillSecondary:hover {
+  color: var(--text);
+  border-color: #52525b;
+}
+
+.featured {
+  margin-bottom: 2rem;
+}
+
+.featuredHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.seeAll {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.seeAll:hover {
+  text-decoration: underline;
+}
+
+.recentToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.65rem;
+}
+
+.clearRecent {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.clearRecent:hover {
+  color: var(--text);
+}
+
+.railOuter {
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scrollbar-color: var(--border) transparent;
+}
+
+.emptyRail {
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.activityGridStockx {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 960px) {
+  .activityGridStockx {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .activityGridStockx {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.activityTile {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #0a0a0b;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  min-height: 168px;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.activityTile:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px);
+}
+
+.activityImageShell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-height: 112px;
+  background: #fff;
+}
+
+.activityImg {
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+.activityImgBroken {
+  opacity: 0;
+}
+
+.activityTileLabel {
+  padding: 0.65rem 0.85rem 0.75rem;
+  font-weight: 800;
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+}

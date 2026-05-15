@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="Soccer player vector">
+  <rect width="640" height="420" fill="#ffffff"/>
+  <circle cx="515" cy="80" r="38" fill="#0a0a0b"/>
+  <path fill="#ffffff" d="m515 42 10 24 26 2-20 17 6 25-22-13-22 13 6-25-20-17 26-2z"/>
+  <circle cx="388" cy="105" r="26" fill="#0a0a0b"/>
+  <path fill="#0a0a0b" d="M374 142c-39 15-65 43-77 85l-85 34 15 34 93-31c15-5 26-16 32-31l16-42 49 46-18 96h45l27-105c3-13-1-26-11-35l-62-56c-7-6-16-8-24-5z"/>
+  <path fill="#0a0a0b" d="m296 229-75 12-101-48-20 36 106 59c10 6 22 7 33 3l63-22z"/>
+  <path fill="#0a0a0b" d="m416 234 64 37 82-53 23 34-92 71c-13 10-31 10-45 1l-55-35z"/>
+  <path fill="#9d00ff" d="M122 342h396v12H122z"/>
+</svg>

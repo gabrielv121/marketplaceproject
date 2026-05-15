@@ -1,0 +1,18 @@
+# Supabase CLI (https://supabase.com/docs/guides/cli/config)
+# Deploy functions: supabase functions deploy create-checkout-session
+# and: supabase functions deploy stripe-webhook --no-verify-jwt
+
+[functions.create-checkout-session]
+verify_jwt = true
+
+[functions.create-connect-account-link]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.cleanup-pending-trades]
+verify_jwt = false
+
+[functions.send-test-email]
+verify_jwt = true

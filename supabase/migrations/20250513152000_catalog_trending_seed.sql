@@ -1,0 +1,275 @@
+-- Catalog enrichment + starter trend seed.
+-- This keeps Supabase as the source of truth for clean product photos and trend ordering.
+-- Replace placeholder image/source URLs with licensed product imagery before production.
+
+alter table public.catalog_products
+  add column if not exists trend_score numeric not null default 0,
+  add column if not exists image_gallery text[] not null default '{}',
+  add column if not exists source_url text,
+  add column if not exists category text,
+  add column if not exists gender text;
+
+alter table public.catalog_products
+  drop constraint if exists catalog_products_gender_check;
+
+alter table public.catalog_products
+  add constraint catalog_products_gender_check
+  check (gender is null or gender in ('men', 'women', 'kids', 'unisex'));
+
+create index if not exists catalog_products_trend_score_idx
+  on public.catalog_products (trend_score desc)
+  where published = true;
+
+create index if not exists catalog_products_category_idx
+  on public.catalog_products (category)
+  where published = true;
+
+insert into public.catalog_products (
+  handle,
+  title,
+  brand,
+  description,
+  department_slug,
+  tags,
+  product_type,
+  home_rails,
+  activities,
+  variant_size_preset,
+  featured_image_url,
+  image_gallery,
+  price_min,
+  price_max,
+  currency,
+  trend_score,
+  category,
+  gender,
+  source_url,
+  published
+)
+values
+  (
+    'apex-runner-carbon',
+    'Apex Runner - Carbon / Volt',
+    'Apex Lab',
+    'Lightweight runner with a sculpted midsole and daily-training comfort.',
+    'men',
+    array['dept-men', 'sneakers', 'runner', 'home-trending-sneakers', 'activity-running', 'activity-training'],
+    'sneaker',
+    array['trending-sneakers', 'popular-local', 'new-at-exch'],
+    array['running', 'training'],
+    'shoe',
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&q=85',
+    array['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&q=85'],
+    189, 220, 'USD', 98, 'sneakers', 'men',
+    'https://unsplash.com/photos/164_6wVEHfI',
+    true
+  ),
+  (
+    'elevate-high-stone',
+    'Elevate High - Stone',
+    'Elevate',
+    'Clean high-top sneaker with a soft knit upper and everyday cushioning.',
+    'women',
+    array['dept-women', 'sneakers', 'lifestyle', 'home-trending-sneakers', 'activity-training'],
+    'sneaker',
+    array['trending-sneakers', 'popular-local', 'below-retail'],
+    array['training'],
+    'shoe',
+    'https://images.unsplash.com/photo-1543508282-6319a3e2621f?w=900&q=85',
+    array['https://images.unsplash.com/photo-1543508282-6319a3e2621f?w=1200&q=85'],
+    142, 176, 'USD', 96, 'sneakers', 'women',
+    'https://unsplash.com/photos/1SAnrIxw5OY',
+    true
+  ),
+  (
+    'court-classic-low',
+    'Court Classic Low - Black Gum',
+    'Court Co.',
+    'Low-profile court sneaker with gum outsole and padded collar.',
+    'men',
+    array['dept-men', 'sneakers', 'court', 'home-trending-sneakers', 'activity-basketball'],
+    'sneaker',
+    array['trending-sneakers', 'popular-local'],
+    array['basketball', 'training'],
+    'shoe',
+    'https://images.unsplash.com/photo-1606107557195-0f29c4a5b6b8?w=900&q=85',
+    array['https://images.unsplash.com/photo-1606107557195-0f29c4a5b6b8?w=1200&q=85'],
+    95, 140, 'USD', 91, 'sneakers', 'men',
+    'https://unsplash.com/photos/7w5gY2ELBf8',
+    true
+  ),
+  (
+    'pace-elite-tempo',
+    'Pace Elite Tempo - Citrus',
+    'Pace',
+    'Tempo trainer tuned for speed sessions, warmups, and race-week workouts.',
+    'women',
+    array['dept-women', 'sneakers', 'runner', 'home-trending-sneakers', 'activity-running'],
+    'sneaker',
+    array['trending-sneakers', 'popular-local', 'new-at-exch'],
+    array['running', 'training'],
+    'shoe',
+    'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&q=85',
+    array['https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=1200&q=85'],
+    152, 198, 'USD', 88, 'sneakers', 'women',
+    'https://unsplash.com/photos/6NUlOHM40w8',
+    true
+  ),
+  (
+    'court-air-neo',
+    'Court Air Neo - White / Blue',
+    'Court Co.',
+    'Crisp court shoe with a layered upper and stable platform.',
+    'kids',
+    array['dept-kids', 'sneakers', 'court', 'home-trending-sneakers', 'activity-tennis'],
+    'sneaker',
+    array['trending-sneakers', 'popular-local'],
+    array['tennis', 'training'],
+    'shoe',
+    'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=900&q=85',
+    array['https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=1200&q=85'],
+    72, 110, 'USD', 81, 'sneakers', 'kids',
+    'https://unsplash.com/photos/7pCFUybP_P8',
+    true
+  ),
+  (
+    'pitch-pro-short-navy',
+    'Pitch Pro Short - Navy',
+    'Strike Lab',
+    'Light soccer short with stretch fabric and match-day storage.',
+    'men',
+    array['dept-men', 'apparel', 'shorts', 'home-featured-apparel', 'activity-soccer'],
+    'apparel',
+    array['featured-apparel', 'popular-local', 'below-retail'],
+    array['soccer', 'training'],
+    'apparel',
+    'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=900&q=85',
+    array['https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=1200&q=85'],
+    48, 72, 'USD', 76, 'shorts', 'men',
+    'https://unsplash.com/photos/mQVWb7kUoOE',
+    true
+  ),
+  (
+    'thermal-run-tight-graphite',
+    'Thermal Run Tight - Graphite',
+    'Elevate',
+    'Cold-weather running tight with smooth compression and secure pocketing.',
+    'women',
+    array['dept-women', 'apparel', 'tight', 'home-featured-apparel', 'activity-running'],
+    'apparel',
+    array['featured-apparel', 'new-at-exch'],
+    array['running', 'training'],
+    'apparel',
+    'https://images.unsplash.com/photo-1506629905607-d9f297dffb4c?w=900&q=85',
+    array['https://images.unsplash.com/photo-1506629905607-d9f297dffb4c?w=1200&q=85'],
+    92, 128, 'USD', 73, 'apparel', 'women',
+    'https://unsplash.com',
+    true
+  ),
+  (
+    'tech-shell-jacket',
+    'Tech Shell Jacket - Graphite',
+    'Northline',
+    'Weather-ready shell jacket with matte finish and lightweight lining.',
+    'men',
+    array['dept-men', 'outerwear', 'jacket', 'home-featured-apparel', 'activity-training'],
+    'apparel',
+    array['featured-apparel', 'popular-local', 'new-at-exch'],
+    array['training', 'running'],
+    'apparel',
+    'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=900&q=85',
+    array['https://images.unsplash.com/photo-1551028719-00167b16eac5?w=1200&q=85'],
+    248, 310, 'USD', 86, 'outerwear', 'men',
+    'https://unsplash.com/photos/VVEwJJRRHgk',
+    true
+  ),
+  (
+    'varsity-fleece-hoodie',
+    'Varsity Fleece Hoodie - Ash',
+    'Campus',
+    'Heavyweight fleece hoodie with relaxed fit and premium rib trim.',
+    'women',
+    array['dept-women', 'hoodie', 'apparel', 'home-featured-apparel'],
+    'apparel',
+    array['featured-apparel', 'popular-local'],
+    array['training'],
+    'apparel',
+    'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=900&q=85',
+    array['https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=1200&q=85'],
+    118, 150, 'USD', 74, 'hoodies', 'women',
+    'https://unsplash.com/photos/PKAkl2C3H1A',
+    true
+  ),
+  (
+    'academy-jersey-cream',
+    'Academy Jersey - Cream',
+    'Eleven',
+    'Breathable football-inspired jersey for training and everyday wear.',
+    'men',
+    array['dept-men', 'jersey', 'apparel', 'home-featured-apparel', 'activity-football'],
+    'apparel',
+    array['featured-apparel', 'new-at-exch'],
+    array['football', 'training'],
+    'apparel',
+    'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=900&q=85',
+    array['https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=1200&q=85'],
+    68, 95, 'USD', 70, 'jerseys', 'men',
+    'https://unsplash.com',
+    true
+  ),
+  (
+    'studio-carry-tote',
+    'Studio Carry Tote - Black',
+    'Daily Goods',
+    'Structured tote sized for training gear, tech, and daily carry.',
+    'accessories',
+    array['dept-accessories', 'bag', 'tote', 'home-featured-accessories'],
+    'accessory',
+    array['featured-accessories', 'popular-local'],
+    array['training'],
+    'accessory',
+    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=900&q=85',
+    array['https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=1200&q=85'],
+    135, 180, 'USD', 69, 'bags', 'unisex',
+    'https://unsplash.com/photos/0c5oAlE2CcQ',
+    true
+  ),
+  (
+    'court-cap-violet',
+    'Court Cap - Violet',
+    'Court Co.',
+    'Low-crown cap with curved brim and embroidered mark.',
+    'accessories',
+    array['dept-accessories', 'headwear', 'cap', 'home-featured-accessories', 'activity-tennis'],
+    'accessory',
+    array['featured-accessories', 'below-retail'],
+    array['tennis'],
+    'accessory',
+    'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=900&q=85',
+    array['https://images.unsplash.com/photo-1521369909029-2afed882baee?w=1200&q=85'],
+    36, 52, 'USD', 62, 'headwear', 'unisex',
+    'https://unsplash.com/photos/R3y0Sok9YIY',
+    true
+  )
+on conflict (handle) do update
+set
+  title = excluded.title,
+  brand = excluded.brand,
+  description = excluded.description,
+  department_slug = excluded.department_slug,
+  tags = excluded.tags,
+  product_type = excluded.product_type,
+  home_rails = excluded.home_rails,
+  activities = excluded.activities,
+  variant_size_preset = excluded.variant_size_preset,
+  featured_image_url = excluded.featured_image_url,
+  image_gallery = excluded.image_gallery,
+  price_min = excluded.price_min,
+  price_max = excluded.price_max,
+  currency = excluded.currency,
+  trend_score = excluded.trend_score,
+  category = excluded.category,
+  gender = excluded.gender,
+  source_url = excluded.source_url,
+  published = excluded.published,
+  updated_at = now();

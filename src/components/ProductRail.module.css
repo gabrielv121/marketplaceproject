@@ -1,0 +1,16 @@
+.rail {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0.25rem 0;
+  display: flex;
+  gap: 1rem;
+  width: max-content;
+  min-width: 100%;
+}
+
+.li {
+  flex: 0 0 200px;
+  margin: 0;
+  width: 200px;
+  display: flex;
+}

@@ -1,0 +1,177 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.accountIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.accountIconBtn:hover {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.accountIconGlyph {
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.accountIconBtnActive {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.signOutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.78rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.signOutBtn:hover {
+  background: var(--surface-2);
+}
+
+.linkIcon {
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.loginBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.loginBtn:hover {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* —— menu (mobile drawer) —— */
+.loadingMenu {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0.5rem 0.35rem;
+}
+
+.wrapMenu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.35rem 0.35rem 0.15rem;
+}
+
+.userBlockMenu {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.leadIconMenu {
+  flex-shrink: 0;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.emailMenu {
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.menuAccountLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent-dim) 40%, transparent);
+}
+
+.menuAccountLink:hover {
+  background: color-mix(in srgb, var(--accent-dim) 65%, transparent);
+}
+
+.menuSignOutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.menuSignOutBtn:hover {
+  background: var(--surface-2);
+}
+
+.menuLoginLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+}
+
+.menuLoginLink:hover {
+  filter: brightness(1.08);
+}
