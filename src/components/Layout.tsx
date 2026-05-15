@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+﻿import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AuthBar } from "@/components/AuthBar";
 import { SetupBanner } from "@/components/SetupBanner";
@@ -81,18 +81,62 @@ export function Layout() {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!menuOpen || wide) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen, wide]);
+
+  const mobileMenuOpen = menuOpen && !wide;
+
   return (
     <div className={styles.shell}>
-      {menuOpen ? (
-        <button
-          type="button"
-          className={styles.menuBackdropFixed}
-          aria-label="Close menu"
-          onClick={() => setMenuOpen(false)}
-        />
+      {mobileMenuOpen ? (
+        <>
+          <button
+            type="button"
+            className={styles.menuBackdropFixed}
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            id="mobile-nav"
+            className={styles.mobileMenuSheet}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site menu"
+          >
+            <div className={styles.mobileMenuCard}>
+              <nav className={styles.mobileMenuNav} aria-label="Main">
+                {MOBILE_SITEMAP.map(({ to, label, end, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) =>
+                      isActive ? `${styles.dropdownLink} ${styles.dropdownLinkActive}` : styles.dropdownLink
+                    }
+                    end={end}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className={styles.dropdownIconShelf}>
+                      <Icon width={18} height={18} strokeWidth={2} />
+                    </span>
+                    <span className={styles.dropdownLabel}>{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+              <div className={styles.mobileMenuAuth}>
+                <AuthBar variant="menu" onDismiss={() => setMenuOpen(false)} />
+              </div>
+            </div>
+          </div>
+        </>
       ) : null}
 
-      <header className={menuOpen ? `${styles.header} ${styles.headerMenuOpen}` : styles.header}>
+      <header className={mobileMenuOpen ? `${styles.header} ${styles.headerMenuOpen}` : styles.header}>
         <div className={styles.headerBar}>
           <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
             EXCH<span className={styles.logoAccent}>.</span>
@@ -133,35 +177,6 @@ export function Layout() {
                 {menuOpen ? <IconClose width={22} height={22} /> : <IconMenu width={22} height={22} />}
               </button>
 
-              {menuOpen ? (
-                <div id="mobile-nav" className={styles.dropdownPanel} role="dialog" aria-label="Site menu">
-                  <div className={styles.dropdownCard}>
-                    <nav className={styles.dropdownNav} aria-label="Main">
-                      {MOBILE_SITEMAP.map(({ to, label, end, icon: Icon }) => (
-                        <NavLink
-                          key={to}
-                          to={to}
-                          className={({ isActive }) =>
-                            isActive ? `${styles.dropdownLink} ${styles.dropdownLinkActive}` : styles.dropdownLink
-                          }
-                          end={end}
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          <span className={styles.dropdownIconShelf}>
-                            <Icon width={18} height={18} strokeWidth={2} />
-                          </span>
-                          <span className={styles.dropdownLabel}>{label}</span>
-                        </NavLink>
-                      ))}
-                    </nav>
-                    {!wide ? (
-                      <div className={styles.dropdownAuth}>
-                        <AuthBar variant="menu" onDismiss={() => setMenuOpen(false)} />
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>
