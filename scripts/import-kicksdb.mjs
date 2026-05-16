@@ -318,7 +318,6 @@ async function hideNonKicksDbRows(supabase) {
     if (lower.has("avant-garde")) return true;
     if (lower.has("puffer")) return true;
     if (lower.has("ugg")) return true;
-    if (lower.has("dept-accessories")) return true;
     return false;
   }
 
