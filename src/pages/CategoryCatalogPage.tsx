@@ -69,7 +69,7 @@ export function CategoryCatalogPage() {
       {loading ? (
         <p className={styles.muted}>Loading…</p>
       ) : (
-        <CatalogFilters key={dept.slug} products={products}>
+        <CatalogFilters key={dept.slug} products={products} hideWithoutProductPhoto>
           {(filtered) => <ProductGrid products={filtered} emptyMessage="No products match those filters." />}
         </CatalogFilters>
       )}

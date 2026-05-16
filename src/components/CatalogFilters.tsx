@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { countWithoutRealProductImage, hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import styles from "./CatalogFilters.module.css";
 
 type SortKey = "trending" | "price-low" | "price-high" | "name";
 
 type Props = {
   products: CatalogProductSummary[];
+  /** Hide Kicks rows that only have StockX placeholder art (no product photo). */
+  hideWithoutProductPhoto?: boolean;
   children: (products: CatalogProductSummary[]) => React.ReactNode;
 };
 
@@ -38,7 +41,7 @@ function price(product: CatalogProductSummary, key: "min" | "max"): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-export function CatalogFilters({ products, children }: Props) {
+export function CatalogFilters({ products, hideWithoutProductPhoto = false, children }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [brand, setBrand] = useState("all");
@@ -64,24 +67,26 @@ export function CatalogFilters({ products, children }: Props) {
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [products]);
 
+  const hiddenPhotoCount = hideWithoutProductPhoto ? countWithoutRealProductImage(products) : 0;
+
   const filtered = useMemo(() => {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    return products
-      .filter((product) => {
-        if (brand !== "all" && normalize(product.brand ?? "") !== brand) return false;
-        const productType = product.productType?.trim() || product.variantSizePreset || "product";
-        if (type !== "all" && normalize(productType) !== type) return false;
-        if (!terms.length) return true;
-        const text = productText(product);
-        return terms.every((term) => text.includes(term));
-      })
-      .sort((a, b) => {
-        if (sort === "price-low") return price(a, "min") - price(b, "min") || a.title.localeCompare(b.title);
-        if (sort === "price-high") return price(b, "max") - price(a, "max") || a.title.localeCompare(b.title);
-        if (sort === "name") return a.title.localeCompare(b.title);
-        return (b.trendScore ?? 0) - (a.trendScore ?? 0) || a.title.localeCompare(b.title);
-      });
-  }, [brand, products, query, sort, type]);
+    const list = products.filter((product) => {
+      if (hideWithoutProductPhoto && !hasRealCatalogProductImage(product)) return false;
+      if (brand !== "all" && normalize(product.brand ?? "") !== brand) return false;
+      const productType = product.productType?.trim() || product.variantSizePreset || "product";
+      if (type !== "all" && normalize(productType) !== type) return false;
+      if (!terms.length) return true;
+      const text = productText(product);
+      return terms.every((term) => text.includes(term));
+    });
+    if (sort === "trending") return sortCatalogByImageQuality(list);
+    return [...list].sort((a, b) => {
+      if (sort === "price-low") return price(a, "min") - price(b, "min") || a.title.localeCompare(b.title);
+      if (sort === "price-high") return price(b, "max") - price(a, "max") || a.title.localeCompare(b.title);
+      return a.title.localeCompare(b.title);
+    });
+  }, [brand, hideWithoutProductPhoto, products, query, sort, type]);
   const activeCount = [query.trim(), brand !== "all", type !== "all", sort !== "trending"].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -156,6 +161,7 @@ export function CatalogFilters({ products, children }: Props) {
       </section>
       <p className={styles.count}>
         Showing {filtered.length} of {products.length} products
+        {hiddenPhotoCount ? ` · ${hiddenPhotoCount} hidden (no product photo from Kicks)` : ""}
         {brand !== "all" ? ` · brand: ${brands.find(([s]) => s === brand)?.[1] ?? brand}` : ""}
         {query.trim() ? ` · search: “${query.trim()}”` : ""}
       </p>

@@ -1,26 +1,25 @@
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { pickBestProductImageUrl, hasRealCatalogProductImage } from "@/lib/catalog-image-quality";
 import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 
 export function getDemoSummaryByHandle(handle: string): CatalogProductSummary | undefined {
   return DEMO_PRODUCTS.find((p) => p.handle === handle);
 }
 
-/** Best image URL for tiles and product pages (DB, gallery, then bundled seed). */
+/** Best non-placeholder image URL for tiles and PDP (DB gallery, then bundled seed). */
 export function resolveFeaturedImageUrl(
   product: Pick<CatalogProductSummary, "handle" | "featuredImageUrl" | "imageGallery">,
 ): string | null {
-  const primary = product.featuredImageUrl?.trim();
-  if (primary) return primary;
-  const fromGallery = product.imageGallery?.map((u) => u?.trim()).find(Boolean);
-  if (fromGallery) return fromGallery;
+  const best = pickBestProductImageUrl(product.featuredImageUrl, product.imageGallery);
+  if (best) return best;
   return getDemoSummaryByHandle(product.handle)?.featuredImageUrl ?? null;
 }
 
-/** True when the card will at least attempt to load a photo (matches ProductCard / rails). */
+/** True when the product has a real photo (not StockX placeholder art). */
 export function hasCatalogFeaturedImage(
-  product: Pick<CatalogProductSummary, "handle" | "featuredImageUrl" | "imageGallery">,
+  product: Pick<CatalogProductSummary, "featuredImageUrl" | "imageGallery">,
 ): boolean {
-  return Boolean(resolveFeaturedImageUrl(product));
+  return hasRealCatalogProductImage(product);
 }
 
 export function withResolvedFeaturedImage<T extends CatalogProductSummary>(product: T): T {

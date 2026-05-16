@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
+import { pickBestProductImageUrl } from "./lib/stockx-image.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -260,8 +261,9 @@ function productToCatalogRow(product) {
   const brand = cleanText(product.brand) || "Jordan";
   const kind = inferCatalogKind(product);
   const gender = normalizeGender(product.gender);
-  const image = cleanText(product.image);
+  const rawImage = cleanText(product.image);
   const gallery = Array.isArray(product.gallery) ? product.gallery.map(cleanText).filter(Boolean) : [];
+  const image = pickBestProductImageUrl(rawImage, gallery);
   const priceMin = Number(product.min_price ?? product.avg_price ?? 0);
   const priceMax = Number(product.max_price ?? product.avg_price ?? priceMin);
   const modelSlug = slugify(cleanText(product.model || product.primary_title || title));
@@ -296,7 +298,7 @@ function productToCatalogRow(product) {
     activities: activityTagsFor(product, kind),
     variant_size_preset: kind === "sneaker" ? "shoe" : kind,
     featured_image_url: image,
-    image_gallery: uniq([image, ...gallery]).slice(0, 8),
+    image_gallery: uniq([image, rawImage, ...gallery].filter(Boolean)).slice(0, 8),
     price_min: Math.max(0, Math.round(priceMin)),
     price_max: Math.max(0, Math.round(priceMax)),
     currency: "USD",

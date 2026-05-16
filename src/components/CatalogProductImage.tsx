@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { pickBestProductImageUrl, isStockxPlaceholderImageUrl } from "@/lib/catalog-image-quality";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 
 type Props = {
@@ -11,11 +12,16 @@ type Props = {
 
 function fallbackChain(product: Props["product"], failed: Set<string>): string | null {
   const candidates = [
+    pickBestProductImageUrl(product.featuredImageUrl, product.imageGallery),
     product.featuredImageUrl?.trim(),
     ...(product.imageGallery ?? []).map((u) => u?.trim()),
     resolveFeaturedImageUrl({ ...product, featuredImageUrl: null, imageGallery: [] }),
   ].filter((u): u is string => Boolean(u));
-  return candidates.find((u) => !failed.has(u)) ?? null;
+  return (
+    candidates.find((u) => !failed.has(u) && !isStockxPlaceholderImageUrl(u)) ??
+    candidates.find((u) => !failed.has(u)) ??
+    null
+  );
 }
 
 export function CatalogProductImage({ product, alt, className, loading = "lazy" }: Props) {

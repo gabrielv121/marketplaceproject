@@ -51,7 +51,7 @@ export function BrandCatalogPage() {
       {loading ? (
         <p className={styles.muted}>Loading…</p>
       ) : (
-        <CatalogFilters products={products}>
+        <CatalogFilters products={products} hideWithoutProductPhoto>
           {(filtered) => <ProductGrid products={filtered} emptyMessage="No products match those filters." />}
         </CatalogFilters>
       )}

@@ -2,6 +2,7 @@ import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { catalogProductMatchesSearch } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
+import { sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import { enrichProductsForHome, isCatalogAccessoryCandidate } from "@/lib/home-feed";
 import {
   fetchCatalogSummariesFromSupabase,
@@ -50,10 +51,7 @@ function filterList(products: CatalogProductSummary[], opts: CatalogLoadOptions)
 }
 
 function trendSort(products: CatalogProductSummary[]): CatalogProductSummary[] {
-  return [...products].sort((a, b) => {
-    const score = (b.trendScore ?? 0) - (a.trendScore ?? 0);
-    return score || a.title.localeCompare(b.title);
-  });
+  return sortCatalogByImageQuality(products);
 }
 
 function resolveDepartmentSlug(p: CatalogProductSummary): string | null {

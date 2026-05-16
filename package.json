@@ -12,6 +12,7 @@
     "catalog:dry-run": "node scripts/import-catalog.mjs --dry-run",
     "kicks:import": "node scripts/import-kicksdb.mjs",
     "kicks:dry-run": "node scripts/import-kicksdb.mjs --dry-run",
+    "kicks:audit-images": "node scripts/audit-kicksdb-images.mjs",
     "seed:designer": "node scripts/seed-designer-catalog.mjs",
     "seed:puffer": "node scripts/seed-puffer-catalog.mjs",
     "supabase": "npx supabase@latest",
