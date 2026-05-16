@@ -1123,14 +1123,19 @@ export function AccountPage() {
       <section className={styles.panel} id="selling" aria-labelledby="selling-heading">
         <div className={`${styles.sectionHead} ${styles.sellingHead}`}>
           <div className={styles.sellingTitleBlock}>
-            <p className={styles.kicker}>Selling</p>
-            <div className={styles.sellingTitleRow}>
-              <h2 id="selling-heading" className={styles.h2}>Listings, pending, history, and level</h2>
+            <div className={styles.sellingTopRow}>
+              <p className={styles.kicker}>Selling</p>
               <div className={styles.sellerLevelWrap}>
                 <span className={styles.levelBadge} aria-label={`Seller level ${sellerLevel}`}>LV{sellerLevel}</span>
                 <small>{sellerSalesToNextLevel} sales to LV{sellerLevel + 1}</small>
               </div>
             </div>
+            <h2 id="selling-heading" className={styles.sellingH2} title="Listings, pending, history, and level">
+              <span className={styles.sellingHeadingFull}>Listings, pending, history, and level</span>
+              <span className={styles.sellingHeadingShort} aria-hidden>
+                Listings, pending…
+              </span>
+            </h2>
           </div>
         </div>
         <div className={styles.metricGrid}>
