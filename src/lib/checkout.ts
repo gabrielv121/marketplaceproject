@@ -37,6 +37,23 @@ export async function startCheckoutForTrade(tradeId: string, siteUrl: string): P
   return data.url;
 }
 
+/**
+ * Sends bid-match emails to buyer and seller (checkout reminder + seller heads-up).
+ * Safe to call multiple times; the edge function deduplicates via bid_match_notified_at.
+ */
+export async function notifyBidMatch(tradeId: string, siteUrl: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+
+  const origin = siteUrl.replace(/\/$/, "");
+  const { error } = await sb.functions.invoke<{ ok?: boolean; error?: string }>("notify-bid-match", {
+    body: { trade_id: tradeId, site_url: origin },
+  });
+  if (error) {
+    console.warn("notify-bid-match failed", parseInvokeError(error));
+  }
+}
+
 /** Verifies a returned Stripe Checkout Session and updates the trade if the webhook was missed. */
 export async function confirmCheckoutSession(sessionId: string): Promise<void> {
   const sb = getSupabase();

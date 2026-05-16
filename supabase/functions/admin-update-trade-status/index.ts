@@ -193,6 +193,23 @@ async function notifyStatus(admin: ReturnType<typeof createClient>, status: stri
     });
   }
 
+  if (status === "delivered_to_buyer") {
+    await Promise.all([
+      sendNotificationEmail({
+        to: buyerEmail,
+        subject: `EXCH. order delivered: ${product}`,
+        html: `<p>Your order <strong>${product}</strong> was delivered.</p><p>Thanks for shopping on EXCH.</p><p><a href="${accountLink}">View your order</a></p>`,
+        text: `Your order ${product} was delivered. Thanks for shopping on EXCH. View your order: ${accountLink}`,
+      }),
+      sendNotificationEmail({
+        to: sellerEmail,
+        subject: `Buyer received your sale: ${product}`,
+        html: `<p>The buyer received <strong>${product}</strong>.</p><p>EXCH. will mark your payout available next; you will get another email when funds are ready to release.</p><p><a href="${accountLink}">View sale</a></p>`,
+        text: `The buyer received ${product}. EXCH. will mark your payout available next; you will get another email when funds are ready to release. View sale: ${accountLink}`,
+      }),
+    ]);
+  }
+
   if (status === "payout_available") {
     await sendNotificationEmail({
       to: sellerEmail,

@@ -31,7 +31,7 @@ import {
 import { resolveProductDetailByHandle } from "@/lib/catalog-supabase";
 import type { CatalogProductDetail } from "@/lib/catalog-product";
 import { recordProductView } from "@/lib/recently-viewed";
-import { startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
+import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 import { isP2pConfigured } from "@/lib/supabase";
@@ -315,7 +315,8 @@ export function ProductPage() {
         setListingVerificationAccepted(false);
         refreshP2p();
         try {
-          await rpcSellListingToBid(createdListingId);
+          const tradeId = await rpcSellListingToBid(createdListingId);
+          void notifyBidMatch(tradeId, window.location.origin);
           setActionMsg("Listing matched to highest open bid. The buyer can complete checkout from their account.");
           return;
         } catch (e: unknown) {
@@ -375,6 +376,7 @@ export function ProductPage() {
         refreshP2p();
         if (result.matched && result.tradeId) {
           setActionMsg("Bid matched the lowest ask — opening checkout…");
+          void notifyBidMatch(result.tradeId, window.location.origin);
           const url = await startCheckoutForTrade(result.tradeId, window.location.origin);
           window.location.assign(url);
           return;

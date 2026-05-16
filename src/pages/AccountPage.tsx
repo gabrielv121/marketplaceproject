@@ -15,7 +15,12 @@ import {
   type MyTradeRow,
   type ProfileAddressRow,
 } from "@/lib/account-data";
-import { confirmCheckoutSession, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
+import {
+  confirmCheckoutSession,
+  notifyBidMatch,
+  startCheckoutForTrade,
+  startSellerOnboarding,
+} from "@/lib/checkout";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
 import { formatMoney } from "@/lib/money-format";
@@ -540,7 +545,8 @@ export function AccountPage() {
   const onSellListingToBid = (listingId: string) => {
     setBusyId(listingId);
     void rpcSellListingToBid(listingId)
-      .then(() => {
+      .then((tradeId) => {
+        void notifyBidMatch(tradeId, window.location.origin);
         setSaveMsg("Matched to highest open bid. The buyer can complete checkout from Account → Buying.");
         void refresh();
       })
