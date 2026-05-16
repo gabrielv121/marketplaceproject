@@ -243,6 +243,18 @@ export async function listCatalogBrandsFromSupabase(): Promise<CatalogBrandRow[]
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
+/** Single product for order/trade views — includes unpublished rows so past trades still resolve. */
+export async function fetchCatalogSummaryByHandle(handle: string): Promise<CatalogProductSummary | null> {
+  const sb = getSupabase();
+  if (sb && (await catalogUsesSupabase())) {
+    const { data, error } = await sb.from("catalog_products").select("*").eq("handle", handle).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return withResolvedFeaturedImage(rowToSummary(data as CatalogProductRow));
+  }
+  return getDemoProductByHandle(handle);
+}
+
 export async function resolveProductDetailByHandle(handle: string): Promise<CatalogProductDetail | null> {
   const sb = getSupabase();
   if (sb && (await catalogUsesSupabase())) {

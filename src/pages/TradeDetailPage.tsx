@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
+import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
 import { fetchMyAddresses, fetchMyProfile, type ProfileAddressRow, type ProfileRow } from "@/lib/account-data";
 import { createBuyerOutboundLabel, releaseSellerPayout } from "@/lib/admin-verification";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
-import { loadCatalogProducts } from "@/lib/catalog-products";
+import { fetchCatalogSummaryByHandle } from "@/lib/catalog-supabase";
+import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 import { startCheckoutForTrade } from "@/lib/checkout";
 import { formatMoney } from "@/lib/money-format";
 import { moneyFromCents, rpcSellerMarkTradeShipped } from "@/lib/p2p";
@@ -200,14 +202,14 @@ export function TradeDetailPage() {
     try {
       const row = await fetchTradeDetail(tradeId);
       setTrade(row);
-      const [profileRow, addressRows, catalog] = await Promise.all([
+      const [profileRow, addressRows, catalogProduct] = await Promise.all([
         fetchMyProfile(),
         fetchMyAddresses(),
-        loadCatalogProducts({ limit: 200 }),
+        fetchCatalogSummaryByHandle(row.product_handle),
       ]);
       setProfile(profileRow);
       setAddresses(addressRows);
-      setProduct(catalog.products.find((item) => item.handle === row.product_handle) ?? null);
+      setProduct(catalogProduct);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load trade");
     } finally {
@@ -352,8 +354,8 @@ export function TradeDetailPage() {
       </BackButton>
       <section className={styles.hero}>
         <div className={styles.productMedia}>
-          {product?.featuredImageUrl ? (
-            <img src={product.featuredImageUrl} alt="" className={styles.productImage} />
+          {product && resolveFeaturedImageUrl(product) ? (
+            <CatalogProductImage product={product} className={styles.productImage} loading="eager" />
           ) : (
             <span className={styles.productPlaceholder}>EX</span>
           )}
