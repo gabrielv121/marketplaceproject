@@ -38,10 +38,17 @@ export function SearchPage() {
 
   const results = products;
 
+  const hasActiveSearch = Boolean(q);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const next = input.trim();
     setParams(next ? { q: next } : {});
+  };
+
+  const clearSearch = () => {
+    setInput("");
+    setParams({});
   };
 
   return (
@@ -60,21 +67,15 @@ export function SearchPage() {
           placeholder="Search sneakers, brands, sizes, tags..."
           autoFocus
         />
-        <button type="submit" className={styles.button}>
-          Search
-        </button>
-        {q ? (
-          <button
-            type="button"
-            className={styles.clearBtn}
-            onClick={() => {
-              setInput("");
-              setParams({});
-            }}
-          >
+        {hasActiveSearch ? (
+          <button type="button" className={styles.actionBtn} data-mode="clear" onClick={clearSearch}>
             Clear
           </button>
-        ) : null}
+        ) : (
+          <button type="submit" className={styles.actionBtn} data-mode="search">
+            Search
+          </button>
+        )}
       </form>
 
       <div className={styles.meta}>
