@@ -22,8 +22,10 @@ import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
 import {
   moneyFromCents,
+  rpcCancelBid,
   rpcCancelListing,
   rpcCancelReservedTrade,
+  rpcSellListingToBid,
   rpcSellerMarkTradeShipped,
   rpcUpdateActiveListing,
   uploadListingPhotos,
@@ -524,6 +526,25 @@ export function AccountPage() {
     void rpcCancelListing(id)
       .then(() => void refresh())
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Cancel failed"))
+      .finally(() => setBusyId(null));
+  };
+
+  const onCancelBid = (id: string) => {
+    setBusyId(id);
+    void rpcCancelBid(id)
+      .then(() => void refresh())
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not cancel bid"))
+      .finally(() => setBusyId(null));
+  };
+
+  const onSellListingToBid = (listingId: string) => {
+    setBusyId(listingId);
+    void rpcSellListingToBid(listingId)
+      .then(() => {
+        setSaveMsg("Matched to highest open bid. The buyer can complete checkout from Account → Buying.");
+        void refresh();
+      })
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not sell to bid"))
       .finally(() => setBusyId(null));
   };
 
@@ -1099,6 +1120,15 @@ export function AccountPage() {
                   <td>{row.size_label}</td>
                   <td>{formatMoney(moneyFromCents(row.max_price_cents, row.currency))}</td>
                   <td><span className={styles.status}>{prettyStatus(row.status)}</span></td>
+                  <td>
+                    {row.status === "open" ? (
+                      <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onCancelBid(row.id)}>
+                        Cancel
+                      </button>
+                    ) : (
+                      <span className={styles.small}>—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody></table></div>
@@ -1209,6 +1239,14 @@ export function AccountPage() {
                           {row.status === "active" ? (
                             <>
                               <button type="button" className={styles.linkBtn} onClick={() => onEditListing(row)}>Edit</button>
+                              <button
+                                type="button"
+                                className={styles.linkBtn}
+                                disabled={busyId === row.id}
+                                onClick={() => onSellListingToBid(row.id)}
+                              >
+                                Sell to bid
+                              </button>
                               <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onCancelListing(row.id)}>
                                 Deactivate
                               </button>

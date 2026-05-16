@@ -71,6 +71,15 @@ function readableRpcError(error: { message?: string; details?: string; hint?: st
   if (raw.includes("seller_shipped_not_allowed")) {
     return new Error("Create the prepaid label first, then mark the item shipped.");
   }
+  if (raw.includes("bid_not_cancellable")) {
+    return new Error("This bid is no longer open or cannot be cancelled.");
+  }
+  if (raw.includes("no_matching_bid")) {
+    return new Error("No open bid meets your ask price for this size.");
+  }
+  if (raw.includes("invalid_price")) {
+    return new Error("Enter a valid bid amount.");
+  }
   return new Error(error.message ?? "P2P action failed");
 }
 
@@ -159,25 +168,67 @@ export async function insertListing(input: {
   return listingId;
 }
 
+export type PlaceBidResult = {
+  bidId: string;
+  matched: boolean;
+  tradeId: string | null;
+  matchPriceCents: number | null;
+};
+
+export async function rpcPlaceBid(input: {
+  product_handle: string;
+  size_label: string;
+  max_price_cents: number;
+  currency: string;
+}): Promise<PlaceBidResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("P2P not configured");
+  const { data, error } = await sb.rpc("place_bid", {
+    p_product_handle: input.product_handle,
+    p_size_label: input.size_label,
+    p_max_price_cents: input.max_price_cents,
+    p_currency: input.currency,
+  });
+  if (error) throw readableRpcError(error);
+  const row = (data ?? {}) as {
+    bid_id?: string;
+    matched?: boolean;
+    trade_id?: string | null;
+    match_price_cents?: number | null;
+  };
+  if (!row.bid_id) throw new Error("Unexpected place_bid response");
+  return {
+    bidId: row.bid_id,
+    matched: Boolean(row.matched),
+    tradeId: row.trade_id ?? null,
+    matchPriceCents: row.match_price_cents ?? null,
+  };
+}
+
+/** @deprecated Use rpcPlaceBid — kept for callers that only need an insert without match metadata. */
 export async function insertBid(input: {
   product_handle: string;
   size_label: string;
   max_price_cents: number;
   currency: string;
 }): Promise<void> {
+  await rpcPlaceBid(input);
+}
+
+export async function rpcCancelBid(bidId: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("P2P not configured");
-  const { data: userData, error: userErr } = await sb.auth.getUser();
-  if (userErr) throw userErr;
-  if (!userData.user) throw new Error("Sign in to place a bid");
-  const { error } = await sb.from("p2p_bids").insert({
-    buyer_id: userData.user.id,
-    product_handle: input.product_handle,
-    size_label: input.size_label,
-    max_price_cents: input.max_price_cents,
-    currency: input.currency,
-  });
-  if (error) throw error;
+  const { error } = await sb.rpc("cancel_bid", { p_bid_id: bidId });
+  if (error) throw readableRpcError(error);
+}
+
+export async function rpcSellListingToBid(listingId: string): Promise<string> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("P2P not configured");
+  const { data, error } = await sb.rpc("sell_listing_to_bid", { p_listing_id: listingId });
+  if (error) throw readableRpcError(error);
+  if (typeof data !== "string") throw new Error("Unexpected sell_listing_to_bid response");
+  return data;
 }
 
 export async function rpcCancelListing(listingId: string): Promise<void> {

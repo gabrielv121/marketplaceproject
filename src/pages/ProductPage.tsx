@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
-import { fetchMyProfile } from "@/lib/account-data";
+import { fetchMyBids, fetchMyProfile, type MyBidRow } from "@/lib/account-data";
 import { buildMockOrderBook, buildMockSizeRows } from "@/lib/orderbook-mock";
 import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
@@ -11,8 +11,10 @@ import {
   aggregateBidsToBook,
   aggregateListingsToAsks,
   highestBidForSize,
-  insertBid,
   insertListing,
+  rpcCancelBid,
+  rpcPlaceBid,
+  rpcSellListingToBid,
   lastSaleForSize,
   lowestListingForSize,
   moneyFromCents,
@@ -65,6 +67,7 @@ export function ProductPage() {
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [p2pTick, setP2pTick] = useState(0);
+  const [myBids, setMyBids] = useState<MyBidRow[]>([]);
 
   const refreshP2p = useCallback(() => {
     setP2pTick((t) => t + 1);
@@ -169,6 +172,24 @@ export function ProductPage() {
   const p2p = isP2pConfigured();
   const canUseMockMarket = !product?.tags?.includes("kicksdb");
 
+  useEffect(() => {
+    if (!user || !p2p) {
+      setMyBids([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchMyBids()
+      .then((rows) => {
+        if (!cancelled) setMyBids(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setMyBids([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, p2p, p2pTick]);
+
   const sizeRows: SizeRow[] = useMemo(() => {
     if (!product) return [];
     const mockRows = canUseMockMarket ? buildMockSizeRows(product.handle, currency) : [];
@@ -228,6 +249,17 @@ export function ProductPage() {
   const lowestPeerListing =
     p2p && selectedRow ? lowestListingForSize(listings, selectedRow.label) : null;
 
+  const myOpenBidAtSize = useMemo(() => {
+    if (!product || !selectedRow) return null;
+    return (
+      myBids.find(
+        (b) => b.status === "open" && b.product_handle === product.handle && b.size_label === selectedRow.label,
+      ) ?? null
+    );
+  }, [myBids, product, selectedRow]);
+
+  const highestOpenBidAtSize = selectedRow ? highestBidForSize(bids, selectedRow.label) : null;
+
   const onListForSale = () => {
     if (!product || !selectedRow) return;
     setActionMsg(null);
@@ -272,7 +304,7 @@ export function ProductPage() {
           verification_requirements_accepted_at: new Date().toISOString(),
         }),
       )
-      .then(() => {
+      .then(async (createdListingId) => {
         setSellPrice("");
         setListingCondition("new");
         setListingPhotos([]);
@@ -281,8 +313,16 @@ export function ProductPage() {
         setListingSku("");
         setListingNotes("");
         setListingVerificationAccepted(false);
-        setActionMsg("Listing submitted and live.");
         refreshP2p();
+        try {
+          await rpcSellListingToBid(createdListingId);
+          setActionMsg("Listing matched to highest open bid. The buyer can complete checkout from their account.");
+          return;
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "";
+          if (!msg.includes("No open bid")) throw e;
+        }
+        setActionMsg("Listing submitted and live.");
       })
       .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not list"))
       .finally(() => setActionBusy(false));
@@ -324,18 +364,37 @@ export function ProductPage() {
       return;
     }
     setActionBusy(true);
-    void insertBid({
+    void rpcPlaceBid({
       product_handle: product.handle,
       size_label: selectedRow.label,
       max_price_cents: cents,
       currency,
     })
-      .then(() => {
+      .then(async (result) => {
         setBidPrice("");
-        setActionMsg("Bid placed.");
         refreshP2p();
+        if (result.matched && result.tradeId) {
+          setActionMsg("Bid matched the lowest ask — opening checkout…");
+          const url = await startCheckoutForTrade(result.tradeId, window.location.origin);
+          window.location.assign(url);
+          return;
+        }
+        setActionMsg("Bid placed. You will match automatically when a seller asks at or below your max.");
       })
       .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not bid"))
+      .finally(() => setActionBusy(false));
+  };
+
+  const onCancelMyBid = () => {
+    if (!myOpenBidAtSize) return;
+    setActionMsg(null);
+    setActionBusy(true);
+    void rpcCancelBid(myOpenBidAtSize.id)
+      .then(() => {
+        setActionMsg("Bid cancelled.");
+        refreshP2p();
+      })
+      .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not cancel bid"))
       .finally(() => setActionBusy(false));
   };
 
@@ -629,22 +688,41 @@ export function ProductPage() {
                   {selectedRow?.highestBid ? formatMoney(selectedRow.highestBid) : "—"}
                 </span>
               </div>
-              <label className={styles.field}>
-                <span className={styles.k}>Your max bid ({currency})</span>
-                <input
-                  className={styles.input}
-                  inputMode="decimal"
-                  placeholder={selectedRow?.highestBid?.amount ?? "0"}
-                  value={bidPrice}
-                  onChange={(e) => setBidPrice(e.target.value)}
-                />
-              </label>
-              <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onPlaceBid()}>
-                Place bid
-              </button>
+              {lowestPeerListing && highestOpenBidAtSize && highestOpenBidAtSize.max_price_cents >= lowestPeerListing.price_cents ? (
+                <p className={styles.hint}>
+                  Lowest ask {formatMoney(moneyFromCents(lowestPeerListing.price_cents, currency))} — a bid at or above
+                  that price can match instantly and open Stripe Checkout.
+                </p>
+              ) : null}
+              {myOpenBidAtSize ? (
+                <div className={styles.row}>
+                  <span className={styles.k}>Your open bid</span>
+                  <span className={styles.v}>{formatMoney(moneyFromCents(myOpenBidAtSize.max_price_cents, currency))}</span>
+                </div>
+              ) : (
+                <label className={styles.field}>
+                  <span className={styles.k}>Your max bid ({currency})</span>
+                  <input
+                    className={styles.input}
+                    inputMode="decimal"
+                    placeholder={selectedRow?.highestBid?.amount ?? "0"}
+                    value={bidPrice}
+                    onChange={(e) => setBidPrice(e.target.value)}
+                  />
+                </label>
+              )}
+              {myOpenBidAtSize ? (
+                <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onCancelMyBid()}>
+                  Cancel bid
+                </button>
+              ) : (
+                <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onPlaceBid()}>
+                  Place bid
+                </button>
+              )}
               <p className={styles.hint}>
-                Open bids power the bid side of the book. Matching against asks and payment vaulting are your next layer
-                (Stripe auth/capture, or internal ledger).
+                Bids auto-match the lowest ask at or below your max. Sellers can also accept your bid from their listing.
+                Payment uses the same Stripe Checkout flow as Buy.
               </p>
             </div>
           )}
