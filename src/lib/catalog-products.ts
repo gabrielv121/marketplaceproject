@@ -3,6 +3,7 @@ import { catalogProductMatchesSearch } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
+import { withoutBlockedCatalogProducts } from "@/lib/blocked-catalog-handles";
 import { enrichProductsForHome, isCatalogAccessoryCandidate } from "@/lib/home-feed";
 import {
   fetchCatalogSummariesFromSupabase,
@@ -93,7 +94,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
       let list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
       const enriched = enrichProductsForHome(list);
       const sorted = opts.sortNew ? enriched : trendSort(enriched);
-      const filtered = filterList(sorted, { ...opts, departmentSlug: undefined });
+      const filtered = withoutBlockedCatalogProducts(filterList(sorted, { ...opts, departmentSlug: undefined }));
       return { products: filtered, error: null, catalogSource: "supabase" };
     }
   } catch (e) {
@@ -102,7 +103,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
     if (opts.sortNew) local = [...local].reverse();
     else local = trendSort(local);
     return {
-      products: filterList(local, { ...opts, departmentSlug: undefined }),
+      products: withoutBlockedCatalogProducts(filterList(local, { ...opts, departmentSlug: undefined })),
       error: e instanceof Error ? e.message : "Catalog error",
       catalogSource: "local",
     };
@@ -112,7 +113,11 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
   let local = deptSlug ? demo.filter((p) => matchesDepartment(p, deptSlug)) : demo;
   if (opts.sortNew) local = [...local].reverse();
   else local = trendSort(local);
-  return { products: filterList(local, { ...opts, departmentSlug: undefined }), error: null, catalogSource: "local" };
+  return {
+    products: withoutBlockedCatalogProducts(filterList(local, { ...opts, departmentSlug: undefined })),
+    error: null,
+    catalogSource: "local",
+  };
 }
 
 export async function loadCatalogBrands(): Promise<{
@@ -151,13 +156,13 @@ export async function searchCatalogProducts(query: string): Promise<{
         }),
       );
       const enriched = enrichProductsForHome(mapped);
-      return { products: trendSort(enriched), error: null, catalogSource: "supabase" };
+      return { products: withoutBlockedCatalogProducts(trendSort(enriched)), error: null, catalogSource: "supabase" };
     }
   } catch (e) {
     const demoBase = enrichProductsForHome([...DEMO_PRODUCTS]);
     const list = demoBase.filter((p) => catalogProductMatchesSearch(p, terms));
     return {
-      products: trendSort(list),
+      products: withoutBlockedCatalogProducts(trendSort(list)),
       error: e instanceof Error ? e.message : "Search error",
       catalogSource: "local",
     };
@@ -165,7 +170,7 @@ export async function searchCatalogProducts(query: string): Promise<{
 
   const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
   const list = demo.filter((p) => catalogProductMatchesSearch(p, terms));
-  return { products: trendSort(list), error: null, catalogSource: "local" };
+  return { products: withoutBlockedCatalogProducts(trendSort(list)), error: null, catalogSource: "local" };
 }
 
 export function listBrandsFromProducts(products: CatalogProductSummary[]): { name: string; slug: string; count: number }[] {

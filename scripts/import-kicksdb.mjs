@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
+import { BLOCKED_CATALOG_HANDLES, isBlockedCatalogHandle } from "./lib/blocked-catalog-handles.mjs";
 import { pickBestProductImageUrl } from "./lib/stockx-image.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -258,6 +259,7 @@ function activityTagsFor(product, kind) {
 function productToCatalogRow(product) {
   const title = cleanText(product.title);
   const handle = cleanText(product.slug) || slugify(title);
+  if (isBlockedCatalogHandle(handle)) return null;
   const brand = cleanText(product.brand) || "Jordan";
   const kind = inferCatalogKind(product);
   const gender = normalizeGender(product.gender);
@@ -439,6 +441,12 @@ async function main() {
   }
 
   console.log(`Imported ${rows.length} KicksDB product(s) into catalog_products.`);
+
+  const blocked = [...BLOCKED_CATALOG_HANDLES];
+  const { error: delErr } = await supabase.from("catalog_products").delete().in("handle", blocked);
+  if (delErr) console.warn("Could not remove blocked catalog handles:", delErr.message);
+  else console.log(`Removed ${blocked.length} blocked catalog handle(s).`);
+
   if (!args.keepExisting) await hideNonKicksDbRows(supabase);
 }
 
