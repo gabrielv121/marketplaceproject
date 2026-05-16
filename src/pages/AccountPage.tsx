@@ -325,6 +325,44 @@ function shortDate(date: string): string {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(date));
 }
 
+const LEVEL_HINT_VISIBLE_MS = 2800;
+
+function SellerLevelBadge({ level, salesToNext }: { level: number; salesToNext: number }) {
+  const [hintOpen, setHintOpen] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hint = `${salesToNext} sales to LV${level + 1}`;
+
+  useEffect(() => {
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, []);
+
+  const revealHint = () => {
+    setHintOpen(true);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => {
+      setHintOpen(false);
+      hintTimerRef.current = null;
+    }, LEVEL_HINT_VISIBLE_MS);
+  };
+
+  return (
+    <button
+      type="button"
+      className={`${styles.sellerLevelWrap} ${hintOpen ? styles.sellerLevelWrapHintOpen : ""}`.trim()}
+      aria-label={`Seller level ${level}`}
+      aria-expanded={hintOpen}
+      onClick={revealHint}
+    >
+      <span className={styles.levelBadge} aria-hidden>
+        LV{level}
+      </span>
+      <small className={styles.sellerLevelHint}>{hint}</small>
+    </button>
+  );
+}
+
 export function AccountPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1125,10 +1163,7 @@ export function AccountPage() {
           <div className={styles.sellingTitleBlock}>
             <div className={styles.sellingTopRow}>
               <p className={styles.kicker}>Selling</p>
-              <div className={styles.sellerLevelWrap}>
-                <span className={styles.levelBadge} aria-label={`Seller level ${sellerLevel}`}>LV{sellerLevel}</span>
-                <small>{sellerSalesToNextLevel} sales to LV{sellerLevel + 1}</small>
-              </div>
+              <SellerLevelBadge level={sellerLevel} salesToNext={sellerSalesToNextLevel} />
             </div>
             <h2 id="selling-heading" className={styles.sellingH2} title="Listings, pending, history, and level">
               <span className={styles.sellingHeadingFull}>Listings, pending, history, and level</span>

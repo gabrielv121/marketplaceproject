@@ -226,9 +226,6 @@
     flex-shrink: 0;
   }
 
-  .sellingTopRow {
-    padding-bottom: 1.25rem;
-  }
 }
 
 .sectionHead {
@@ -254,7 +251,6 @@
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.35rem;
-  padding-bottom: 1.35rem;
 }
 
 .sellingTopRow .kicker {
@@ -555,10 +551,22 @@
 .sellerLevelWrap {
   position: relative;
   display: grid;
-  gap: 0.22rem;
+  gap: 0;
   justify-items: end;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: var(--muted);
   font-size: 0.62rem;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sellerLevelWrap:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 
 .levelBadge {
@@ -578,14 +586,32 @@
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
-.sellerLevelWrap small {
+.sellerLevelHint {
   position: absolute;
   top: calc(100% + 0.18rem);
   right: 0;
-  max-width: none;
+  z-index: 2;
+  max-width: min(14rem, 70vw);
   white-space: nowrap;
   text-align: right;
   line-height: 1.25;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sellerLevelWrap:hover .sellerLevelHint,
+  .sellerLevelWrap:focus-visible .sellerLevelHint {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.sellerLevelWrapHintOpen .sellerLevelHint {
+  opacity: 1;
+  visibility: visible;
 }
 
 .addressEditor {
