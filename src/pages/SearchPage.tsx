@@ -5,18 +5,7 @@ import { searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./SearchPage.module.css";
 
-const QUICK_SEARCHES = [
-  "Jordan",
-  "Nike",
-  "UGG",
-  "North Face",
-  "Moncler",
-  "Puffer",
-  "Margiela",
-  "Rick Owens",
-  "Guidi",
-  "Designer",
-];
+const QUICK_SEARCHES = ["Jordan", "Nike", "UGG", "Yeezy", "Apparel"];
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
