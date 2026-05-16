@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { sendNotificationEmail } from "../_shared/send-notification-email.ts";
+import { sendBuyerShippedEmail } from "../_shared/order-emails.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
 const corsHeaders: Record<string, string> = {
@@ -217,25 +217,6 @@ async function userEmail(admin: ReturnType<typeof createClient>, userId: string)
   return data.user?.email ?? null;
 }
 
-async function sendBuyerEmail(params: {
-  to?: string | null;
-  product: string;
-  trackingNumber?: string | null;
-  carrier?: string | null;
-  service?: string | null;
-}): Promise<void> {
-  const carrier = [params.carrier, params.service].filter(Boolean).join(" ");
-  const tracking = params.trackingNumber ? `Tracking: ${params.trackingNumber}.` : "";
-  await sendNotificationEmail(
-    {
-      to: params.to,
-      subject: `EXCH. shipped your verified order: ${params.product}`,
-      html: `<p>Your verified order <strong>${params.product}</strong> is on the way.</p><p>${carrier}</p><p>${tracking}</p>`,
-      text: `Your verified order ${params.product} is on the way. ${carrier} ${tracking}`,
-    },
-    { silentSkip: true },
-  );
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -328,9 +309,12 @@ Deno.serve(async (req) => {
       .eq("status", "verification_passed");
     if (updateErr) return json({ error: updateErr.message }, 500);
 
-    await sendBuyerEmail({
+    await sendBuyerShippedEmail({
+      admin,
       to: buyerEmail,
-      product: `${trade.product_handle} (${trade.size_label})`,
+      productHandle: trade.product_handle,
+      sizeLabel: trade.size_label,
+      tradeId: trade.id,
       trackingNumber: transaction.tracking_number ?? null,
       carrier: rate.provider ?? null,
       service: rate.servicelevel?.name ?? rate.servicelevel?.token ?? null,

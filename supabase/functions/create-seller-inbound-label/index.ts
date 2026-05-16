@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { tryNotificationEmail } from "../_shared/send-notification-email.ts";
+import { sendShippingLabelEmail } from "../_shared/order-emails.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -137,22 +137,27 @@ async function shippoPost<T>(path: string, token: string, body: unknown): Promis
   return data as T;
 }
 
-async function sendLabelEmail(params: {
-  to?: string | null;
-  product: string;
-  labelUrl: string;
-  trackingNumber?: string | null;
-  carrier?: string | null;
-  service?: string | null;
-}): Promise<LabelEmailResult> {
-  const tracking = params.trackingNumber ? `<p><strong>Tracking:</strong> ${params.trackingNumber}</p>` : "";
-  const carrier = [params.carrier, params.service].filter(Boolean).join(" ");
-  const carrierText = carrier ? `<p><strong>Carrier:</strong> ${carrier}</p>` : "";
-  return tryNotificationEmail({
+async function sendLabelEmail(
+  admin: ReturnType<typeof createClient>,
+  trade: TradeRow,
+  params: {
+    to?: string | null;
+    labelUrl: string;
+    trackingNumber?: string | null;
+    carrier?: string | null;
+    service?: string | null;
+  },
+): Promise<LabelEmailResult> {
+  return sendShippingLabelEmail({
+    admin,
     to: params.to,
-    subject: `Your EXCH. shipping label for ${params.product}`,
-    html: `<p>Your prepaid label for <strong>${params.product}</strong> is ready.</p>${tracking}${carrierText}<p><a href="${params.labelUrl}">Download your shipping label</a></p><p>Please print it, attach it to the package, and ship the item to EXCH. for verification.</p>`,
-    text: `Your prepaid label for ${params.product} is ready.\n${params.trackingNumber ? `Tracking: ${params.trackingNumber}\n` : ""}${carrier ? `Carrier: ${carrier}\n` : ""}Download your shipping label: ${params.labelUrl}\nPlease print it, attach it to the package, and ship the item to EXCH. for verification.`,
+    productHandle: trade.product_handle,
+    sizeLabel: trade.size_label,
+    tradeId: trade.id,
+    labelUrl: params.labelUrl,
+    trackingNumber: params.trackingNumber,
+    carrier: params.carrier,
+    service: params.service,
   });
 }
 
@@ -286,9 +291,8 @@ Deno.serve(async (req) => {
 
     if (updateErr) return json({ error: updateErr.message }, 500);
 
-    const labelEmail = await sendLabelEmail({
+    const labelEmail = await sendLabelEmail(admin, trade, {
       to: user.email,
-      product: `${trade.product_handle} (${trade.size_label})`,
       labelUrl: transaction.label_url,
       trackingNumber: transaction.tracking_number ?? null,
       carrier: rate.provider ?? null,

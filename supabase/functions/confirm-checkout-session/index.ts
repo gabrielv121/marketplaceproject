@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
-import { sendNotificationEmail } from "../_shared/send-notification-email.ts";
+import { sendPaymentReceivedEmails } from "../_shared/order-emails.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +10,7 @@ const corsHeaders: Record<string, string> = {
 type Body = { session_id?: string };
 
 type PaidTrade = {
+  id: string;
   listing_id: string | null;
   buyer_id: string;
   seller_id: string;
@@ -34,14 +35,6 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function appUrl(path = "/account"): string {
-  return `${(Deno.env.get("CHECKOUT_SITE_URL") ?? "").replace(/\/$/, "")}${path}`;
-}
-
-function money(cents: number | null | undefined, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format((cents ?? 0) / 100);
-}
-
 function buyerShippingPatch(session: Stripe.Checkout.Session): Record<string, string | null> {
   const details = session.customer_details;
   const address = details?.address;
@@ -57,46 +50,6 @@ function buyerShippingPatch(session: Stripe.Checkout.Session): Record<string, st
     buyer_shipping_postal_code: address?.postal_code ?? null,
     buyer_shipping_country: address?.country ?? null,
   };
-}
-
-async function emailForUser(admin: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data, error } = await admin.auth.admin.getUserById(userId);
-  if (error) {
-    console.error("email lookup failed", userId, error);
-    return null;
-  }
-  return data.user?.email ?? null;
-}
-
-async function sendPaymentEmails(admin: ReturnType<typeof createClient>, trade: PaidTrade): Promise<void> {
-  const [buyerEmail, sellerEmail] = await Promise.all([
-    emailForUser(admin, trade.buyer_id),
-    emailForUser(admin, trade.seller_id),
-  ]);
-  const product = `${trade.product_handle} (${trade.size_label})`;
-  const accountLink = appUrl("/account");
-  const shipBy = trade.seller_ship_by ? new Date(trade.seller_ship_by).toLocaleDateString("en-US") : "within 3 days";
-
-  await Promise.all([
-    sendNotificationEmail(
-      {
-        to: buyerEmail,
-        subject: `EXCH. order received: ${product}`,
-        html: `<p>Your payment for <strong>${product}</strong> was received.</p><p>EXCH. is holding ${money(trade.buyer_total_cents, trade.currency)} while the seller ships the item to us for verification.</p><p><a href="${accountLink}">View your order</a></p>`,
-        text: `Your payment for ${product} was received. EXCH. is holding ${money(trade.buyer_total_cents, trade.currency)} while the seller ships the item to us for verification. View your order: ${accountLink}`,
-      },
-      { silentSkip: true },
-    ),
-    sendNotificationEmail(
-      {
-        to: sellerEmail,
-        subject: `Action needed: ship ${product} to EXCH.`,
-        html: `<p>Your item <strong>${product}</strong> sold.</p><p>Please create/use the prepaid label in your EXCH. account and ship the item to us by ${shipBy}. Your estimated payout is ${money(trade.seller_net_payout_cents, trade.currency)} after verification and buyer delivery.</p><p><a href="${accountLink}">Open seller actions</a></p>`,
-        text: `Your item ${product} sold. Please create/use the prepaid label in your EXCH. account and ship the item to us by ${shipBy}. Estimated payout: ${money(trade.seller_net_payout_cents, trade.currency)}. Open seller actions: ${accountLink}`,
-      },
-      { silentSkip: true },
-    ),
-  ]);
 }
 
 Deno.serve(async (req) => {
@@ -173,7 +126,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", tradeId)
       .in("status", ["reserved", "pending_payment"])
-      .select("listing_id, buyer_id, seller_id, product_handle, size_label, currency, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
+      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
       .maybeSingle<PaidTrade>();
 
     if (updateErr) return json({ error: updateErr.message }, 500);
@@ -188,7 +141,7 @@ Deno.serve(async (req) => {
       if (listingErr) return json({ error: listingErr.message }, 500);
     }
 
-    await sendPaymentEmails(admin, trade);
+    await sendPaymentReceivedEmails(admin, trade);
 
     return json({ ok: true, status: "seller_notified", trade_id: tradeId });
   } catch (e) {

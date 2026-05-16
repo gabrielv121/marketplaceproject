@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { sendNotificationEmail } from "../_shared/send-notification-email.ts";
+import { sendTradeStatusEmails } from "../_shared/order-emails.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -103,123 +103,6 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function appUrl(path = "/account"): string {
-  return `${(Deno.env.get("CHECKOUT_SITE_URL") ?? "").replace(/\/$/, "")}${path}`;
-}
-
-function money(cents: number | null | undefined, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format((cents ?? 0) / 100);
-}
-
-async function userEmail(admin: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data, error } = await admin.auth.admin.getUserById(userId);
-  if (error) {
-    console.error("user email lookup failed", userId, error);
-    return null;
-  }
-  return data.user?.email ?? null;
-}
-
-async function sellerHasStripeConnect(admin: ReturnType<typeof createClient>, sellerId: string): Promise<boolean> {
-  const { data, error } = await admin
-    .from("profiles")
-    .select("stripe_account_id")
-    .eq("id", sellerId)
-    .maybeSingle<{ stripe_account_id: string | null }>();
-  if (error) {
-    console.error("seller stripe account lookup failed", sellerId, error);
-    return false;
-  }
-  return Boolean(data?.stripe_account_id?.trim());
-}
-
-async function notifyStatus(admin: ReturnType<typeof createClient>, status: string, trade: TradeRow): Promise<void> {
-  const [buyerEmail, sellerEmail] = await Promise.all([
-    userEmail(admin, trade.buyer_id),
-    userEmail(admin, trade.seller_id),
-  ]);
-  const product = `${trade.product_handle} (${trade.size_label})`;
-  const accountLink = appUrl("/account");
-
-  if (status === "verification_passed") {
-    const hasStripeConnect = await sellerHasStripeConnect(admin, trade.seller_id);
-    const payoutSetupHtml = hasStripeConnect
-      ? "<p>Your Stripe payout account is connected. Payout will become available after buyer delivery.</p>"
-      : `<p><strong>Action needed:</strong> connect Stripe in your EXCH. account so we can release your payout after buyer delivery.</p><p><a href="${accountLink}">Connect Stripe</a></p>`;
-    const payoutSetupText = hasStripeConnect
-      ? "Your Stripe payout account is connected. Payout will become available after buyer delivery."
-      : `Action needed: connect Stripe in your EXCH. account so we can release your payout after buyer delivery. Connect Stripe: ${accountLink}`;
-
-    await Promise.all([
-      sendNotificationEmail({
-        to: buyerEmail,
-        subject: `EXCH. verified your order: ${product}`,
-        html: `<p>Your order <strong>${product}</strong> passed EXCH. verification.</p><p>We will ship it to you next.</p><p><a href="${accountLink}">Track your order</a></p>`,
-        text: `Your order ${product} passed EXCH. verification. We will ship it to you next. Track your order: ${accountLink}`,
-      }),
-      sendNotificationEmail({
-        to: sellerEmail,
-        subject: `EXCH. verified your sale: ${product}`,
-        html: `<p>Your item <strong>${product}</strong> passed verification.</p><p>EXCH. will ship it to the buyer next.</p>${payoutSetupHtml}<p><a href="${accountLink}">View sale</a></p>`,
-        text: `Your item ${product} passed verification. EXCH. will ship it to the buyer next. ${payoutSetupText} View sale: ${accountLink}`,
-      }),
-    ]);
-  }
-
-  if (status === "verification_failed") {
-    await Promise.all([
-      sendNotificationEmail({
-        to: buyerEmail,
-        subject: `EXCH. verification update: ${product}`,
-        html: `<p>The item for <strong>${product}</strong> did not pass verification.</p><p>EXCH. will handle the refund process.</p><p><a href="${accountLink}">View order</a></p>`,
-        text: `The item for ${product} did not pass verification. EXCH. will handle the refund process. View order: ${accountLink}`,
-      }),
-      sendNotificationEmail({
-        to: sellerEmail,
-        subject: `EXCH. verification failed: ${product}`,
-        html: `<p>Your item <strong>${product}</strong> did not pass verification.</p><p>EXCH. will follow up about the return or next steps.</p><p><a href="${accountLink}">View sale</a></p>`,
-        text: `Your item ${product} did not pass verification. EXCH. will follow up about the return or next steps. View sale: ${accountLink}`,
-      }),
-    ]);
-  }
-
-  if (status === "shipped_to_buyer") {
-    const tracking = trade.buyer_tracking_number ? ` Tracking: ${trade.buyer_tracking_number}.` : "";
-    await sendNotificationEmail({
-      to: buyerEmail,
-      subject: `EXCH. shipped your order: ${product}`,
-      html: `<p>Your verified order <strong>${product}</strong> is on the way.</p><p>${tracking}</p><p><a href="${accountLink}">View your order</a></p>`,
-      text: `Your verified order ${product} is on the way.${tracking} View your order: ${accountLink}`,
-    });
-  }
-
-  if (status === "delivered_to_buyer") {
-    await Promise.all([
-      sendNotificationEmail({
-        to: buyerEmail,
-        subject: `EXCH. order delivered: ${product}`,
-        html: `<p>Your order <strong>${product}</strong> was delivered.</p><p>Thanks for shopping on EXCH.</p><p><a href="${accountLink}">View your order</a></p>`,
-        text: `Your order ${product} was delivered. Thanks for shopping on EXCH. View your order: ${accountLink}`,
-      }),
-      sendNotificationEmail({
-        to: sellerEmail,
-        subject: `Buyer received your sale: ${product}`,
-        html: `<p>The buyer received <strong>${product}</strong>.</p><p>EXCH. will mark your payout available next; you will get another email when funds are ready to release.</p><p><a href="${accountLink}">View sale</a></p>`,
-        text: `The buyer received ${product}. EXCH. will mark your payout available next; you will get another email when funds are ready to release. View sale: ${accountLink}`,
-      }),
-    ]);
-  }
-
-  if (status === "payout_available") {
-    await sendNotificationEmail({
-      to: sellerEmail,
-      subject: `Your EXCH. payout is available: ${product}`,
-      html: `<p>Your payout for <strong>${product}</strong> is now available.</p><p>Estimated payout: ${money(trade.seller_net_payout_cents, trade.currency)}.</p><p><a href="${accountLink}">View payout</a></p>`,
-      text: `Your payout for ${product} is now available. Estimated payout: ${money(trade.seller_net_payout_cents, trade.currency)}. View payout: ${accountLink}`,
-    });
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -301,7 +184,7 @@ Deno.serve(async (req) => {
     if (updateErr) return json({ error: updateErr.message }, 500);
     if (!updated) return json({ error: "trade_not_found" }, 404);
 
-    await notifyStatus(admin, status, updated);
+    await sendTradeStatusEmails(admin, status, updated);
 
     return json({ ok: true });
   } catch (e) {
