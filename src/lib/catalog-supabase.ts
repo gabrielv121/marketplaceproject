@@ -1,4 +1,5 @@
 import type { CatalogProductDetail, CatalogProductSummary } from "./catalog-product";
+import { catalogProductMatchesSearch } from "./catalog-search";
 import { withResolvedFeaturedImage } from "./catalog-images";
 import { buildProductDetailFromSummary, getDemoProductByHandle } from "./demo-catalog";
 import { getSupabase } from "./supabase";
@@ -144,24 +145,6 @@ export async function fetchCatalogSummariesFromSupabase(opts: CatalogLoadQuery =
   return list;
 }
 
-function catalogSearchHaystack(product: CatalogProductSummary): string {
-  return [
-    product.title,
-    product.brand,
-    product.handle,
-    product.productType,
-    product.departmentSlug,
-    product.category,
-    product.gender,
-    ...(product.tags ?? []),
-    ...(product.activities ?? []),
-    ...(product.homeRails ?? []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
 /** Server-side catalog search (avoids loading the full catalog client-side). */
 export async function searchCatalogSummariesFromSupabase(query: string): Promise<CatalogProductSummary[] | null> {
   const sb = getSupabase();
@@ -173,13 +156,13 @@ export async function searchCatalogSummariesFromSupabase(query: string): Promise
 
   const primary = terms[0]!;
   const pattern = `%${primary}%`;
+  // Description excluded: ilike %ugg% matched "rugged", "UGGplush", etc. and pulled unrelated brands.
   const orFilter = [
     `title.ilike.${pattern}`,
     `brand.ilike.${pattern}`,
     `handle.ilike.${pattern}`,
     `product_type.ilike.${pattern}`,
     `category.ilike.${pattern}`,
-    `description.ilike.${pattern}`,
   ].join(",");
 
   const rows: CatalogProductRow[] = [];
@@ -202,11 +185,9 @@ export async function searchCatalogSummariesFromSupabase(query: string): Promise
     offset += pageSize;
   }
 
-  let list = rows.map((row) => withResolvedFeaturedImage(rowToSummary(row)));
-  if (terms.length > 1) {
-    list = list.filter((product) => terms.every((term) => catalogSearchHaystack(product).includes(term)));
-  }
-  return list;
+  return rows
+    .map((row) => withResolvedFeaturedImage(rowToSummary(row)))
+    .filter((product) => catalogProductMatchesSearch(product, terms));
 }
 
 export type CatalogBrandRow = { name: string; slug: string; count: number };

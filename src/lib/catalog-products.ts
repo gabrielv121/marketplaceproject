@@ -1,4 +1,5 @@
 import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
+import { catalogProductMatchesSearch } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { enrichProductsForHome } from "@/lib/home-feed";
@@ -135,10 +136,7 @@ export async function searchCatalogProducts(query: string): Promise<{
     }
   } catch (e) {
     const demoBase = enrichProductsForHome([...DEMO_PRODUCTS]);
-    const list = demoBase.filter((p) => {
-      const text = [p.title, p.brand, p.handle, ...(p.tags ?? [])].filter(Boolean).join(" ").toLowerCase();
-      return terms.every((t) => text.includes(t));
-    });
+    const list = demoBase.filter((p) => catalogProductMatchesSearch(p, terms));
     return {
       products: trendSort(list),
       error: e instanceof Error ? e.message : "Search error",
@@ -147,10 +145,7 @@ export async function searchCatalogProducts(query: string): Promise<{
   }
 
   const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
-  const list = demo.filter((p) => {
-    const text = [p.title, p.brand, p.handle, ...(p.tags ?? [])].filter(Boolean).join(" ").toLowerCase();
-    return terms.every((t) => text.includes(t));
-  });
+  const list = demo.filter((p) => catalogProductMatchesSearch(p, terms));
   return { products: trendSort(list), error: null, catalogSource: "local" };
 }
 

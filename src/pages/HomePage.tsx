@@ -61,20 +61,34 @@ export function HomePage() {
     if (!all.length) return null;
     const recentHandles = recent.map((r) => r.handle);
     const recentProducts = resolveRecentProducts(all, recent);
-    // Trending = top footwear by sort; Recommended must not repeat the same six (same sort made them identical).
-    const trending = pickTrendingSneakers(all, N, recentHandles);
-    const trendingHandles = trending.map((p) => p.handle);
-    const recommendedExclude = [...(signedIn ? recentHandles : []), ...trendingHandles];
-    const recommendedPool = pickRecommended(all, recommendedExclude, N);
-    const apparel = pickFeaturedApparel(all, N, recentHandles);
-    const designer = pickFeaturedDesignerRail(all, N, recentHandles);
-    const popular = pickByRail(all, "popular-local", N, recentHandles);
-    const below = pickByRail(all, "below-retail", N, recentHandles);
-    const accessories = pickFeaturedAccessoriesRail(all, N, recentHandles);
-    const newAt = pickNewAtExch(all, 6);
+    const used = new Set<string>(signedIn ? recentHandles : []);
+
+    const trending = pickTrendingSneakers(all, N, [...used]);
+    trending.forEach((p) => used.add(p.handle));
+
+    const recommended = pickRecommended(all, [...used], N);
+    recommended.forEach((p) => used.add(p.handle));
+
+    const apparel = pickFeaturedApparel(all, N, [...used]);
+    apparel.forEach((p) => used.add(p.handle));
+
+    const designer = pickFeaturedDesignerRail(all, N, [...used]);
+    designer.forEach((p) => used.add(p.handle));
+
+    const popular = pickByRail(all, "popular-local", N, [...used]);
+    popular.forEach((p) => used.add(p.handle));
+
+    const below = pickByRail(all, "below-retail", N, [...used]);
+    below.forEach((p) => used.add(p.handle));
+
+    const accessories = pickFeaturedAccessoriesRail(all, N, [...used]);
+    accessories.forEach((p) => used.add(p.handle));
+
+    const newAt = pickNewAtExch(all, 6, [...used]);
+
     return {
       recentProducts,
-      recommended: recommendedPool,
+      recommended,
       trending,
       apparel,
       designer,
@@ -91,8 +105,7 @@ export function HomePage() {
         <p className={styles.kicker}>EXCH.</p>
         <h1 className={styles.h1}>Buy first. Sell anytime.</h1>
         <p className={styles.lead}>
-          One account for shopping and listing. Home rails mirror a StockX-style layout; wire tags and `catalog_products` in
-          Supabase when you move off the bundled seed.
+          One account for shopping and listing. Each home row mixes brands and styles — not the same label six times.
         </p>
       </section>
 
@@ -191,7 +204,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Featured apparel"
-            titleInfo="Clothing only — jackets, hoodies, pants, etc. Shoes never appear here."
+            titleInfo="Clothing only — one pick per brand when possible (Stussy, Denim Tears, Sp5der, Essentials, etc.)."
             action={{ label: "See all →", to: "/catalog/women" }}
           >
             <ProductGrid products={rails.apparel} layout="homeSix" />

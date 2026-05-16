@@ -168,6 +168,140 @@ export function sortHomeProducts(products: CatalogProductSummary[]): CatalogProd
   });
 }
 
+/** Apparel rails: lift street labels so the row is not six generic Nike hoodies. */
+export function homeApparelPriorityScore(p: CatalogProductSummary): number {
+  let s = homeBrandPriorityScore(p);
+  const brand = (p.brand ?? "").toLowerCase();
+  const blob = `${brand} ${p.title ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
+
+  const isNikeCollab = /\bnike\b/.test(brand) && /travis|off-?white|sacai|stussy|nocta|supreme|cdg|comme des|dior|kaws|union|ambush|clot|levis|tiffany/.test(blob);
+  if (/\bnike\b/.test(brand) && !isNikeCollab) s -= 90;
+
+  if (
+    /denim tears|sp5der|\bspider\b|stussy|fear of god|\bessentials\b|bape|supreme|palace|corteiz|kith|chrome hearts|rhude|amiri|gallery dept|carhartt|tracksuit|tech fleece|bape sta|nocta|yeezy|balenciaga|stone island|rick owens|margiela|guidi|acronym|undercover|yohji|raf simons|comme des|gallery department/.test(
+      blob,
+    )
+  ) {
+    s += 130;
+  }
+  return s;
+}
+
+export function sortHomeApparelProducts(products: CatalogProductSummary[]): CatalogProductSummary[] {
+  return [...products].sort((a, b) => {
+    const ia = hasCatalogFeaturedImage(a) ? 1 : 0;
+    const ib = hasCatalogFeaturedImage(b) ? 1 : 0;
+    if (ib !== ia) return ib - ia;
+    const pb = homeApparelPriorityScore(b) - homeApparelPriorityScore(a);
+    if (pb !== 0) return pb;
+    const tr = (b.trendScore ?? 0) - (a.trendScore ?? 0);
+    if (tr !== 0) return tr;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+function brandKey(p: CatalogProductSummary): string {
+  const b = p.brand?.trim();
+  if (!b) return "_unknown";
+  return b
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** Collapse color/size noise so one jacket in six colors does not fill a rail. */
+function titleFingerprint(p: CatalogProductSummary): string {
+  const base = (p.title ?? p.handle)
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(
+      /\b(black|white|navy|grey|gray|red|blue|green|brown|cream|fossil|cement|beige|pink|purple|orange|yellow|olive|tan|burgundy|maroon|silver|gold|multicolor|men'?s|women'?s|womens|kids|youth|asia sizing)\b/g,
+      " ",
+    )
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return base.split(/\s+/).slice(0, 8).join(" ");
+}
+
+/**
+ * From a score-sorted pool, pick `limit` items with brand + silhouette variety
+ * (max one per brand per round; max one per title fingerprint).
+ */
+export function pickDiverseHomeProducts(sortedPool: CatalogProductSummary[], limit: number): CatalogProductSummary[] {
+  if (limit <= 0 || !sortedPool.length) return [];
+
+  const byBrand = new Map<string, CatalogProductSummary[]>();
+  for (const p of sortedPool) {
+    const key = brandKey(p);
+    const list = byBrand.get(key) ?? [];
+    list.push(p);
+    byBrand.set(key, list);
+  }
+
+  const brandOrder = [...byBrand.keys()].sort((a, b) => {
+    const ia = sortedPool.findIndex((p) => brandKey(p) === a);
+    const ib = sortedPool.findIndex((p) => brandKey(p) === b);
+    return ia - ib;
+  });
+
+  const out: CatalogProductSummary[] = [];
+  const usedHandles = new Set<string>();
+  const usedPrints = new Set<string>();
+  const brandRoundIndex = new Map<string, number>();
+
+  while (out.length < limit) {
+    let added = false;
+    for (const bk of brandOrder) {
+      if (out.length >= limit) break;
+      const items = byBrand.get(bk) ?? [];
+      const idx = brandRoundIndex.get(bk) ?? 0;
+      if (idx >= items.length) continue;
+
+      let picked: CatalogProductSummary | null = null;
+      for (let i = idx; i < items.length; i++) {
+        const candidate = items[i]!;
+        if (usedHandles.has(candidate.handle)) continue;
+        const fp = `${bk}|${titleFingerprint(candidate)}`;
+        if (usedPrints.has(fp)) continue;
+        picked = candidate;
+        brandRoundIndex.set(bk, i + 1);
+        break;
+      }
+      if (!picked) {
+        brandRoundIndex.set(bk, items.length);
+        continue;
+      }
+
+      out.push(picked);
+      usedHandles.add(picked.handle);
+      usedPrints.add(`${bk}|${titleFingerprint(picked)}`);
+      added = true;
+    }
+    if (!added) break;
+  }
+
+  if (out.length < limit) {
+    for (const p of sortedPool) {
+      if (out.length >= limit) break;
+      if (usedHandles.has(p.handle)) continue;
+      out.push(p);
+      usedHandles.add(p.handle);
+    }
+  }
+
+  return out;
+}
+
+function pickFromSortedPool(
+  sorted: CatalogProductSummary[],
+  limit: number,
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
+  const ex = excludeSet(excludeHandles);
+  const pool = sorted.filter((p) => !ex.has(p.handle));
+  return pickDiverseHomeProducts(pool, limit);
+}
+
 function heuristicRails(p: CatalogProductSummary): string[] {
   const rails: string[] = [];
   const title = `${p.title} ${p.productType ?? ""}`.toLowerCase();
@@ -179,7 +313,6 @@ function heuristicRails(p: CatalogProductSummary): string[] {
   if (/\bdesigner|avant-garde|margiela|rick owens|guidi|bbs\b/.test(blob)) rails.push("featured-designer");
   if (/\bwatch|cap|hat|bag|tote|accessor/.test(blob)) rails.push("featured-accessories");
   if (/\bsale|deal|clearance|below|discount\b/.test(blob)) rails.push("below-retail");
-  rails.push("popular-local");
   return [...new Set(rails)];
 }
 
@@ -250,7 +383,7 @@ function excludeSet(handles: string[]): Set<string> {
 export function pickRecommended(products: CatalogProductSummary[], excludeHandles: string[], limit: number): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
   const pool = products.filter((p) => !ex.has(p.handle));
-  return sortHomeProducts(pool).slice(0, limit);
+  return pickFromSortedPool(sortHomeProducts(pool), limit);
 }
 
 /** Footwear only; prefers items tagged `trending-sneakers`, then brand-priority sort. */
@@ -264,7 +397,7 @@ export function pickTrendingSneakers(
   const tagged = footwear.filter((p) => (p.homeRails ?? []).includes("trending-sneakers"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = footwear.filter((p) => !taggedSet.has(p.handle));
-  return sortHomeProducts([...tagged, ...rest]).slice(0, limit);
+  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
 }
 
 /** True apparel only — never backfilled with shoes. */
@@ -278,7 +411,7 @@ export function pickFeaturedApparel(
   const tagged = apparel.filter((p) => (p.homeRails ?? []).includes("featured-apparel"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = apparel.filter((p) => !taggedSet.has(p.handle));
-  return sortHomeProducts([...tagged, ...rest]).slice(0, limit);
+  return pickFromSortedPool(sortHomeApparelProducts([...tagged, ...rest]), limit, excludeHandles);
 }
 
 /** Designer / avant-garde rail — strict pool; no unrelated fill. */
@@ -292,7 +425,7 @@ export function pickFeaturedDesignerRail(
   const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-designer"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = pool.filter((p) => !taggedSet.has(p.handle));
-  return sortHomeProducts([...tagged, ...rest]).slice(0, limit);
+  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
 }
 
 function qualifiesFeaturedAccessory(p: CatalogProductSummary): boolean {
@@ -321,7 +454,7 @@ export function pickFeaturedAccessoriesRail(
   const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = pool.filter((p) => !taggedSet.has(p.handle));
-  return sortHomeProducts([...tagged, ...rest]).slice(0, limit);
+  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
 }
 
 export function pickByRail(
@@ -336,7 +469,7 @@ export function pickByRail(
     products.filter((p) => !ex.has(p.handle) && !hit.some((h) => h.handle === p.handle)),
     daySeed() + rail.length,
   );
-  return sortHomeProducts([...hit, ...fill]).slice(0, limit);
+  return pickFromSortedPool(sortHomeProducts([...hit, ...fill]), limit, excludeHandles);
 }
 
 export function pickByActivity(products: CatalogProductSummary[], activitySlug: string, limit: number): CatalogProductSummary[] {
@@ -354,8 +487,9 @@ export function resolveRecentProducts(all: CatalogProductSummary[], recent: { ha
   return out.slice(0, 12);
 }
 
-export function pickNewAtExch(products: CatalogProductSummary[], limit: number): CatalogProductSummary[] {
+export function pickNewAtExch(products: CatalogProductSummary[], limit: number, excludeHandles: string[] = []): CatalogProductSummary[] {
   const tagged = products.filter((p) => (p.homeRails ?? []).includes("new-at-exch"));
-  const rest = products.filter((p) => !tagged.includes(p));
-  return [...sortHomeProducts(tagged), ...sortHomeProducts(rest)].slice(0, limit);
+  const taggedHandles = new Set(tagged.map((p) => p.handle));
+  const rest = products.filter((p) => !taggedHandles.has(p.handle));
+  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
 }
