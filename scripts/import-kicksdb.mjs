@@ -268,9 +268,10 @@ function productToCatalogRow(product) {
     title,
     brand,
     description: cleanText(product.description || product.short_description) || `${title} imported from KicksDB.`,
-    department_slug: gender,
+    department_slug: kind === "accessory" ? "accessories" : gender,
     tags: uniq([
-      `dept-${gender}`,
+      kind === "accessory" ? "dept-accessories" : `dept-${gender}`,
+      kind === "accessory" ? `dept-${gender}` : null,
       kind === "sneaker" ? "sneakers" : kind,
       slugify(brand),
       modelSlug,

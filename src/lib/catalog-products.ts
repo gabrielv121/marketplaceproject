@@ -2,7 +2,7 @@ import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { catalogProductMatchesSearch } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
-import { enrichProductsForHome } from "@/lib/home-feed";
+import { enrichProductsForHome, isCatalogAccessoryCandidate } from "@/lib/home-feed";
 import {
   fetchCatalogSummariesFromSupabase,
   listCatalogBrandsFromSupabase,
@@ -57,7 +57,13 @@ function trendSort(products: CatalogProductSummary[]): CatalogProductSummary[] {
 }
 
 function resolveDepartmentSlug(p: CatalogProductSummary): string | null {
+  if (isCatalogAccessoryCandidate(p)) return "accessories";
   return inferDepartmentSlugFromTags(p.tags ?? []) ?? p.departmentSlug ?? null;
+}
+
+function matchesDepartment(p: CatalogProductSummary, deptSlug: string): boolean {
+  if (deptSlug === "accessories") return isCatalogAccessoryCandidate(p);
+  return resolveDepartmentSlug(p) === deptSlug;
 }
 
 export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promise<{
@@ -86,7 +92,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
           departmentSlug: resolveDepartmentSlug(p),
         }),
       );
-      let list = deptSlug ? mapped.filter((p) => p.departmentSlug === deptSlug) : mapped;
+      let list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
       const enriched = enrichProductsForHome(list);
       const sorted = opts.sortNew ? enriched : trendSort(enriched);
       const filtered = filterList(sorted, { ...opts, departmentSlug: undefined });
@@ -94,7 +100,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
     }
   } catch (e) {
     const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
-    let local = deptSlug ? demo.filter((p) => resolveDepartmentSlug(p) === deptSlug) : demo;
+    let local = deptSlug ? demo.filter((p) => matchesDepartment(p, deptSlug)) : demo;
     if (opts.sortNew) local = [...local].reverse();
     else local = trendSort(local);
     return {
@@ -105,7 +111,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
   }
 
   const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
-  let local = deptSlug ? demo.filter((p) => resolveDepartmentSlug(p) === deptSlug) : demo;
+  let local = deptSlug ? demo.filter((p) => matchesDepartment(p, deptSlug)) : demo;
   if (opts.sortNew) local = [...local].reverse();
   else local = trendSort(local);
   return { products: filterList(local, { ...opts, departmentSlug: undefined }), error: null, catalogSource: "local" };

@@ -30,7 +30,11 @@ async function fetchPublishedCatalogRows(
   while (rows.length < maxRows) {
     const pageSize = Math.min(CATALOG_PAGE_SIZE, maxRows - rows.length);
     let q = sb.from("catalog_products").select("*").eq("published", true);
-    if (opts.departmentSlug) {
+    if (opts.departmentSlug === "accessories") {
+      q = q.or(
+        "department_slug.eq.accessories,tags.cs.{dept-accessories},product_type.eq.accessory,tags.cs.{accessory},tags.cs.{home-featured-accessories},home_rails.cs.{featured-accessories}",
+      );
+    } else if (opts.departmentSlug) {
       const dept = opts.departmentSlug;
       q = q.or(`department_slug.eq.${dept},tags.cs.{dept-${dept}}`);
     }

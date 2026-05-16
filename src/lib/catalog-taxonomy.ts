@@ -40,6 +40,7 @@ export function getDepartmentBySlug(slug: string): Department | undefined {
 /** Match tag convention `dept-{slug}` or common synonyms. */
 export function inferDepartmentSlugFromTags(tags: string[]): string | null {
   const lower = tags.map((t) => t.trim().toLowerCase());
+  if (lower.includes("dept-accessories") || lower.includes("accessory")) return "accessories";
   for (const d of DEPARTMENTS) {
     if (lower.includes(d.tag)) return d.slug;
   }
