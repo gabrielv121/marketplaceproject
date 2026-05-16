@@ -69,6 +69,10 @@ export function HomePage() {
     const recommended = pickRecommended(all, [...used], N);
     recommended.forEach((p) => used.add(p.handle));
 
+    // Accessories before apparel / popular — few SKUs and easily crowded out by hoodies + popular-local tag.
+    const accessories = pickFeaturedAccessoriesRail(all, N, [...used]);
+    accessories.forEach((p) => used.add(p.handle));
+
     const apparel = pickFeaturedApparel(all, N, [...used]);
     apparel.forEach((p) => used.add(p.handle));
 
@@ -80,9 +84,6 @@ export function HomePage() {
 
     const below = pickByRail(all, "below-retail", N, [...used]);
     below.forEach((p) => used.add(p.handle));
-
-    const accessories = pickFeaturedAccessoriesRail(all, N, [...used]);
-    accessories.forEach((p) => used.add(p.handle));
 
     const newAt = pickNewAtExch(all, 6, [...used]);
 

@@ -84,6 +84,13 @@ export function CatalogFilters({ products, children }: Props) {
   }, [brand, products, query, sort, type]);
   const activeCount = [query.trim(), brand !== "all", type !== "all", sort !== "trending"].filter(Boolean).length;
 
+  const clearFilters = () => {
+    setQuery("");
+    setBrand("all");
+    setType("all");
+    setSort("trending");
+  };
+
   return (
     <>
       <button
@@ -141,9 +148,16 @@ export function CatalogFilters({ products, children }: Props) {
             <option value="name">Name</option>
           </select>
         </label>
+        {activeCount ? (
+          <button type="button" className={styles.clearBtn} onClick={clearFilters}>
+            Clear filters
+          </button>
+        ) : null}
       </section>
       <p className={styles.count}>
         Showing {filtered.length} of {products.length} products
+        {brand !== "all" ? ` · brand: ${brands.find(([s]) => s === brand)?.[1] ?? brand}` : ""}
+        {query.trim() ? ` · search: “${query.trim()}”` : ""}
       </p>
       {children(filtered)}
     </>

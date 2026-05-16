@@ -30,11 +30,14 @@ async function fetchPublishedCatalogRows(
   while (rows.length < maxRows) {
     const pageSize = Math.min(CATALOG_PAGE_SIZE, maxRows - rows.length);
     let q = sb.from("catalog_products").select("*").eq("published", true);
-    if (opts.departmentSlug) q = q.eq("department_slug", opts.departmentSlug);
+    if (opts.departmentSlug) {
+      const dept = opts.departmentSlug;
+      q = q.or(`department_slug.eq.${dept},tags.cs.{dept-${dept}}`);
+    }
     if (opts.activitySlug) q = q.contains("activities", [opts.activitySlug]);
     if (opts.brandSlug) q = q.ilike("brand", brandSlugToIlikePattern(opts.brandSlug));
     if (opts.sortNew) q = q.order("updated_at", { ascending: false });
-    else q = q.order("title");
+    else q = q.order("trend_score", { ascending: false, nullsFirst: false }).order("title");
     const { data, error } = await q.range(offset, offset + pageSize - 1);
     if (error) throw error;
     const page = (data ?? []) as CatalogProductRow[];

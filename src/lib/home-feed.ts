@@ -52,9 +52,10 @@ export function isCatalogFootwear(p: CatalogProductSummary): boolean {
   return false;
 }
 
-/** Clothing layers — never includes footwear/sneakers. */
+/** Clothing layers — never includes footwear/sneakers or accessories. */
 export function isCatalogApparel(p: CatalogProductSummary): boolean {
   if (isCatalogFootwear(p)) return false;
+  if (p.variantSizePreset === "accessory" || isCatalogAccessory(p)) return false;
   if (p.variantSizePreset === "apparel") return true;
   const pt = (p.productType ?? "").toLowerCase();
   if (pt === "apparel") return true;
@@ -77,6 +78,19 @@ export function isCatalogAccessory(p: CatalogProductSummary): boolean {
       blob,
     )
   )
+    return true;
+  return false;
+}
+
+/** Bags, hats, watches, and dept-accessories rows (KicksDB uses dept-men + kind accessory). */
+export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
+  if (isCatalogFootwear(p)) return false;
+  if ((p.productType ?? "").toLowerCase() === "accessory") return true;
+  if (p.departmentSlug === "accessories") return true;
+  if (isCatalogAccessory(p)) return true;
+  if ((p.homeRails ?? []).includes("featured-accessories")) return true;
+  const tags = (p.tags ?? []).map((t) => t.toLowerCase());
+  if (tags.some((t) => t === "accessory" || t === "dept-accessories" || t.startsWith("home-featured-accessories")))
     return true;
   return false;
 }
@@ -407,7 +421,7 @@ export function pickFeaturedApparel(
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const apparel = products.filter((p) => isCatalogApparel(p) && !ex.has(p.handle));
+  const apparel = products.filter((p) => isCatalogApparel(p) && !isCatalogAccessoryCandidate(p) && !ex.has(p.handle));
   const tagged = apparel.filter((p) => (p.homeRails ?? []).includes("featured-apparel"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = apparel.filter((p) => !taggedSet.has(p.handle));
@@ -428,18 +442,6 @@ export function pickFeaturedDesignerRail(
   return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
 }
 
-function qualifiesFeaturedAccessory(p: CatalogProductSummary): boolean {
-  if (isCatalogFootwear(p)) return false;
-  if (isCatalogAccessory(p)) return true;
-  return (p.homeRails ?? []).includes("featured-accessories");
-}
-
-function looseAccessoryMatch(p: CatalogProductSummary): boolean {
-  if (isCatalogFootwear(p) || isCatalogApparel(p)) return false;
-  const blob = `${p.title} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
-  return /\b(duffle|duffel|tote|wallet|watch|backpack|crossbody|sling|messenger|satchel|beanie|headwear|keychain|lanyard|pin|patch)\b/.test(blob);
-}
-
 /** Bags, hats, watches, etc. — not shoes or clothing. */
 export function pickFeaturedAccessoriesRail(
   products: CatalogProductSummary[],
@@ -447,14 +449,16 @@ export function pickFeaturedAccessoriesRail(
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  let pool = products.filter((p) => qualifiesFeaturedAccessory(p) && !isCatalogApparel(p) && !ex.has(p.handle));
-  if (!pool.length) {
-    pool = products.filter((p) => looseAccessoryMatch(p) && !ex.has(p.handle));
+  const candidates = products.filter((p) => isCatalogAccessoryCandidate(p) && !isCatalogApparel(p));
+  // Prefer not already shown on the page; if catalog has few accessories, still show them (not an empty rail).
+  let pool = candidates.filter((p) => !ex.has(p.handle));
+  if (pool.length < limit) {
+    pool = candidates;
   }
   const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = pool.filter((p) => !taggedSet.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
+  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit);
 }
 
 export function pickByRail(
@@ -464,9 +468,18 @@ export function pickByRail(
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const hit = products.filter((p) => (p.homeRails ?? []).includes(rail) && !ex.has(p.handle));
+  let hit = products.filter((p) => (p.homeRails ?? []).includes(rail) && !ex.has(p.handle));
+  // KicksDB import tags almost every row with popular-local — use a real pool, not the whole catalog.
+  if (rail === "popular-local" && hit.length > limit * 8) {
+    hit = hit.filter((p) => !isCatalogAccessoryCandidate(p));
+  }
   const fill = shuffle(
-    products.filter((p) => !ex.has(p.handle) && !hit.some((h) => h.handle === p.handle)),
+    products.filter(
+      (p) =>
+        !ex.has(p.handle) &&
+        !hit.some((h) => h.handle === p.handle) &&
+        !isCatalogAccessoryCandidate(p),
+    ),
     daySeed() + rail.length,
   );
   return pickFromSortedPool(sortHomeProducts([...hit, ...fill]), limit, excludeHandles);

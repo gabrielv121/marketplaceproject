@@ -56,44 +56,59 @@ function trendSort(products: CatalogProductSummary[]): CatalogProductSummary[] {
   });
 }
 
+function resolveDepartmentSlug(p: CatalogProductSummary): string | null {
+  return inferDepartmentSlugFromTags(p.tags ?? []) ?? p.departmentSlug ?? null;
+}
+
 export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promise<{
   products: CatalogProductSummary[];
   error: string | null;
   /** `supabase` when `catalog_products` has published rows; otherwise bundled local seed. */
   catalogSource: "supabase" | "local";
 }> {
+  const deptSlug = opts.departmentSlug;
+  const fetchLimit = deptSlug ? (opts.limit ?? 3000) : (opts.limit ?? 500);
+
   try {
+    // Department aisles: load a wide published set, then match `dept-*` tags + department_slug
+    // (KicksDB rows often use tags; a strict DB filter + 72 cap skewed Men toward one brand).
     const raw = await fetchCatalogSummariesFromSupabase({
       departmentSlug: opts.departmentSlug,
       activitySlug: opts.activitySlug,
       brandSlug: opts.brandSlug,
       sortNew: Boolean(opts.sortNew),
-      limit: opts.limit ?? 72,
+      limit: fetchLimit,
     });
     if (raw !== null) {
       const mapped = raw.map((p) =>
         withResolvedFeaturedImage({
           ...p,
-          departmentSlug: p.departmentSlug ?? inferDepartmentSlugFromTags(p.tags ?? []) ?? null,
+          departmentSlug: resolveDepartmentSlug(p),
         }),
       );
-      const enriched = enrichProductsForHome(mapped);
-      const filtered = filterList(opts.sortNew ? enriched : trendSort(enriched), opts);
+      let list = deptSlug ? mapped.filter((p) => p.departmentSlug === deptSlug) : mapped;
+      const enriched = enrichProductsForHome(list);
+      const sorted = opts.sortNew ? enriched : trendSort(enriched);
+      const filtered = filterList(sorted, { ...opts, departmentSlug: undefined });
       return { products: filtered, error: null, catalogSource: "supabase" };
     }
   } catch (e) {
-    const demoBase = enrichProductsForHome([...DEMO_PRODUCTS]);
-    const list = filterList(opts.sortNew ? demoBase.reverse() : trendSort(demoBase), opts);
+    const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
+    let local = deptSlug ? demo.filter((p) => resolveDepartmentSlug(p) === deptSlug) : demo;
+    if (opts.sortNew) local = [...local].reverse();
+    else local = trendSort(local);
     return {
-      products: list,
+      products: filterList(local, { ...opts, departmentSlug: undefined }),
       error: e instanceof Error ? e.message : "Catalog error",
       catalogSource: "local",
     };
   }
 
   const demo = enrichProductsForHome([...DEMO_PRODUCTS]);
-  if (opts.sortNew) demo.reverse();
-  return { products: filterList(opts.sortNew ? demo : trendSort(demo), opts), error: null, catalogSource: "local" };
+  let local = deptSlug ? demo.filter((p) => resolveDepartmentSlug(p) === deptSlug) : demo;
+  if (opts.sortNew) local = [...local].reverse();
+  else local = trendSort(local);
+  return { products: filterList(local, { ...opts, departmentSlug: undefined }), error: null, catalogSource: "local" };
 }
 
 export async function loadCatalogBrands(): Promise<{

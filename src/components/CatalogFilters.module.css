@@ -87,6 +87,24 @@
   cursor: pointer;
 }
 
+.clearBtn {
+  align-self: end;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .count {
   margin: 0 0 1rem;
   color: var(--muted);
