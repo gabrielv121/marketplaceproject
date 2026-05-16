@@ -107,7 +107,7 @@ Notes:
   - Uses KicksDB StockX Standard API search.
   - Imports exact product images from KicksDB's image/gallery fields.
   - Upserts by handle, using the KicksDB product slug.
-  - After import, non-KicksDB rows are unpublished unless they carry template tags: designer, avant-garde, puffer, or ugg.
+  - After import, all published rows without the kicksdb tag are unpublished (template/demo seeds are not kept).
 `);
 }
 
@@ -313,16 +313,9 @@ function productToCatalogRow(product) {
 }
 
 async function hideNonKicksDbRows(supabase) {
-  /** Keep template / manual seeds live when re-importing KicksDB (they are not API rows). */
-  function isProtectedCatalogRow(tags) {
+  function isKicksDbRow(tags) {
     if (!Array.isArray(tags)) return false;
-    const lower = new Set(tags.map((x) => String(x).toLowerCase()));
-    if (lower.has("kicksdb")) return true;
-    if (lower.has("designer")) return true;
-    if (lower.has("avant-garde")) return true;
-    if (lower.has("puffer")) return true;
-    if (lower.has("ugg")) return true;
-    return false;
+    return tags.some((x) => String(x).toLowerCase() === "kicksdb");
   }
 
   const pageSize = 1000;
@@ -343,7 +336,7 @@ async function hideNonKicksDbRows(supabase) {
   }
 
   const handles = rows
-    .filter((row) => !isProtectedCatalogRow(row.tags))
+    .filter((row) => !isKicksDbRow(row.tags))
     .map((row) => row.handle)
     .filter(Boolean);
 
@@ -353,7 +346,7 @@ async function hideNonKicksDbRows(supabase) {
     if (updateError) throw updateError;
   }
 
-  console.log(`Unpublished ${handles.length} non-KicksDB catalog row(s) (designer / puffer / UGG template rows are kept).`);
+  console.log(`Unpublished ${handles.length} non-KicksDB catalog row(s).`);
 }
 
 async function fetchProducts(query, apiKey, limit) {

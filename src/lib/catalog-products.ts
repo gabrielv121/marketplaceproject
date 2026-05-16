@@ -65,6 +65,14 @@ function matchesDepartment(p: CatalogProductSummary, deptSlug: string): boolean 
   return resolveDepartmentSlug(p) === deptSlug;
 }
 
+function isKicksDbCatalogProduct(p: CatalogProductSummary): boolean {
+  return (p.tags ?? []).some((t) => String(t).toLowerCase() === "kicksdb");
+}
+
+function kicksDbOnly(products: CatalogProductSummary[]): CatalogProductSummary[] {
+  return products.filter(isKicksDbCatalogProduct);
+}
+
 export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promise<{
   products: CatalogProductSummary[];
   error: string | null;
@@ -94,7 +102,9 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
       let list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
       const enriched = enrichProductsForHome(list);
       const sorted = opts.sortNew ? enriched : trendSort(enriched);
-      const filtered = withoutBlockedCatalogProducts(filterList(sorted, { ...opts, departmentSlug: undefined }));
+      const filtered = kicksDbOnly(
+        withoutBlockedCatalogProducts(filterList(sorted, { ...opts, departmentSlug: undefined })),
+      );
       return { products: filtered, error: null, catalogSource: "supabase" };
     }
   } catch (e) {
@@ -156,7 +166,11 @@ export async function searchCatalogProducts(query: string): Promise<{
         }),
       );
       const enriched = enrichProductsForHome(mapped);
-      return { products: withoutBlockedCatalogProducts(trendSort(enriched)), error: null, catalogSource: "supabase" };
+      return {
+        products: withoutBlockedCatalogProducts(trendSort(kicksDbOnly(enriched))),
+        error: null,
+        catalogSource: "supabase",
+      };
     }
   } catch (e) {
     const demoBase = enrichProductsForHome([...DEMO_PRODUCTS]);
