@@ -216,7 +216,16 @@ function inferCatalogKind(product) {
   if (/\b(hoodie|tee|t-shirt|shirt|jacket|fleece|crewneck|sweatshirt|sweatpant|shorts|pants|jersey|apparel|streetwear)\b/.test(haystack)) {
     return "apparel";
   }
-  if (/\b(hat|cap|beanie|bag|backpack|duffle|accessory|accessories|watch)\b/.test(haystack)) {
+  if (/\bcap and gown\b/.test(haystack) || /\b(sneaker|footwear)\b/.test(haystack)) {
+    return "sneaker";
+  }
+  if (/\b(hat|beanie|backpack|duffle|duffel|tote|watch|watches)\b/.test(haystack)) {
+    return "accessory";
+  }
+  if (/\bbag\b/.test(haystack) && !/\bbaggy\b/.test(haystack)) {
+    return "accessory";
+  }
+  if (/\bcap\b/.test(haystack) && !/\b(jordan|nike|adidas|retro|sneaker|yeezy|dunk)\b/.test(haystack)) {
     return "accessory";
   }
   return "sneaker";
@@ -309,6 +318,7 @@ async function hideNonKicksDbRows(supabase) {
     if (lower.has("avant-garde")) return true;
     if (lower.has("puffer")) return true;
     if (lower.has("ugg")) return true;
+    if (lower.has("dept-accessories")) return true;
     return false;
   }
 

@@ -84,12 +84,15 @@ export function isCatalogAccessory(p: CatalogProductSummary): boolean {
 
 /** Bags, hats, watches, and dept-accessories rows (KicksDB uses dept-men + kind accessory). */
 export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
+  const title = p.title.toLowerCase();
+  const tags = (p.tags ?? []).map((t) => t.toLowerCase());
+  if (/\bcap and gown\b/.test(title)) return false;
+  if (tags.includes("sneakers") && (p.productType ?? "").toLowerCase() === "accessory") return false;
   if (isCatalogFootwear(p)) return false;
   if ((p.productType ?? "").toLowerCase() === "accessory") return true;
   if (p.departmentSlug === "accessories") return true;
   if (isCatalogAccessory(p)) return true;
   if ((p.homeRails ?? []).includes("featured-accessories")) return true;
-  const tags = (p.tags ?? []).map((t) => t.toLowerCase());
   if (tags.some((t) => t === "accessory" || t === "dept-accessories" || t.startsWith("home-featured-accessories")))
     return true;
   return false;
