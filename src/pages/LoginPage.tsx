@@ -7,14 +7,21 @@ import { friendlyAuthError } from "@/lib/auth-errors";
 import { isP2pConfigured } from "@/lib/supabase";
 import styles from "./LoginPage.module.css";
 
+type LoginLocationState = {
+  signupMessage?: string;
+  email?: string;
+};
+
 export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, signInWithPassword } = useAuth();
-  const [email, setEmail] = useState("");
+  const routeState = (location.state as LoginLocationState | null) ?? {};
+  const [email, setEmail] = useState(routeState.email ?? "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg] = useState(routeState.signupMessage ?? null);
   const next = new URLSearchParams(location.search).get("next") || "/account";
 
   const onSubmit = (e: FormEvent) => {
@@ -106,6 +113,7 @@ export function LoginPage() {
           </button>
         </form>
 
+        {successMsg ? <p className={styles.msg}>{successMsg}</p> : null}
         {error ? <p className={`${styles.msg} ${styles.error}`}>{error}</p> : null}
 
         <p className={styles.switchAuth}>

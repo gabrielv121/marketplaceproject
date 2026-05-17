@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
@@ -7,20 +7,23 @@ import { isP2pConfigured } from "@/lib/supabase";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import styles from "./LoginPage.module.css";
 
+const SIGNUP_CONFIRM_MESSAGE =
+  "Account created. Check your inbox for a confirmation email from EXCH. (also check spam). After confirming, sign in below.";
+
 export function SignupPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, signUpWithPassword } = useAuth();
+  const next = new URLSearchParams(location.search).get("next") || "/account";
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setMsg(null);
     setError(null);
 
     if (password.length < 6) {
@@ -40,12 +43,14 @@ export function SignupPage() {
           return;
         }
         if (session) {
-          navigate("/account", { replace: true });
+          navigate(next, { replace: true });
           return;
         }
-        setMsg(
-          "Account created. Check your inbox for a confirmation email from EXCH. (also check spam). After confirming, sign in here.",
-        );
+        const loginSearch = new URLSearchParams({ next });
+        navigate(`/login?${loginSearch.toString()}`, {
+          replace: true,
+          state: { signupMessage: SIGNUP_CONFIRM_MESSAGE, email: email.trim() },
+        });
       })
       .finally(() => setBusy(false));
   };
@@ -146,17 +151,10 @@ export function SignupPage() {
         </form>
 
         {error ? <p className={`${styles.msg} ${styles.error}`}>{error}</p> : null}
-        {msg ? (
-          <>
-            <p className={styles.msg}>{msg}</p>
-            <Link to="/login" className={styles.secondaryLink}>
-              Go to sign in
-            </Link>
-          </>
-        ) : null}
 
         <p className={styles.switchAuth}>
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already have an account?{" "}
+          <Link to={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link>
         </p>
 
         <p className={styles.finePrint}>
