@@ -4,6 +4,7 @@ import { BackButton } from "@/components/BackButton";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
 import { isP2pConfigured } from "@/lib/supabase";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import styles from "./LoginPage.module.css";
 
 export function SignupPage() {
@@ -35,7 +36,7 @@ export function SignupPage() {
     void signUpWithPassword(email, password, displayName)
       .then(({ error: err, session }) => {
         if (err) {
-          setError(err.message);
+          setError(friendlyAuthError(err.message));
           return;
         }
         if (session) {

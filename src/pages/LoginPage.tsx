@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { isP2pConfigured } from "@/lib/supabase";
 import styles from "./LoginPage.module.css";
 
@@ -23,7 +24,7 @@ export function LoginPage() {
     void signInWithPassword(email, password)
       .then(({ error: err }) => {
         if (err) {
-          setError(err.message);
+          setError(friendlyAuthError(err.message));
           return;
         }
         navigate(next, { replace: true });
