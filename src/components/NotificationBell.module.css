@@ -157,24 +157,6 @@
   color: var(--muted);
 }
 
-.foot {
-  padding: 0.55rem 0.75rem;
-  border-top: 1px solid var(--border);
-}
-
-.footLink {
-  display: block;
-  text-align: center;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.footLink:hover {
-  text-decoration: underline;
-}
-
 .backdrop {
   position: fixed;
   inset: 0;

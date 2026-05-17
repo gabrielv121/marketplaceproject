@@ -13,13 +13,13 @@ export type UserNotification = {
 };
 
 export function notificationHref(href: string | null): string {
-  if (!href) return "/account#notifications";
+  if (!href) return "/account";
   if (href.startsWith("/")) return href;
   try {
     const url = new URL(href);
     return `${url.pathname}${url.hash}`;
   } catch {
-    return "/account#notifications";
+    return "/account";
   }
 }
 

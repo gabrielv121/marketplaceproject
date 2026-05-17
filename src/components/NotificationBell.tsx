@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { IconBell } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -100,7 +100,7 @@ export function NotificationBell() {
           <div className={styles.list}>
             {loading && items.length === 0 ? <p className={styles.empty}>Loading…</p> : null}
             {!loading && items.length === 0 ? <p className={styles.empty}>No notifications yet.</p> : null}
-            {items.slice(0, 12).map((n) => {
+            {items.map((n) => {
               const unread = !n.read_at;
               return (
                 <button
@@ -115,11 +115,6 @@ export function NotificationBell() {
                 </button>
               );
             })}
-          </div>
-          <div className={styles.foot}>
-            <Link to="/account#notifications" className={styles.footLink} onClick={() => setOpen(false)}>
-              View all on Account
-            </Link>
           </div>
         </div>
       ) : null}
