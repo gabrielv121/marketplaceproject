@@ -45,6 +45,7 @@
   position: absolute;
   top: calc(100% + 0.45rem);
   right: 0;
+  left: auto;
   z-index: 220;
   width: min(22rem, calc(100vw - 1.5rem));
   max-height: min(24rem, 70vh);
@@ -55,6 +56,17 @@
   background: var(--surface);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   overflow: hidden;
+}
+
+/* Pin to viewport right on mobile — avoids overflow clip from the shell/header. */
+@media (max-width: 899px) {
+  .panel {
+    position: fixed;
+    top: calc(3.65rem + env(safe-area-inset-top, 0px));
+    right: max(1.25rem, env(safe-area-inset-right, 0px));
+    left: auto;
+    width: min(20rem, calc(100vw - 2.5rem));
+  }
 }
 
 .head {
