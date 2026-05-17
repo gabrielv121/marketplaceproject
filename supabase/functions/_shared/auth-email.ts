@@ -1,4 +1,4 @@
-import { sendTransactionalEmailWithFallback } from "./email-transport.ts";
+import { sendTransactionalEmail } from "./email-transport.ts";
 import { renderAuthEmail } from "./email-template.ts";
 
 export type AuthEmailData = {
@@ -152,7 +152,7 @@ export async function sendAuthHookEmail(params: {
   );
 
   const { html, text } = renderAuthEmail(content);
-  const result = await sendTransactionalEmailWithFallback({
+  const result = await sendTransactionalEmail({
     to: params.to,
     subject,
     html,

@@ -8,8 +8,14 @@ export function friendlyAuthError(message: string): string {
       "For local testing you can turn off Confirm email under Authentication → Providers → Email."
     );
   }
-  if (lower.includes("hook") && lower.includes("500")) {
-    return "Could not send the confirmation email. Check Edge Functions → auth-send-email logs and MailerSend settings.";
+  if (
+    lower.includes("confirmation mail") ||
+    lower.includes("error sending") ||
+    (lower.includes("hook") && (lower.includes("500") || lower.includes("401")))
+  ) {
+    return (
+      "Could not send the confirmation email (auth hook failed). In Supabase: Authentication → Auth Hooks → Send Email — confirm the URL is …/auth-send-email, then regenerate the hook secret and run: npx supabase@latest secrets set SEND_EMAIL_HOOK_SECRET=v1,whsec_... (full value). Also check Edge Functions → auth-send-email → Logs and that Admin → Send test email succeeds."
+    );
   }
   return message;
 }

@@ -8,11 +8,18 @@ import {
 import { emailEnvDiagnostics } from "../_shared/send-notification-email.ts";
 
 function webhookHeaders(req: Request): Record<string, string> {
-  const headers: Record<string, string> = {};
-  req.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-  return headers;
+  return Object.fromEntries(req.headers);
+}
+
+function isWebhookVerificationError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("signature") ||
+    m.includes("webhook") ||
+    m.includes("timestamp") ||
+    m.includes("missing required header") ||
+    m.includes("send_email_hook_secret")
+  );
 }
 
 function json(body: unknown, status = 200): Response {
@@ -71,13 +78,26 @@ Deno.serve(async (req) => {
     return json({});
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[auth-send-email]", message, emailEnvDiagnostics());
-    const isVerify =
-      message.includes("webhook") ||
-      message.includes("signature") ||
-      message.includes("SEND_EMAIL_HOOK_SECRET");
+    const diag = emailEnvDiagnostics();
+    console.error("[auth-send-email]", message, diag);
+    const isVerify = isWebhookVerificationError(message);
+    const isEmail =
+      message.includes("Auth email was not sent") ||
+      message.includes("Email send failed") ||
+      message.includes("SMTP") ||
+      message.includes("MailerSend");
     return json(
-      { error: { message, hint: isVerify ? "Check Auth Hook secret matches SEND_EMAIL_HOOK_SECRET." : undefined } },
+      {
+        error: {
+          message,
+          transport: diag.transport,
+          hint: isVerify
+            ? "Regenerate the secret under Authentication → Auth Hooks → Send Email, then run: npx supabase@latest secrets set SEND_EMAIL_HOOK_SECRET=v1,whsec_... (full value, including prefix)."
+            : isEmail
+              ? "SMTP/API send failed inside the hook. Confirm Admin → Send test email works and check function logs."
+              : undefined,
+        },
+      },
       isVerify ? 401 : 500,
     );
   }
