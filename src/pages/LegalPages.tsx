@@ -190,7 +190,8 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Seller deductions",
         body: [
-          "Seller payouts may be reduced by marketplace fees, payment processing fees, refunds, chargebacks, shipping labels, adjustments, or tax withholding.",
+          "EXCH. charges a 9% marketplace fee on the item sale price, deducted from the seller payout before funds are released.",
+          "Seller payouts may also be reduced by payment processing costs, refunds, chargebacks, prepaid inbound shipping labels, adjustments, or tax withholding where applicable.",
           "Stripe Connect payout timing depends on account status, region, risk checks, and Stripe settings.",
         ],
       },

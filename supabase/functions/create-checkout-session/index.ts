@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
 
   const buyerShippingCents = envCents("BUYER_SHIPPING_CENTS", 1495);
   const sellerInboundLabelCents = envCents("SELLER_INBOUND_LABEL_CENTS", 995);
-  const sellerFeeBps = envBps("SELLER_FEE_BPS", envBps("PLATFORM_FEE_BPS", 0));
+  const sellerFeeBps = envBps("SELLER_FEE_BPS", envBps("PLATFORM_FEE_BPS", 900));
   const sellerFeeCents = Math.floor((trade.price_cents * sellerFeeBps) / 10000);
   const sellerNetPayoutCents = Math.max(trade.price_cents - sellerFeeCents - sellerInboundLabelCents, 0);
   const buyerTotalCents = trade.price_cents + buyerShippingCents;
