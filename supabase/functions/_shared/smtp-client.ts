@@ -88,9 +88,9 @@ export async function sendSmtpEmail(
     secure,
     requireTLS: !secure && port === 587,
     auth: { user, pass },
-    connectionTimeout: 15_000,
-    greetingTimeout: 15_000,
-    socketTimeout: 20_000,
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 10_000,
   });
 
   try {

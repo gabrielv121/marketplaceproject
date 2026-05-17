@@ -141,6 +141,15 @@ export async function sendTransactionalEmailWithFallback(
   const primaryResult = await sendViaTransport(primary, from, input);
   if (primaryResult.ok) return primaryResult;
 
+  // Auth Send Email hook times out at ~5s; skip slow API retry when SMTP is explicit.
+  const explicitMode = Deno.env.get("EMAIL_TRANSPORT")?.trim().toLowerCase();
+  if (primary === "smtp" && (explicitMode === "smtp" || explicitMode === "mailersend_smtp")) {
+    return {
+      ...primaryResult,
+      error: primaryResult.error ?? "Email send failed",
+    };
+  }
+
   const fallback: EmailTransport = primary === "smtp" ? "mailersend_api" : "smtp";
   const canFallback =
     fallback === "mailersend_api"
