@@ -36,6 +36,17 @@ function roleForUser(row: { buyer_id: string; seller_id: string }, userId: strin
   return "admin";
 }
 
+/** Outbound EXCH→buyer labels are admin-only; never expose the printable URL to participants. */
+function redactParticipantTrade(row: TradeDetailRow): TradeDetailRow {
+  if (row.access === "admin") return row;
+  return {
+    ...row,
+    buyer_label_url: null,
+    buyer_label_carrier: null,
+    buyer_label_service: null,
+  };
+}
+
 function fromAdminRow(row: AdminVerificationTrade, userId: string): TradeDetailRow {
   return {
     ...row,
@@ -57,17 +68,17 @@ export async function fetchTradeDetail(tradeId: string): Promise<TradeDetailRow>
 
   if (data) {
     const row = data as Omit<MyTradeRow, "role">;
-    return {
+    return redactParticipantTrade({
       ...row,
       role: roleForUser(row, auth.user.id),
       access: "participant",
-    };
+    });
   }
 
   try {
     const adminRows = await fetchAdminVerificationTrades();
     const adminRow = adminRows.find((row) => row.id === tradeId);
-    if (adminRow) return fromAdminRow(adminRow, auth.user.id);
+    if (adminRow) return redactParticipantTrade(fromAdminRow(adminRow, auth.user.id));
   } catch {
     // Non-admin users should see the generic not-found/access message below.
   }

@@ -344,8 +344,8 @@ export function TradeDetailPage() {
   const canReleasePayout = trade.access === "admin" && trade.status === "payout_available";
   const canOpenSellerLabel =
     Boolean(trade.seller_label_url) && (trade.role === "seller" || trade.access === "admin");
-  const canOpenBuyerLabel =
-    Boolean(trade.buyer_label_url) && (trade.role === "buyer" || trade.access === "admin");
+  const canOpenBuyerLabel = trade.access === "admin" && Boolean(trade.buyer_label_url);
+  const showBuyerLabelDetails = trade.access === "admin";
 
   return (
     <div className={styles.page}>
@@ -500,12 +500,14 @@ export function TradeDetailPage() {
             Seller tracking
             <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
           </span>
+          {showBuyerLabelDetails ? (
+            <span>
+              Buyer label
+              <strong>{trade.buyer_label_carrier ?? trade.buyer_label_service ?? (trade.buyer_label_url ? "Created" : "Not created")}</strong>
+            </span>
+          ) : null}
           <span>
-            Buyer label
-            <strong>{trade.buyer_label_carrier ?? trade.buyer_label_service ?? (trade.buyer_label_url ? "Created" : "Not created")}</strong>
-          </span>
-          <span>
-            Buyer tracking
+            {trade.role === "buyer" ? "Your tracking" : "Buyer tracking"}
             <strong>{trade.buyer_tracking_number ?? "Not set"}</strong>
           </span>
         </div>
