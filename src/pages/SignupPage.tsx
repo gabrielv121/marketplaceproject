@@ -43,7 +43,7 @@ export function SignupPage() {
           return;
         }
         setMsg(
-          "Account created, but Supabase is waiting for email confirmation. If no email arrives, turn off email confirmation in Supabase while testing, then sign in.",
+          "Account created. Check your inbox for a confirmation email from EXCH. (also check spam). After confirming, sign in here.",
         );
       })
       .finally(() => setBusy(false));

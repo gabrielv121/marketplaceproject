@@ -19,7 +19,7 @@
     "seed:puffer": "node scripts/seed-puffer-catalog.mjs",
     "supabase": "npx supabase@latest",
     "deploy:send-test-email": "npx supabase@latest functions deploy send-test-email",
-    "deploy:email-functions": "npx supabase@latest functions deploy send-test-email && npx supabase@latest functions deploy stripe-webhook --no-verify-jwt && npx supabase@latest functions deploy confirm-checkout-session && npx supabase@latest functions deploy notify-bid-match && npx supabase@latest functions deploy admin-update-trade-status && npx supabase@latest functions deploy create-seller-inbound-label && npx supabase@latest functions deploy create-buyer-outbound-label",
+    "deploy:email-functions": "npx supabase@latest functions deploy send-test-email && npx supabase@latest functions deploy auth-send-email --no-verify-jwt && npx supabase@latest functions deploy stripe-webhook --no-verify-jwt && npx supabase@latest functions deploy confirm-checkout-session && npx supabase@latest functions deploy notify-bid-match && npx supabase@latest functions deploy admin-update-trade-status && npx supabase@latest functions deploy create-seller-inbound-label && npx supabase@latest functions deploy create-buyer-outbound-label",
     "deploy:cleanup-function": "npx supabase@latest functions deploy cleanup-pending-trades"
   },
   "dependencies": {
