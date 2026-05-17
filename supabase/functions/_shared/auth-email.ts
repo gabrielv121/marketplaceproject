@@ -1,5 +1,5 @@
 import { renderAuthEmail } from "./email-template.ts";
-import { sendNotificationEmail } from "./send-notification-email.ts";
+import { tryNotificationEmail } from "./send-notification-email.ts";
 
 export type AuthEmailData = {
   token: string;
@@ -152,10 +152,10 @@ export async function sendAuthHookEmail(params: {
   );
 
   const { html, text } = renderAuthEmail(content);
-  await sendNotificationEmail(
-    { to: params.to, subject, html, text },
-    { silentSkip: false },
-  );
+  const result = await tryNotificationEmail({ to: params.to, subject, html, text });
+  if (!result.sent) {
+    throw new Error(result.error ?? "Auth email was not sent (check MailerSend / SMTP secrets).");
+  }
 }
 
 /** Secure email change: two OTP/hash pairs — see Supabase send-email hook docs. */

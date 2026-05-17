@@ -5,6 +5,15 @@ import {
   type AuthHookUser,
   sendAuthHookEmail,
 } from "../_shared/auth-email.ts";
+import { emailEnvDiagnostics } from "../_shared/send-notification-email.ts";
+
+function webhookHeaders(req: Request): Record<string, string> {
+  const headers: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  return headers;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -38,9 +47,8 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = requiredEnv("SUPABASE_URL");
     const payload = await req.text();
-    const headers = Object.fromEntries(req.headers);
     const wh = new Webhook(hookSecret());
-    const { user, email_data } = wh.verify(payload, headers) as HookPayload;
+    const { user, email_data } = wh.verify(payload, webhookHeaders(req)) as HookPayload;
 
     if (!user?.email) {
       return json({ error: { message: "Missing user email" } }, 400);
@@ -56,10 +64,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    return json({});
+    console.log("[auth-send-email] sent", {
+      action: email_data.email_action_type,
+      to: deliveries.map((d) => d.to),
+    });
+    return json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[auth-send-email]", message);
-    return json({ error: { message } }, 401);
+    console.error("[auth-send-email]", message, emailEnvDiagnostics());
+    const isVerify =
+      message.includes("webhook") ||
+      message.includes("signature") ||
+      message.includes("SEND_EMAIL_HOOK_SECRET");
+    return json(
+      { error: { message, hint: isVerify ? "Check Auth Hook secret matches SEND_EMAIL_HOOK_SECRET." : undefined } },
+      isVerify ? 401 : 500,
+    );
   }
 });
