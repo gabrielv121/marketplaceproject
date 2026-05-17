@@ -1,5 +1,11 @@
 import { getSupabase, isP2pConfigured } from "@/lib/supabase";
 
+/** Max notifications shown in the header dropdown. */
+export const NOTIFICATION_DROPDOWN_LIMIT = 5;
+
+/** Notifications older than this are removed by weekly DB cleanup. */
+export const NOTIFICATION_RETENTION_DAYS = 7;
+
 export type UserNotification = {
   id: string;
   user_id: string;
@@ -23,7 +29,7 @@ export function notificationHref(href: string | null): string {
   }
 }
 
-export async function fetchMyNotifications(limit = 40): Promise<UserNotification[]> {
+export async function fetchMyNotifications(limit = NOTIFICATION_DROPDOWN_LIMIT): Promise<UserNotification[]> {
   const sb = getSupabase();
   if (!sb || !isP2pConfigured()) return [];
 
@@ -37,6 +43,12 @@ export async function fetchMyNotifications(limit = 40): Promise<UserNotification
   return (data ?? []) as UserNotification[];
 }
 
+function retentionCutoffIso(): string {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - NOTIFICATION_RETENTION_DAYS);
+  return cutoff.toISOString();
+}
+
 export async function fetchUnreadNotificationCount(): Promise<number> {
   const sb = getSupabase();
   if (!sb || !isP2pConfigured()) return 0;
@@ -44,6 +56,7 @@ export async function fetchUnreadNotificationCount(): Promise<number> {
   const { count, error } = await sb
     .from("user_notifications")
     .select("id", { count: "exact", head: true })
+    .gte("created_at", retentionCutoffIso())
     .is("read_at", null);
 
   if (error) throw error;

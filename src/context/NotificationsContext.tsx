@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   fetchMyNotifications,
   fetchUnreadNotificationCount,
+  NOTIFICATION_DROPDOWN_LIMIT,
   type UserNotification,
 } from "@/lib/notifications";
 import { getSupabase, isP2pConfigured } from "@/lib/supabase";
@@ -42,7 +43,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     try {
-      const [list, count] = await Promise.all([fetchMyNotifications(50), fetchUnreadNotificationCount()]);
+      const [list, count] = await Promise.all([
+        fetchMyNotifications(NOTIFICATION_DROPDOWN_LIMIT),
+        fetchUnreadNotificationCount(),
+      ]);
       setItems(list);
       setUnreadCount(count);
     } catch {

@@ -6,6 +6,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import {
   markAllNotificationsRead,
   markNotificationRead,
+  NOTIFICATION_DROPDOWN_LIMIT,
   notificationHref,
 } from "@/lib/notifications";
 import { isP2pConfigured } from "@/lib/supabase";
@@ -100,7 +101,7 @@ export function NotificationBell() {
           <div className={styles.list}>
             {loading && items.length === 0 ? <p className={styles.empty}>Loading…</p> : null}
             {!loading && items.length === 0 ? <p className={styles.empty}>No notifications yet.</p> : null}
-            {items.map((n) => {
+            {items.slice(0, NOTIFICATION_DROPDOWN_LIMIT).map((n) => {
               const unread = !n.read_at;
               return (
                 <button
