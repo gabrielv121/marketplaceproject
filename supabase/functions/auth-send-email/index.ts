@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       action: email_data.email_action_type,
       to: deliveries.map((d) => d.to),
     });
-    return json({ ok: true });
+    return json({});
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("[auth-send-email]", message, emailEnvDiagnostics());

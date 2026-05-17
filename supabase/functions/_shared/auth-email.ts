@@ -1,5 +1,5 @@
+import { sendTransactionalEmailWithFallback } from "./email-transport.ts";
 import { renderAuthEmail } from "./email-template.ts";
-import { tryNotificationEmail } from "./send-notification-email.ts";
 
 export type AuthEmailData = {
   token: string;
@@ -152,9 +152,17 @@ export async function sendAuthHookEmail(params: {
   );
 
   const { html, text } = renderAuthEmail(content);
-  const result = await tryNotificationEmail({ to: params.to, subject, html, text });
-  if (!result.sent) {
-    throw new Error(result.error ?? "Auth email was not sent (check MailerSend / SMTP secrets).");
+  const result = await sendTransactionalEmailWithFallback({
+    to: params.to,
+    subject,
+    html,
+    text,
+  });
+  if (!result.ok) {
+    throw new Error(
+      result.error ??
+        `Auth email was not sent via ${result.transport} (check NOTIFICATION_FROM_EMAIL and MailerSend).`,
+    );
   }
 }
 

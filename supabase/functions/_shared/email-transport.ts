@@ -77,17 +77,16 @@ export async function sendTransactionalEmail(
     };
   }
 
-  const from = parseNotificationFromHeader(fromRaw);
-  const transport = resolveEmailTransport();
+  return sendTransactionalEmailWithFallback(input);
+}
 
+async function sendViaTransport(
+  transport: EmailTransport,
+  from: MailerSendFrom,
+  input: TransactionalEmailInput,
+): Promise<TransactionalEmailResult> {
   if (transport === "smtp") {
-    const smtp = await sendSmtpEmail({
-      from,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    });
+    const smtp = await sendSmtpEmail({ from, to: input.to, subject: input.subject, html: input.html, text: input.text });
     return {
       ok: smtp.ok,
       transport: "smtp",
@@ -106,7 +105,7 @@ export async function sendTransactionalEmail(
       status: 0,
       requestId: null,
       body: null,
-      error: "Missing MAILERSEND_API_KEY (or set SMTP_USER + SMTP_PASSWORD for SMTP)",
+      error: "Missing MAILERSEND_API_KEY",
     };
   }
 
@@ -117,7 +116,50 @@ export async function sendTransactionalEmail(
     status: result.status,
     requestId: result.requestId,
     body: result.body,
-    error: result.ok ? undefined : `MailerSend HTTP ${result.status}`,
+    error: result.ok ? undefined : (typeof result.body === "string" ? result.body : `MailerSend HTTP ${result.status}`),
+  };
+}
+
+/** SMTP in Edge Functions can fail; fall back to MailerSend HTTP API when configured. */
+export async function sendTransactionalEmailWithFallback(
+  input: TransactionalEmailInput,
+): Promise<TransactionalEmailResult> {
+  const fromRaw = Deno.env.get("NOTIFICATION_FROM_EMAIL")?.trim();
+  if (!fromRaw) {
+    return {
+      ok: false,
+      transport: resolveEmailTransport(),
+      status: 0,
+      requestId: null,
+      body: null,
+      error: "Missing NOTIFICATION_FROM_EMAIL",
+    };
+  }
+
+  const from = parseNotificationFromHeader(fromRaw);
+  const primary = resolveEmailTransport();
+  const primaryResult = await sendViaTransport(primary, from, input);
+  if (primaryResult.ok) return primaryResult;
+
+  const fallback: EmailTransport = primary === "smtp" ? "mailersend_api" : "smtp";
+  const canFallback =
+    fallback === "mailersend_api"
+      ? Boolean(normalizeMailerSendApiKey(Deno.env.get("MAILERSEND_API_KEY")))
+      : Boolean(Deno.env.get("SMTP_USER")?.trim() && (Deno.env.get("SMTP_PASSWORD") ?? Deno.env.get("SMTP_PASS"))?.trim());
+
+  if (!canFallback) {
+    return {
+      ...primaryResult,
+      error: primaryResult.error ?? "Email send failed",
+    };
+  }
+
+  const fallbackResult = await sendViaTransport(fallback, from, input);
+  if (fallbackResult.ok) return fallbackResult;
+
+  return {
+    ...fallbackResult,
+    error: `${primary} failed (${primaryResult.error ?? "unknown"}); ${fallback} failed (${fallbackResult.error ?? "unknown"})`,
   };
 }
 
