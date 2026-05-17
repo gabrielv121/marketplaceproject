@@ -13,6 +13,8 @@
     "kicks:import": "node scripts/import-kicksdb.mjs",
     "kicks:dry-run": "node scripts/import-kicksdb.mjs --dry-run",
     "kicks:audit-images": "node scripts/audit-kicksdb-images.mjs",
+    "kicks:hide-placeholders": "node scripts/hide-kicks-placeholder-images.mjs",
+    "kicks:hide-placeholders:dry-run": "node scripts/hide-kicks-placeholder-images.mjs --dry-run",
     "seed:designer": "node scripts/seed-designer-catalog.mjs",
     "seed:puffer": "node scripts/seed-puffer-catalog.mjs",
     "supabase": "npx supabase@latest",

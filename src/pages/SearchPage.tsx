@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
 import { searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
@@ -100,10 +101,14 @@ export function SearchPage() {
       {loading ? (
         <p className={styles.muted}>Loading...</p>
       ) : (
-        <ProductGrid
-          products={results}
-          emptyMessage={q ? "No products match that search yet." : "No products available."}
-        />
+        <CatalogFilters products={products} hideWithoutProductPhoto>
+          {(filtered) => (
+            <ProductGrid
+              products={filtered}
+              emptyMessage={q ? "No products match that search yet." : "No products available."}
+            />
+          )}
+        </CatalogFilters>
       )}
     </div>
   );

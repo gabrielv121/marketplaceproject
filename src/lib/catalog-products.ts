@@ -2,7 +2,7 @@ import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
 import { catalogProductMatchesSearch } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
-import { sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
+import { hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import { withoutBlockedCatalogProducts } from "@/lib/blocked-catalog-handles";
 import { enrichProductsForHome, isCatalogAccessoryCandidate } from "@/lib/home-feed";
 import {
@@ -73,6 +73,11 @@ function kicksDbOnly(products: CatalogProductSummary[]): CatalogProductSummary[]
   return products.filter(isKicksDbCatalogProduct);
 }
 
+/** KicksDB rows with a real product photo, best images first. */
+function publishableKicksCatalog(products: CatalogProductSummary[]): CatalogProductSummary[] {
+  return sortCatalogByImageQuality(kicksDbOnly(products).filter(hasRealCatalogProductImage));
+}
+
 export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promise<{
   products: CatalogProductSummary[];
   error: string | null;
@@ -102,7 +107,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
       let list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
       const enriched = enrichProductsForHome(list);
       const sorted = opts.sortNew ? enriched : trendSort(enriched);
-      const filtered = kicksDbOnly(
+      const filtered = publishableKicksCatalog(
         withoutBlockedCatalogProducts(filterList(sorted, { ...opts, departmentSlug: undefined })),
       );
       return { products: filtered, error: null, catalogSource: "supabase" };
@@ -167,7 +172,7 @@ export async function searchCatalogProducts(query: string): Promise<{
       );
       const enriched = enrichProductsForHome(mapped);
       return {
-        products: withoutBlockedCatalogProducts(trendSort(kicksDbOnly(enriched))),
+        products: withoutBlockedCatalogProducts(publishableKicksCatalog(enriched)),
         error: null,
         catalogSource: "supabase",
       };

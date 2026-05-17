@@ -189,6 +189,35 @@
   background: #fff;
 }
 
+.favBtnActive {
+  color: var(--accent);
+}
+
+.favBtnDark {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(10, 10, 11, 0.85);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.favBtnDark:hover {
+  border-color: var(--accent);
+}
+
+.favBtnDark.favBtnActive {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
 .metaStockx {
   flex: 1;
   display: flex;

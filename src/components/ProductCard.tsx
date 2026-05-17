@@ -11,6 +11,9 @@ type Props = {
   product: CatalogProductSummary;
   /** StockX-style home tile: light well, lowest ask row, optional last sale */
   visual?: "default" | "stockx";
+  favorite?: boolean;
+  favoriteBusy?: boolean;
+  onToggleFavorite?: (productHandle: string, next: boolean) => void;
 };
 
 function hashString(s: string): number {
@@ -26,7 +29,45 @@ function mockLastSale(p: CatalogProductSummary): Money {
   return { amount: String(n), currencyCode: p.priceRange.currency };
 }
 
-export function ProductCard({ product, visual = "default" }: Props) {
+function FavoriteButton({
+  productHandle,
+  favorite,
+  busy,
+  onToggleFavorite,
+  className,
+}: {
+  productHandle: string;
+  favorite: boolean;
+  busy: boolean;
+  onToggleFavorite?: (productHandle: string, next: boolean) => void;
+  className: string;
+}) {
+  if (!onToggleFavorite) return null;
+  return (
+    <button
+      type="button"
+      className={`${className} ${favorite ? styles.favBtnActive : ""}`}
+      aria-label={favorite ? "Remove from favorites" : "Save to favorites"}
+      title={favorite ? "Saved" : "Save"}
+      disabled={busy}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggleFavorite(productHandle, !favorite);
+      }}
+    >
+      {favorite ? "♥" : "♡"}
+    </button>
+  );
+}
+
+export function ProductCard({
+  product,
+  visual = "default",
+  favorite = false,
+  favoriteBusy = false,
+  onToggleFavorite,
+}: Props) {
   const hasImage = Boolean(resolveFeaturedImageUrl(product));
   const low = {
     amount: product.priceRange.min,
@@ -68,18 +109,13 @@ export function ProductCard({ product, visual = "default" }: Props) {
             ) : null}
           </div>
         </ReturnLink>
-        <button
-          type="button"
+        <FavoriteButton
+          productHandle={product.handle}
+          favorite={favorite}
+          busy={favoriteBusy}
+          onToggleFavorite={onToggleFavorite}
           className={styles.favBtn}
-          aria-label="Save to favorites"
-          title="Save"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          ♡
-        </button>
+        />
       </div>
     );
   }
@@ -93,6 +129,13 @@ export function ProductCard({ product, visual = "default" }: Props) {
         ) : (
           <div className={styles.placeholder} aria-hidden />
         )}
+        <FavoriteButton
+          productHandle={product.handle}
+          favorite={favorite}
+          busy={favoriteBusy}
+          onToggleFavorite={onToggleFavorite}
+          className={styles.favBtnDark}
+        />
       </div>
       <div className={styles.body}>
         <div className={styles.brandRow}>
