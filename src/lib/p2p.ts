@@ -74,6 +74,15 @@ function readableRpcError(error: { message?: string; details?: string; hint?: st
   if (raw.includes("bid_not_cancellable")) {
     return new Error("This bid is no longer open or cannot be cancelled.");
   }
+  if (raw.includes("bid_already_open")) {
+    return new Error("You already have an open bid on this size. Increase your max instead of placing a new bid.");
+  }
+  if (raw.includes("bid_not_updatable")) {
+    return new Error("This bid is no longer open and cannot be updated.");
+  }
+  if (raw.includes("bid_must_increase")) {
+    return new Error("Your new max bid must be higher than your current bid.");
+  }
   if (raw.includes("no_matching_bid")) {
     return new Error("No open bid meets your ask price for this size.");
   }
@@ -213,6 +222,29 @@ export async function insertBid(input: {
   currency: string;
 }): Promise<void> {
   await rpcPlaceBid(input);
+}
+
+export async function rpcUpdateBid(bidId: string, maxPriceCents: number): Promise<PlaceBidResult> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("P2P not configured");
+  const { data, error } = await sb.rpc("update_bid", {
+    p_bid_id: bidId,
+    p_max_price_cents: maxPriceCents,
+  });
+  if (error) throw readableRpcError(error);
+  const row = (data ?? {}) as {
+    bid_id?: string;
+    matched?: boolean;
+    trade_id?: string | null;
+    match_price_cents?: number | null;
+  };
+  if (!row.bid_id) throw new Error("Unexpected update_bid response");
+  return {
+    bidId: row.bid_id,
+    matched: Boolean(row.matched),
+    tradeId: row.trade_id ?? null,
+    matchPriceCents: row.match_price_cents ?? null,
+  };
 }
 
 export async function rpcCancelBid(bidId: string): Promise<void> {

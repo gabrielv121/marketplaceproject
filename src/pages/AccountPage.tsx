@@ -29,6 +29,7 @@ import {
   moneyFromCents,
   rpcCancelBid,
   rpcCancelListing,
+  rpcUpdateBid,
   rpcCancelReservedTrade,
   rpcSellListingToBid,
   rpcSellerMarkTradeShipped,
@@ -539,6 +540,38 @@ export function AccountPage() {
     void rpcCancelBid(id)
       .then(() => void refresh())
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not cancel bid"))
+      .finally(() => setBusyId(null));
+  };
+
+  const onIncreaseBid = (row: MyBidRow) => {
+    const next = window.prompt(
+      `New max bid for ${row.size_label} (${row.currency})`,
+      String(Math.ceil(row.max_price_cents / 100) + 10),
+    );
+    if (next == null) return;
+    const cents = parseToCents(next);
+    if (cents == null) {
+      setLoadError("Enter a valid price.");
+      return;
+    }
+    if (cents <= row.max_price_cents) {
+      setLoadError("New max must be higher than your current bid.");
+      return;
+    }
+    setBusyId(row.id);
+    void rpcUpdateBid(row.id, cents)
+      .then(async (result) => {
+        if (result.matched && result.tradeId) {
+          setSaveMsg("Bid matched — opening checkout…");
+          void notifyBidMatch(result.tradeId, window.location.origin);
+          const url = await startCheckoutForTrade(result.tradeId, window.location.origin);
+          window.location.assign(url);
+          return;
+        }
+        setSaveMsg("Bid increased.");
+        void refresh();
+      })
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not update bid"))
       .finally(() => setBusyId(null));
   };
 
@@ -1128,9 +1161,17 @@ export function AccountPage() {
                   <td><span className={styles.status}>{prettyStatus(row.status)}</span></td>
                   <td>
                     {row.status === "open" ? (
-                      <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onCancelBid(row.id)}>
-                        Cancel
-                      </button>
+                      <>
+                        <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onIncreaseBid(row)}>
+                          Increase
+                        </button>
+                        <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onCancelBid(row.id)}>
+                          Cancel
+                        </button>
+                        <Link to={`/product/${row.product_handle}`} className={styles.linkBtn}>
+                          View
+                        </Link>
+                      </>
                     ) : (
                       <span className={styles.small}>—</span>
                     )}

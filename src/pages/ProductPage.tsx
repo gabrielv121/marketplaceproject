@@ -14,6 +14,7 @@ import {
   insertListing,
   rpcCancelBid,
   rpcPlaceBid,
+  rpcUpdateBid,
   rpcSellListingToBid,
   lastSaleForSize,
   lowestListingForSize,
@@ -352,6 +353,22 @@ export function ProductPage() {
       .finally(() => setConnectBusy(false));
   };
 
+  const finishBidAction = async (
+    result: Awaited<ReturnType<typeof rpcPlaceBid>>,
+    successMsg = "Bid saved. You will match automatically when a seller asks at or below your max.",
+  ) => {
+    setBidPrice("");
+    refreshP2p();
+    if (result.matched && result.tradeId) {
+      setActionMsg("Bid matched the lowest ask — opening checkout…");
+      void notifyBidMatch(result.tradeId, window.location.origin);
+      const url = await startCheckoutForTrade(result.tradeId, window.location.origin);
+      window.location.assign(url);
+      return;
+    }
+    setActionMsg(successMsg);
+  };
+
   const onPlaceBid = () => {
     if (!product || !selectedRow) return;
     setActionMsg(null);
@@ -372,18 +389,34 @@ export function ProductPage() {
       currency,
     })
       .then(async (result) => {
-        setBidPrice("");
-        refreshP2p();
         if (result.matched && result.tradeId) {
-          setActionMsg("Bid matched the lowest ask — opening checkout…");
-          void notifyBidMatch(result.tradeId, window.location.origin);
-          const url = await startCheckoutForTrade(result.tradeId, window.location.origin);
-          window.location.assign(url);
+          await finishBidAction(result);
           return;
         }
+        setBidPrice("");
+        refreshP2p();
         setActionMsg("Bid placed. You will match automatically when a seller asks at or below your max.");
       })
       .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not bid"))
+      .finally(() => setActionBusy(false));
+  };
+
+  const onUpdateMyBid = () => {
+    if (!myOpenBidAtSize) return;
+    setActionMsg(null);
+    const cents = parseToCents(bidPrice);
+    if (cents == null) {
+      setActionMsg("Enter a valid bid.");
+      return;
+    }
+    if (cents <= myOpenBidAtSize.max_price_cents) {
+      setActionMsg(`Enter more than your current max (${formatMoney(moneyFromCents(myOpenBidAtSize.max_price_cents, currency))}).`);
+      return;
+    }
+    setActionBusy(true);
+    void rpcUpdateBid(myOpenBidAtSize.id, cents)
+      .then((result) => finishBidAction(result, "Bid increased. You will match when a seller asks at or below your new max."))
+      .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not update bid"))
       .finally(() => setActionBusy(false));
   };
 
@@ -578,6 +611,12 @@ export function ProductPage() {
               ) : user && stripeAccountId ? (
                 <p className={styles.payoutReady}>Stripe payout method connected.</p>
               ) : null}
+              {highestOpenBidAtSize ? (
+                <p className={styles.hint}>
+                  Highest bid for this size: {formatMoney(moneyFromCents(highestOpenBidAtSize.max_price_cents, currency))}.
+                  List at or below that price to match instantly (buyer completes checkout).
+                </p>
+              ) : null}
               <div className={styles.sellFormGrid}>
                 <label className={styles.field}>
                   <span className={styles.k}>Your ask ({currency})</span>
@@ -714,12 +753,29 @@ export function ProductPage() {
                 </label>
               )}
               {myOpenBidAtSize ? (
-                <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onCancelMyBid()}>
-                  Cancel bid
-                </button>
+                <>
+                  <label className={styles.field}>
+                    <span className={styles.k}>Increase max bid ({currency})</span>
+                    <input
+                      className={styles.input}
+                      inputMode="decimal"
+                      placeholder={String(Math.ceil(myOpenBidAtSize.max_price_cents / 100) + 1)}
+                      value={bidPrice}
+                      onChange={(e) => setBidPrice(e.target.value)}
+                    />
+                  </label>
+                  <div className={styles.row}>
+                    <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onUpdateMyBid()}>
+                      {actionBusy ? "Updating..." : "Increase bid"}
+                    </button>
+                    <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onCancelMyBid()}>
+                      Cancel bid
+                    </button>
+                  </div>
+                </>
               ) : (
                 <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onPlaceBid()}>
-                  Place bid
+                  {actionBusy ? "Placing..." : "Place bid"}
                 </button>
               )}
               <p className={styles.hint}>
