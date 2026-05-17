@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AccountNotifications } from "@/components/AccountNotifications";
 import { ReturnLink } from "@/components/ReturnLink";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -975,12 +976,15 @@ export function AccountPage() {
 
       <nav className={styles.anchorNav} aria-label="Account sections">
         <a href="#profile">Profile</a>
+        <a href="#notifications">Notifications</a>
         <a href="#buying">Buying</a>
         <a href="#selling">Selling</a>
         <a href="#favorites">Favorites</a>
         <a href="#wallet">Wallet</a>
         <a href="#settings">Settings</a>
       </nav>
+
+      <AccountNotifications />
 
       {checkoutBanner ? (
         <p className={styles.checkoutBanner} role="status">

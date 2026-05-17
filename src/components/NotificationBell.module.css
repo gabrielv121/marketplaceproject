@@ -1,0 +1,172 @@
+.wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn:hover,
+.btnOpen {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 220;
+  width: min(22rem, calc(100vw - 1.5rem));
+  max-height: min(24rem, 70vh);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.head strong {
+  font-size: 0.86rem;
+}
+
+.markAll {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+}
+
+.markAll:hover {
+  background: var(--accent-dim);
+}
+
+.markAll:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.list {
+  overflow: auto;
+  padding: 0.35rem;
+}
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.item {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.item:hover {
+  background: var(--surface-2);
+}
+
+.itemUnread {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+
+.itemTitle {
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.itemBody {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.itemTime {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.foot {
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.footLink {
+  display: block;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.footLink:hover {
+  text-decoration: underline;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: default;
+}

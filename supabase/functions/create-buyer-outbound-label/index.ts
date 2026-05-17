@@ -312,6 +312,7 @@ Deno.serve(async (req) => {
     await sendBuyerShippedEmail({
       admin,
       to: buyerEmail,
+      buyerUserId: trade.buyer_id,
       productHandle: trade.product_handle,
       sizeLabel: trade.size_label,
       tradeId: trade.id,

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AuthBar } from "@/components/AuthBar";
+import { NotificationBell } from "@/components/NotificationBell";
 import { SetupBanner } from "@/components/SetupBanner";
 import {
   IconClose,
@@ -174,6 +175,7 @@ export function Layout() {
                 <IconSearch width={20} height={20} />
               </NavLink>
             ) : null}
+            <NotificationBell />
             {wide ? <AuthBar variant="header" /> : null}
             <div className={styles.menuAnchor}>
               <button

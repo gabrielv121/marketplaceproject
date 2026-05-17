@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { renderOrderEmail } from "./email-template.ts";
+import { accountPath, insertUserNotifications, tradePath } from "./in-app-notifications.ts";
 import { sendNotificationEmail, tryNotificationEmail } from "./send-notification-email.ts";
 import {
   appUrl,
@@ -73,6 +74,25 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
       cta: { label: "Open seller actions", href: accountLink },
     }),
   ]);
+
+  await insertUserNotifications(admin, [
+    {
+      user_id: trade.buyer_id,
+      kind: "payment_received",
+      title: "Payment received",
+      body: `${product.title} (size ${trade.size_label}) — ${total}.`,
+      href: tradePath(trade.id),
+      trade_id: trade.id,
+    },
+    {
+      user_id: trade.seller_id,
+      kind: "sale_paid",
+      title: "Your item sold",
+      body: `Ship ${product.title} to EXCH. by ${shipBy}. Est. payout ${payout}.`,
+      href: accountPath("selling"),
+      trade_id: trade.id,
+    },
+  ]);
 }
 
 export type BidMatchTrade = {
@@ -124,6 +144,25 @@ export async function sendBidMatchEmails(
       orderRows: rows,
       cta: { label: "View selling", href: appUrl("/account#selling", origin) },
     }),
+  ]);
+
+  await insertUserNotifications(admin, [
+    {
+      user_id: trade.buyer_id,
+      kind: "bid_matched",
+      title: "Bid matched",
+      body: `${product.title} at ${priceLabel} — complete checkout to secure it.`,
+      href: accountPath("buying"),
+      trade_id: trade.id,
+    },
+    {
+      user_id: trade.seller_id,
+      kind: "bid_matched",
+      title: "Bid matched your listing",
+      body: `${product.title} at ${priceLabel}. Waiting for buyer checkout.`,
+      href: accountPath("selling"),
+      trade_id: trade.id,
+    },
   ]);
 }
 
@@ -189,6 +228,24 @@ export async function sendTradeStatusEmails(
         cta: { label: hasStripe ? "View sale" : "Connect Stripe", href: accountLink },
       }),
     ]);
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.buyer_id,
+        kind: "verification_passed",
+        title: "Verification passed",
+        body: `${product.title} passed EXCH. authentication. Shipping to you soon.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+      {
+        user_id: trade.seller_id,
+        kind: "verification_passed",
+        title: "Verification passed",
+        body: `${product.title} passed verification.${hasStripe ? "" : " Connect Stripe for payout."}`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+    ]);
     return;
   }
 
@@ -211,6 +268,24 @@ export async function sendTradeStatusEmails(
         cta: { label: "View sale", href: accountLink },
       }),
     ]);
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.buyer_id,
+        kind: "verification_failed",
+        title: "Verification did not pass",
+        body: `${product.title} did not pass verification. Refund process will follow.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+      {
+        user_id: trade.seller_id,
+        kind: "verification_failed",
+        title: "Verification did not pass",
+        body: `${product.title} did not pass verification. EXCH. will follow up.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+    ]);
     return;
   }
 
@@ -225,6 +300,18 @@ export async function sendTradeStatusEmails(
       orderRows: [...rows, ...extra],
       cta: { label: "View your order", href: accountLink },
     });
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.buyer_id,
+        kind: "shipped_to_buyer",
+        title: "Order on the way",
+        body: tracking
+          ? `${product.title} shipped. Tracking: ${tracking}.`
+          : `${product.title} shipped from EXCH.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+    ]);
     return;
   }
 
@@ -250,6 +337,24 @@ export async function sendTradeStatusEmails(
         cta: { label: "View sale", href: accountLink },
       }),
     ]);
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.buyer_id,
+        kind: "delivered_to_buyer",
+        title: "Order delivered",
+        body: `${product.title} was delivered. Thanks for shopping on EXCH.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+      {
+        user_id: trade.seller_id,
+        kind: "delivered_to_buyer",
+        title: "Buyer received your item",
+        body: `${product.title} was delivered. Payout will be marked available soon.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+    ]);
     return;
   }
 
@@ -266,11 +371,22 @@ export async function sendTradeStatusEmails(
       ],
       cta: { label: "View payout", href: accountLink },
     });
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.seller_id,
+        kind: "payout_available",
+        title: "Payout available",
+        body: `${product.title} — estimated payout ${payout}.`,
+        href: accountPath("wallet"),
+        trade_id: trade.id,
+      },
+    ]);
   }
 }
 
 export async function sendShippingLabelEmail(params: {
   to?: string | null;
+  sellerUserId?: string | null;
   productHandle: string;
   sizeLabel: string;
   tradeId?: string;
@@ -314,16 +430,33 @@ export async function sendShippingLabelEmail(params: {
     secondaryCta: { label: "Open your account", href: appUrl("/account", siteUrl) },
   });
 
-  return tryNotificationEmail({
+  const emailResult = await tryNotificationEmail({
     to: params.to,
     subject: `Shipping label — ${product.title}`,
     html,
     text,
   });
+
+  if (params.admin && params.sellerUserId && params.tradeId) {
+    const trackingNote = params.trackingNumber ? ` Tracking: ${params.trackingNumber}.` : "";
+    await insertUserNotifications(params.admin, [
+      {
+        user_id: params.sellerUserId,
+        kind: "seller_label_ready",
+        title: "Shipping label ready",
+        body: `Print and ship ${product.title} to EXCH.${trackingNote}`,
+        href: tradePath(params.tradeId),
+        trade_id: params.tradeId,
+      },
+    ]);
+  }
+
+  return emailResult;
 }
 
 export async function sendBuyerShippedEmail(params: {
   to?: string | null;
+  buyerUserId: string;
   productHandle: string;
   sizeLabel: string;
   tradeId?: string;
@@ -351,4 +484,18 @@ export async function sendBuyerShippedEmail(params: {
     }),
     cta: { label: "View your order", href: appUrl("/account", siteUrl) },
   });
+
+  const tracking = params.trackingNumber?.trim();
+  await insertUserNotifications(params.admin, [
+    {
+      user_id: params.buyerUserId,
+      kind: "shipped_to_buyer",
+      title: "Order on the way",
+      body: tracking
+        ? `${product.title} shipped. Tracking: ${tracking}.`
+        : `${product.title} shipped from EXCH.`,
+      href: params.tradeId ? tradePath(params.tradeId) : accountPath("buying"),
+      trade_id: params.tradeId ?? null,
+    },
+  ]);
 }

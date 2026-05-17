@@ -151,6 +151,7 @@ async function sendLabelEmail(
   return sendShippingLabelEmail({
     admin,
     to: params.to,
+    sellerUserId: trade.seller_id,
     productHandle: trade.product_handle,
     sizeLabel: trade.size_label,
     tradeId: trade.id,

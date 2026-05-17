@@ -1,0 +1,112 @@
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-2);
+  padding: 1rem;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.lead {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  max-width: 36rem;
+}
+
+.markAll {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.markAll:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.item {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.item:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.itemUnread {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.itemTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.itemTop strong {
+  font-size: 0.88rem;
+}
+
+.itemTop time {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.body {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
