@@ -583,10 +583,8 @@ export function ProductPage() {
                 </button>
               )}
               <p className={styles.hint}>
-                Reserves the listing, creates a <code className={styles.code}>reserved</code> trade, then opens{" "}
-                <strong>Stripe Checkout</strong> (Edge Function <code className={styles.code}>create-checkout-session</code>
-                ). EXCH. holds the buyer payment while the seller ships to us for verification. Seller payout becomes
-                available after verification and buyer delivery.
+                Reserves the listing, then opens <strong>Stripe Checkout</strong> with item price, a 3% processing fee,
+                and verified delivery shipping. EXCH. holds payment while the seller ships to us for verification.
               </p>
             </div>
           )}

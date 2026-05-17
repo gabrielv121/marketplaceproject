@@ -70,7 +70,9 @@ function shortDate(value: string | null): string {
 }
 
 function tradeTotal(row: AdminVerificationTrade): string {
-  const total = row.buyer_total_cents || row.price_cents + row.buyer_shipping_cents;
+  const total =
+    row.buyer_total_cents ||
+    row.price_cents + row.buyer_shipping_cents + (row.buyer_processing_fee_cents ?? 0);
   return formatMoney(moneyFromCents(total, row.currency));
 }
 

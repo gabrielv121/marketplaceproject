@@ -183,8 +183,8 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Buyer charges",
         body: [
-          "Buyers may pay item price, shipping, taxes, payment processing costs, marketplace fees, and any applicable duties or local charges.",
-          "The final amount should be shown during checkout before payment is submitted.",
+          "Buyers pay the item price, a processing fee (currently 3% of the item price), verified delivery shipping, and any applicable sales tax when enabled.",
+          "The full breakdown is shown in Stripe Checkout before you pay.",
         ],
       },
       {

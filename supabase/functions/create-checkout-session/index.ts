@@ -147,12 +147,14 @@ Deno.serve(async (req) => {
   }
 
   const buyerShippingCents = envCents("BUYER_SHIPPING_CENTS", 1495);
+  const buyerProcessingFeeBps = envBps("BUYER_PROCESSING_FEE_BPS", 300);
+  const buyerProcessingFeeCents = Math.floor((trade.price_cents * buyerProcessingFeeBps) / 10000);
   const sellerInboundLabelCents = envCents("SELLER_INBOUND_LABEL_CENTS", 995);
   const sellerFeeBps = envBps("SELLER_FEE_BPS", envBps("PLATFORM_FEE_BPS", 900));
   const sellerFeeCents = Math.floor((trade.price_cents * sellerFeeBps) / 10000);
   const sellerNetPayoutCents = Math.max(trade.price_cents - sellerFeeCents - sellerInboundLabelCents, 0);
-  const buyerTotalCents = trade.price_cents + buyerShippingCents;
-  const pricingVersion = "shipping-fees-v1";
+  const buyerTotalCents = trade.price_cents + buyerShippingCents + buyerProcessingFeeCents;
+  const pricingVersion = "shipping-fees-v2";
 
   const stripe = new Stripe(stripeKey, { httpClient: Stripe.createFetchHttpClient() });
 
@@ -164,6 +166,7 @@ Deno.serve(async (req) => {
         existing.url &&
         existing.metadata?.pricing_version === pricingVersion &&
         existing.metadata?.buyer_shipping_cents === String(buyerShippingCents) &&
+        existing.metadata?.buyer_processing_fee_cents === String(buyerProcessingFeeCents) &&
         (existing.expires_at ?? 0) > Math.floor(Date.now() / 1000);
       if (stillOpen) {
         return new Response(JSON.stringify({ url: existing.url }), {
@@ -229,6 +232,21 @@ Deno.serve(async (req) => {
           },
           quantity: 1,
         },
+        ...(buyerProcessingFeeCents > 0
+          ? [
+              {
+                price_data: {
+                  currency,
+                  unit_amount: buyerProcessingFeeCents,
+                  product_data: {
+                    name: "Processing fee",
+                    description: "Payment and order processing",
+                  },
+                },
+                quantity: 1,
+              },
+            ]
+          : []),
       ],
       payment_intent_data: {
         metadata: {
@@ -237,6 +255,7 @@ Deno.serve(async (req) => {
           seller_id: trade.seller_id,
           held_for_verification: "true",
           buyer_shipping_cents: String(buyerShippingCents),
+          buyer_processing_fee_cents: String(buyerProcessingFeeCents),
           seller_inbound_label_cents: String(sellerInboundLabelCents),
           seller_fee_cents: String(sellerFeeCents),
           seller_net_payout_cents: String(sellerNetPayoutCents),
@@ -247,6 +266,8 @@ Deno.serve(async (req) => {
         held_for_verification: "true",
         pricing_version: pricingVersion,
         buyer_shipping_cents: String(buyerShippingCents),
+        buyer_processing_fee_bps: String(buyerProcessingFeeBps),
+        buyer_processing_fee_cents: String(buyerProcessingFeeCents),
         buyer_total_cents: String(buyerTotalCents),
         seller_inbound_label_cents: String(sellerInboundLabelCents),
         seller_fee_bps: String(sellerFeeBps),
@@ -259,7 +280,7 @@ Deno.serve(async (req) => {
         },
         submit: {
           message:
-            "Buyer shipping covers EXCH.-verified delivery. Your payment is held until the item passes verification and is delivered.",
+            "Processing fee and shipping are shown above. Your payment is held until the item passes verification and is delivered.",
         },
       },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -272,6 +293,8 @@ Deno.serve(async (req) => {
       .update({
         stripe_checkout_session_id: session.id,
         buyer_shipping_cents: buyerShippingCents,
+        buyer_processing_fee_bps: buyerProcessingFeeBps,
+        buyer_processing_fee_cents: buyerProcessingFeeCents,
         seller_inbound_label_cents: sellerInboundLabelCents,
         seller_fee_bps: sellerFeeBps,
         seller_fee_cents: sellerFeeCents,

@@ -44,6 +44,7 @@ export type AdminVerificationTrade = {
   buyer_tracking_number: string | null;
   verification_notes: string | null;
   buyer_shipping_cents: number;
+  buyer_processing_fee_cents?: number;
   seller_inbound_label_cents: number;
   seller_fee_cents: number;
   seller_net_payout_cents: number;

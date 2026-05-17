@@ -8,6 +8,7 @@ import { createBuyerOutboundLabel, releaseSellerPayout } from "@/lib/admin-verif
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { fetchCatalogSummaryByHandle } from "@/lib/catalog-supabase";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
+import { buyerTradeTotalCents as buyerTotalCents } from "@/lib/buyer-pricing";
 import { startCheckoutForTrade } from "@/lib/checkout";
 import { formatMoney } from "@/lib/money-format";
 import { moneyFromCents, rpcSellerMarkTradeShipped } from "@/lib/p2p";
@@ -51,10 +52,6 @@ function prettyStatus(status: string): string {
 function shortDate(value: string | null | undefined): string {
   if (!value) return "Not set";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
-}
-
-function buyerTotalCents(row: TradeDetailRow): number {
-  return row.buyer_total_cents ?? row.price_cents + (row.buyer_shipping_cents ?? 0);
 }
 
 function sellerPayoutCents(row: TradeDetailRow): number {
@@ -469,6 +466,12 @@ export function TradeDetailPage() {
             Buyer shipping
             <strong>{formatMoney(moneyFromCents(trade.buyer_shipping_cents ?? 0, trade.currency))}</strong>
           </span>
+          {(trade.buyer_processing_fee_cents ?? 0) > 0 ? (
+            <span>
+              Processing fee
+              <strong>{formatMoney(moneyFromCents(trade.buyer_processing_fee_cents ?? 0, trade.currency))}</strong>
+            </span>
+          ) : null}
           <span>
             Buyer total
             <strong>{formatMoney(moneyFromCents(buyerTotalCents(trade), trade.currency))}</strong>

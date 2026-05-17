@@ -23,6 +23,7 @@ import {
 } from "@/lib/checkout";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
+import { buyerTradeTotalCents } from "@/lib/buyer-pricing";
 import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
 import {
@@ -168,10 +169,6 @@ function sellerActionCopy(status: string): string {
   if (status === "delivered_to_buyer") return "Delivered. Payout will become available.";
   if (status === "payout_available") return "Payout available once your payout method is ready.";
   return prettyStatus(status);
-}
-
-function buyerTradeTotalCents(row: MyTradeRow): number {
-  return row.buyer_total_cents ?? row.price_cents + (row.buyer_shipping_cents ?? 0);
 }
 
 function sellerNetPayoutCents(row: MyTradeRow): number {
