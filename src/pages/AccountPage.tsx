@@ -1436,9 +1436,10 @@ export function AccountPage() {
                   <span className={styles.status}>{prettyStatus(row.status)}</span>
                   {isTradeRow(row) && (row.status === "paid" || row.status === "seller_notified") ? (
                     row.seller_label_url ? (
-                      <>
+                      <div className={styles.listRowActions}>
                         <a className={styles.payBtn} href={row.seller_label_url} target="_blank" rel="noreferrer">
-                          Open label
+                          <span className={styles.btnLabelLong}>Open label</span>
+                          <span className={styles.btnLabelShort}>Label</span>
                         </a>
                         <button
                           type="button"
@@ -1446,18 +1447,40 @@ export function AccountPage() {
                           disabled={busyId === `ship-${row.id}`}
                           onClick={() => onMarkSellerShipped(row)}
                         >
-                          {busyId === `ship-${row.id}` ? "Saving..." : "Mark shipped"}
+                          {busyId === `ship-${row.id}` ? (
+                            <>
+                              <span className={styles.btnLabelLong}>Saving...</span>
+                              <span className={styles.btnLabelShort}>...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={styles.btnLabelLong}>Mark shipped</span>
+                              <span className={styles.btnLabelShort}>Shipped</span>
+                            </>
+                          )}
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <button
-                        type="button"
-                        className={styles.payBtn}
-                        disabled={busyId === `label-${row.id}`}
-                        onClick={() => onCreateSellerLabel(row)}
-                      >
-                        {busyId === `label-${row.id}` ? "Creating..." : "Create label"}
-                      </button>
+                      <div className={styles.listRowActions}>
+                        <button
+                          type="button"
+                          className={styles.payBtn}
+                          disabled={busyId === `label-${row.id}`}
+                          onClick={() => onCreateSellerLabel(row)}
+                        >
+                          {busyId === `label-${row.id}` ? (
+                            <>
+                              <span className={styles.btnLabelLong}>Creating...</span>
+                              <span className={styles.btnLabelShort}>...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={styles.btnLabelLong}>Create label</span>
+                              <span className={styles.btnLabelShort}>Label</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )
                   ) : null}
                   {rowErrors[row.id] ? <p className={styles.warn}>{rowErrors[row.id]}</p> : null}

@@ -786,8 +786,21 @@
 }
 
 .listRow > .payBtn,
-.listRow > .ghostBtn {
+.listRow > .ghostBtn,
+.listRow > .listRowActions {
   justify-self: end;
+}
+
+.listRowActions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.listRowActions .btnLabelShort {
+  display: none;
 }
 
 @media (max-width: 679px) {
@@ -805,6 +818,28 @@
   .listRow > .ghostBtn {
     width: 100%;
     justify-self: stretch;
+  }
+
+  .listRow > .listRowActions {
+    grid-column: 2;
+    max-width: 100%;
+    justify-self: end;
+  }
+
+  .listRowActions .payBtn,
+  .listRowActions .ghostBtn {
+    min-height: 1.85rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+    border-radius: 8px;
+  }
+
+  .listRowActions .btnLabelLong {
+    display: none;
+  }
+
+  .listRowActions .btnLabelShort {
+    display: inline;
   }
 }
 
