@@ -20,7 +20,7 @@ end;
 $$;
 
 comment on function public.cleanup_old_user_notifications(interval) is
-  'Removes user_notifications older than the retention window. Called by pg_cron weekly.';
+  'Removes user_notifications older than the retention window. pg_cron weekly or cleanup-pending-trades with purge_notifications.';
 
 revoke all on function public.cleanup_old_user_notifications(interval) from public;
 
