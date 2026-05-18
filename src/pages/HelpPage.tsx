@@ -8,23 +8,30 @@ export function HelpPage() {
       <section className={styles.section}>
         <h2 className={styles.h2}>Buying</h2>
         <p className={styles.p}>
-          Everyone shops as a buyer. Sign in to place bids or buy from peers. Your <Link to="/account">account</Link>{" "}
-          shows bids and trades. Peer buys stay in <strong>pending payment</strong> until you wire payments.
+          Sign in to place bids or buy a peer&apos;s lowest ask on any product page. When you reserve a listing or match
+          a bid, you&apos;ll complete payment in <strong>Stripe Checkout</strong> (card). Until payment succeeds, the
+          trade stays in <strong>pending payment</strong> and the listing stays reserved for about 30 minutes.
+        </p>
+        <p className={styles.p}>
+          After payment, EXCH. holds funds while the seller ships to us for verification, then we ship to you. Track
+          progress in your <Link to="/account">account</Link> or on the trade detail page.
         </p>
       </section>
       <section className={styles.section}>
         <h2 className={styles.h2}>Selling & bids</h2>
         <p className={styles.p}>
-          Same login as buying: open any product&apos;s <strong>Sell</strong> tab to post an ask. No separate seller
-          account — see <Link to="/sell">Sell</Link> and your <Link to="/account">account</Link> for active listings.
+          Use the same login as buying: open any product&apos;s <strong>Sell</strong> tab to post an ask with photos
+          and condition details. Connect Stripe on your <Link to="/account">account</Link> before payouts can be
+          released. See <Link to="/sell">Sell</Link> for listing tips and <Link to="/legal/fees">fees</Link> for
+          marketplace and processing charges.
         </p>
       </section>
       <section className={styles.section}>
-        <h2 className={styles.h2}>Catalog tags</h2>
+        <h2 className={styles.h2}>Market data on product pages</h2>
         <p className={styles.p}>
-          Tag rows in <code className={styles.code}>catalog_products</code> (or the bundled seed) with <code className={styles.code}>dept-men</code>,{" "}
-          <code className={styles.code}>dept-women</code>, <code className={styles.code}>dept-kids</code>, or{" "}
-          <code className={styles.code}>dept-accessories</code> so department pages stay accurate.
+          Lowest ask, highest bid, last sale, and the order book show <strong>live peer activity</strong> only — there
+          is no placeholder depth. If a size has no asks or bids yet, those fields show a dash until someone lists or
+          bids.
         </p>
       </section>
       <p className={styles.p}>

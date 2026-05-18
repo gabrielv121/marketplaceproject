@@ -1,12 +1,14 @@
 import { ProductCard } from "@/components/ProductCard";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { useProductFavorites } from "@/hooks/useProductFavorites";
+import { useProductLastSales } from "@/hooks/useProductLastSales";
 import styles from "./ProductRail.module.css";
 
 type Props = { products: CatalogProductSummary[] };
 
 export function ProductRail({ products }: Props) {
   const { favoriteHandles, favoriteBusyHandle, onToggleFavorite } = useProductFavorites();
+  const lastSalesByHandle = useProductLastSales(products.map((p) => p.handle));
   if (!products.length) return null;
   return (
     <ul className={styles.rail}>
@@ -15,6 +17,7 @@ export function ProductRail({ products }: Props) {
           <ProductCard
             product={p}
             visual="stockx"
+            lastSale={lastSalesByHandle.get(p.handle) ?? null}
             favorite={favoriteHandles.has(p.handle)}
             favoriteBusy={favoriteBusyHandle === p.handle}
             onToggleFavorite={onToggleFavorite}

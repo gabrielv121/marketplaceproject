@@ -4,7 +4,6 @@ import { BackButton } from "@/components/BackButton";
 import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
 import { fetchMyBids, fetchMyProfile, type MyBidRow } from "@/lib/account-data";
-import { buildMockOrderBook, buildMockSizeRows } from "@/lib/orderbook-mock";
 import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
 import {
@@ -175,7 +174,6 @@ export function ProductPage() {
 
   const currency = product?.priceRange.currency ?? "USD";
   const p2p = isP2pConfigured();
-  const canUseMockMarket = !product?.tags?.includes("kicksdb");
 
   useEffect(() => {
     if (!user || !p2p) {
@@ -197,25 +195,21 @@ export function ProductPage() {
 
   const sizeRows: SizeRow[] = useMemo(() => {
     if (!product) return [];
-    const mockRows = canUseMockMarket ? buildMockSizeRows(product.handle, currency) : [];
-    return product.variants.map((v, i) => {
-      const mockRow = mockRows.find((r) => r.label === v.title) ?? mockRows[i % mockRows.length] ?? mockRows[0];
+    return product.variants.map((v) => {
       const low = lowestListingForSize(listings, v.title);
       const high = highestBidForSize(bids, v.title);
       const lastP2p = lastSaleForSize(sales, v.title);
       return {
         id: v.id,
         label: v.title,
-        lowestAsk: p2p && low ? moneyFromCents(low.price_cents, low.currency) : canUseMockMarket ? (mockRow?.lowestAsk ?? null) : null,
-        highestBid:
-          p2p && high ? moneyFromCents(high.max_price_cents, high.currency) : canUseMockMarket ? (mockRow?.highestBid ?? null) : null,
-        lastSale: p2p ? lastP2p : canUseMockMarket ? (mockRow?.lastSale ?? null) : null,
+        lowestAsk: p2p && low ? moneyFromCents(low.price_cents, low.currency) : null,
+        highestBid: p2p && high ? moneyFromCents(high.max_price_cents, high.currency) : null,
+        lastSale: p2p ? lastP2p : null,
       };
     });
-  }, [product, currency, listings, bids, sales, p2p, canUseMockMarket]);
+  }, [product, listings, bids, sales, p2p]);
 
   const selectedRow = sizeRows.find((r) => r.id === selectedVariantId) ?? sizeRows[0];
-  const lowestAskNum = selectedRow?.lowestAsk ? Number(selectedRow.lowestAsk.amount) : 0;
 
   const sellPayoutEstimate = useMemo(() => {
     const cents = parseToCents(sellPrice);
@@ -245,17 +239,12 @@ export function ProductPage() {
   }, [p2p, listings, sizeRows, selectedRow, selectedVariantId]);
 
   const book = useMemo(() => {
-    if (!selectedRow) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };
-    if (p2p) {
-      return {
-        asks: aggregateListingsToAsks(listings, selectedRow.label),
-        bids: aggregateBidsToBook(bids, selectedRow.label),
-      };
-    }
-    if (!canUseMockMarket) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };
-    if (!lowestAskNum) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };
-    return buildMockOrderBook(lowestAskNum, currency);
-  }, [p2p, listings, bids, selectedRow, lowestAskNum, currency, canUseMockMarket]);
+    if (!selectedRow || !p2p) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };
+    return {
+      asks: aggregateListingsToAsks(listings, selectedRow.label),
+      bids: aggregateBidsToBook(bids, selectedRow.label),
+    };
+  }, [p2p, listings, bids, selectedRow]);
 
   const lowestPeerListing =
     p2p && selectedRow ? lowestListingForSize(listings, selectedRow.label) : null;

@@ -11,6 +11,8 @@ type Props = {
   product: CatalogProductSummary;
   /** StockX-style home tile: light well, lowest ask row, optional last sale */
   visual?: "default" | "stockx";
+  /** Real P2P last sale when available; omit to hide the last-sale row */
+  lastSale?: Money | null;
   favorite?: boolean;
   favoriteBusy?: boolean;
   onToggleFavorite?: (productHandle: string, next: boolean) => void;
@@ -20,13 +22,6 @@ function hashString(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
   return Math.abs(h);
-}
-
-function mockLastSale(p: CatalogProductSummary): Money {
-  const low = Number(p.priceRange.min);
-  const delta = hashString(p.handle) % 28;
-  const n = Math.max(1, Math.round(low - 4 - delta * 0.35));
-  return { amount: String(n), currencyCode: p.priceRange.currency };
 }
 
 function FavoriteButton({
@@ -64,6 +59,7 @@ function FavoriteButton({
 export function ProductCard({
   product,
   visual = "default",
+  lastSale = null,
   favorite = false,
   favoriteBusy = false,
   onToggleFavorite,
@@ -75,7 +71,6 @@ export function ProductCard({
   };
   const dept = product.departmentSlug ? getDepartmentBySlug(product.departmentSlug) : undefined;
   const showXpress = hashString(product.id + product.handle) % 3 !== 0;
-  const last = mockLastSale(product);
 
   if (visual === "stockx") {
     return (
@@ -98,7 +93,7 @@ export function ProductCard({
             {product.brand ? <p className={styles.brandStockx}>{product.brand}</p> : null}
             <p className={styles.askLabel}>Lowest ask</p>
             <p className={styles.priceStockx}>{formatMoney(low)}</p>
-            <p className={styles.lastSale}>Last Sale: {formatMoney(last)}</p>
+            {lastSale ? <p className={styles.lastSale}>Last Sale: {formatMoney(lastSale)}</p> : null}
             {showXpress ? (
               <p className={styles.xpress}>
                 <span className={styles.xpressIcon} aria-hidden>

@@ -338,6 +338,31 @@ export function lastSaleForSize(sales: RecentSaleRow[], sizeLabel: string): Mone
   return hit ? moneyFromCents(hit.price_cents, hit.currency) : null;
 }
 
+/** Most recent completed sale for a product (any size), for catalog tiles. */
+export function latestProductSale(sales: RecentSaleRow[]): Money | null {
+  if (!sales.length) return null;
+  const hit = [...sales].sort(
+    (a, b) => new Date(b.sold_at).getTime() - new Date(a.sold_at).getTime(),
+  )[0];
+  return moneyFromCents(hit.price_cents, hit.currency);
+}
+
+export async function fetchLatestSalesByHandle(handles: string[]): Promise<Map<string, Money | null>> {
+  const unique = [...new Set(handles.filter(Boolean))];
+  if (!unique.length) return new Map();
+  const entries = await Promise.all(
+    unique.map(async (handle) => {
+      try {
+        const sales = await rpcListRecentSales(handle);
+        return [handle, latestProductSale(sales)] as const;
+      } catch {
+        return [handle, null] as const;
+      }
+    }),
+  );
+  return new Map(entries);
+}
+
 export function aggregateListingsToAsks(listings: ActiveListingRow[], sizeLabel: string): BookEntry[] {
   const subset = listings.filter((l) => l.size_label === sizeLabel);
   const levels = new Map<number, number>();
