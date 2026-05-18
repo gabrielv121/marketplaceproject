@@ -229,6 +229,74 @@
   font-weight: 700;
 }
 
+.payoutEstimate {
+  margin: 0 0 1rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.payoutEstimateTitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.payoutEstimateRows {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.payoutEstimateRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.payoutEstimateRow dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.payoutEstimateRow dd {
+  margin: 0;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.payoutEstimateNet {
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.payoutEstimateNet dt,
+.payoutEstimateNet dd {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.payoutEstimateNet dd {
+  color: var(--accent);
+  font-size: 1.05rem;
+}
+
+.payoutEstimateNote {
+  margin: 0.65rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .row {
   display: flex;
   justify-content: space-between;

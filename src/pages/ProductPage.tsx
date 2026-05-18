@@ -8,6 +8,10 @@ import { buildMockOrderBook, buildMockSizeRows } from "@/lib/orderbook-mock";
 import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
 import {
+  estimateSellerPayout,
+  sellerFeePercentLabel,
+} from "@/lib/seller-payout-estimate";
+import {
   aggregateBidsToBook,
   aggregateListingsToAsks,
   highestBidForSize,
@@ -212,6 +216,12 @@ export function ProductPage() {
 
   const selectedRow = sizeRows.find((r) => r.id === selectedVariantId) ?? sizeRows[0];
   const lowestAskNum = selectedRow?.lowestAsk ? Number(selectedRow.lowestAsk.amount) : 0;
+
+  const sellPayoutEstimate = useMemo(() => {
+    const cents = parseToCents(sellPrice);
+    if (cents == null) return null;
+    return estimateSellerPayout(cents, currency);
+  }, [sellPrice, currency]);
 
   const photoPreviews = useMemo(
     () => listingPhotos.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
@@ -658,6 +668,33 @@ export function ProductPage() {
                   Original box included
                 </label>
               </div>
+              {sellPayoutEstimate ? (
+                <div className={styles.payoutEstimate} aria-live="polite">
+                  <p className={styles.payoutEstimateTitle}>Estimated payout if this sells</p>
+                  <dl className={styles.payoutEstimateRows}>
+                    <div className={styles.payoutEstimateRow}>
+                      <dt>Your ask</dt>
+                      <dd>{formatMoney(sellPayoutEstimate.ask)}</dd>
+                    </div>
+                    <div className={styles.payoutEstimateRow}>
+                      <dt>EXCH. fee ({sellerFeePercentLabel(sellPayoutEstimate.feeBps)})</dt>
+                      <dd>−{formatMoney(sellPayoutEstimate.fee)}</dd>
+                    </div>
+                    <div className={styles.payoutEstimateRow}>
+                      <dt>Prepaid ship to EXCH. (est.)</dt>
+                      <dd>−{formatMoney(sellPayoutEstimate.inboundLabel)}</dd>
+                    </div>
+                    <div className={`${styles.payoutEstimateRow} ${styles.payoutEstimateNet}`}>
+                      <dt>Est. net payout</dt>
+                      <dd>{formatMoney(sellPayoutEstimate.net)}</dd>
+                    </div>
+                  </dl>
+                  <p className={styles.payoutEstimateNote}>
+                    Final payout uses the real prepaid label cost when you ship. Buyers pay item price, processing
+                    fee, and delivery shipping on top of your ask.
+                  </p>
+                </div>
+              ) : null}
               <label className={styles.field}>
                 <span className={styles.k}>Photos</span>
                 <input
