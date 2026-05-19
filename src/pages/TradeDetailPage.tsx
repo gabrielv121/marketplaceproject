@@ -352,7 +352,6 @@ export function TradeDetailPage() {
   const canOpenSellerLabel =
     Boolean(trade.seller_label_url) && (trade.role === "seller" || trade.access === "admin");
   const canOpenBuyerLabel = trade.access === "admin" && Boolean(trade.buyer_label_url);
-  const showBuyerLabelDetails = trade.access === "admin";
 
   return (
     <div className={styles.page}>
@@ -509,24 +508,50 @@ export function TradeDetailPage() {
           </div>
         </div>
         <div className={styles.detailGrid}>
-          <span>
-            Seller label
-            <strong>{trade.seller_label_carrier ?? trade.seller_label_service ?? (trade.seller_label_url ? "Created" : "Not created")}</strong>
-          </span>
-          <span>
-            Seller tracking
-            <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
-          </span>
-          {showBuyerLabelDetails ? (
+          {trade.access === "admin" ? (
+            <>
+              <span>
+                Seller label
+                <strong>
+                  {trade.seller_label_carrier ?? trade.seller_label_service ?? (trade.seller_label_url ? "Created" : "Not created")}
+                </strong>
+              </span>
+              <span>
+                Seller tracking (to EXCH.)
+                <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
+              </span>
+              <span>
+                Buyer label
+                <strong>
+                  {trade.buyer_label_carrier ?? trade.buyer_label_service ?? (trade.buyer_label_url ? "Created" : "Not created")}
+                </strong>
+              </span>
+              <span>
+                Buyer tracking (to buyer)
+                <strong>{trade.buyer_tracking_number ?? "Not set"}</strong>
+              </span>
+            </>
+          ) : null}
+          {trade.role === "seller" ? (
+            <>
+              <span>
+                Prepaid label
+                <strong>
+                  {trade.seller_label_carrier ?? trade.seller_label_service ?? (trade.seller_label_url ? "Created" : "Not created")}
+                </strong>
+              </span>
+              <span>
+                Your tracking to EXCH.
+                <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
+              </span>
+            </>
+          ) : null}
+          {trade.role === "buyer" ? (
             <span>
-              Buyer label
-              <strong>{trade.buyer_label_carrier ?? trade.buyer_label_service ?? (trade.buyer_label_url ? "Created" : "Not created")}</strong>
+              Your tracking
+              <strong>{trade.buyer_tracking_number ?? "Not set"}</strong>
             </span>
           ) : null}
-          <span>
-            {trade.role === "buyer" ? "Your tracking" : "Buyer tracking"}
-            <strong>{trade.buyer_tracking_number ?? "Not set"}</strong>
-          </span>
         </div>
         <p className={styles.addressLine}>{shippingAddressLine(trade)}</p>
       </section>

@@ -68,6 +68,7 @@ export type MyTradeRow = {
   seller_label_carrier?: string | null;
   seller_label_service?: string | null;
   seller_tracking_number?: string | null;
+  buyer_tracking_number?: string | null;
   paid_at?: string | null;
   seller_shipped_at?: string | null;
   received_by_exch_at?: string | null;

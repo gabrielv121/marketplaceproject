@@ -27,6 +27,7 @@ export function redactTradeForParticipant(row: TradeDetailRow): TradeDetailRow {
       buyer_shipping_state: null,
       buyer_shipping_postal_code: null,
       buyer_shipping_country: null,
+      buyer_tracking_number: null,
       stripe_checkout_session_id: null,
     };
   }
@@ -34,6 +35,9 @@ export function redactTradeForParticipant(row: TradeDetailRow): TradeDetailRow {
   return {
     ...base,
     seller_label_url: null,
+    seller_label_carrier: null,
+    seller_label_service: null,
+    seller_tracking_number: null,
     seller_inbound_label_cents: null,
     seller_fee_cents: null,
     seller_net_payout_cents: null,

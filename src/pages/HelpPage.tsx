@@ -30,8 +30,8 @@ export function HelpPage() {
         <h2 className={styles.h2}>Privacy between buyers and sellers</h2>
         <p className={styles.p}>
           You deal with <strong>EXCH.</strong>, not the other person directly. Buyers and sellers do not see each
-          other&apos;s name, email, phone, or home address in the app. Delivery and payouts are handled through EXCH.
-          verification and Stripe.
+          other&apos;s name, email, phone, or home address in the app. Each side only sees their own tracking number
+          (seller: ship-to-EXCH., buyer: EXCH.-to-you). Delivery and payouts are handled through EXCH. verification and Stripe.
         </p>
       </section>
       <section className={styles.section}>
