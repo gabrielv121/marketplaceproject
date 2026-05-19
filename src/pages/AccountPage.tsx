@@ -257,7 +257,7 @@ function StatusTimeline({ row, role }: { row: MyTradeRow; role: TimelineRole }) 
 }
 
 function isTradeRow(row: MyListingRow | MyTradeRow): row is MyTradeRow {
-  return "buyer_id" in row && "seller_id" in row;
+  return "role" in row;
 }
 
 function countryCode(country: string): string {

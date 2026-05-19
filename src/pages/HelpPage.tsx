@@ -27,6 +27,14 @@ export function HelpPage() {
         </p>
       </section>
       <section className={styles.section}>
+        <h2 className={styles.h2}>Privacy between buyers and sellers</h2>
+        <p className={styles.p}>
+          You deal with <strong>EXCH.</strong>, not the other person directly. Buyers and sellers do not see each
+          other&apos;s name, email, phone, or home address in the app. Delivery and payouts are handled through EXCH.
+          verification and Stripe.
+        </p>
+      </section>
+      <section className={styles.section}>
         <h2 className={styles.h2}>Market data on product pages</h2>
         <p className={styles.p}>
           Lowest ask, highest bid, last sale, and the order book show <strong>live peer activity</strong> only — there

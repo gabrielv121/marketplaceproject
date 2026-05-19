@@ -52,8 +52,6 @@ export type MyBidRow = {
 export type MyTradeRow = {
   id: string;
   created_at: string;
-  buyer_id: string;
-  seller_id: string;
   product_handle: string;
   size_label: string;
   price_cents: number;
@@ -180,15 +178,7 @@ export async function fetchMyTrades(): Promise<MyTradeRow[]> {
   if (!sb) return [];
   const { data: auth, error: authErr } = await sb.auth.getUser();
   if (authErr || !auth.user) return [];
-  const uid = auth.user.id;
-  const { data, error } = await sb
-    .from("p2p_trades")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { data, error } = await sb.rpc("list_my_trades");
   if (error) throw error;
-  const rows = (data ?? []) as Omit<MyTradeRow, "role">[];
-  return rows.map((r) => ({
-    ...r,
-    role: r.buyer_id === uid ? "buyer" : "seller",
-  }));
+  return (data ?? []) as MyTradeRow[];
 }

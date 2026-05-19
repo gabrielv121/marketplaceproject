@@ -1,6 +1,7 @@
 import { fetchAdminVerificationTrades, type AdminVerificationTrade } from "@/lib/admin-verification";
 import type { MyTradeRow } from "@/lib/account-data";
 import { getSupabase } from "@/lib/supabase";
+import { parseParticipantTradeDetail, redactTradeForParticipant } from "@/lib/trade-privacy";
 
 export type TradeDetailRole = "buyer" | "seller" | "admin";
 export type TradeDetailAccess = "participant" | "admin";
@@ -8,6 +9,9 @@ export type TradeDetailAccess = "participant" | "admin";
 export type TradeDetailRow = Omit<MyTradeRow, "role"> & {
   role: TradeDetailRole;
   access: TradeDetailAccess;
+  /** Admin dashboard only — never shown to the other participant. */
+  buyer_id?: string;
+  seller_id?: string;
   buyer_email?: string | null;
   seller_email?: string | null;
   seller_ship_by?: string | null;
@@ -38,13 +42,12 @@ function roleForUser(row: { buyer_id: string; seller_id: string }, userId: strin
 
 /** Outbound EXCH→buyer labels are admin-only; never expose the printable URL to participants. */
 function redactParticipantTrade(row: TradeDetailRow): TradeDetailRow {
-  if (row.access === "admin") return row;
-  return {
+  return redactTradeForParticipant({
     ...row,
-    buyer_label_url: null,
-    buyer_label_carrier: null,
-    buyer_label_service: null,
-  };
+    buyer_label_url: row.access === "admin" ? row.buyer_label_url : null,
+    buyer_label_carrier: row.access === "admin" ? row.buyer_label_carrier : null,
+    buyer_label_service: row.access === "admin" ? row.buyer_label_service : null,
+  });
 }
 
 function fromAdminRow(row: AdminVerificationTrade, userId: string): TradeDetailRow {
@@ -63,14 +66,14 @@ export async function fetchTradeDetail(tradeId: string): Promise<TradeDetailRow>
   const { data: auth, error: authError } = await sb.auth.getUser();
   if (authError || !auth.user) throw new Error("Sign in required");
 
-  const { data, error } = await sb.from("p2p_trades").select("*").eq("id", tradeId).maybeSingle();
+  const { data, error } = await sb.rpc("get_trade_for_participant", { p_trade_id: tradeId });
   if (error) throw error;
 
   if (data) {
-    const row = data as Omit<MyTradeRow, "role">;
+    const parsed = parseParticipantTradeDetail(data);
     return redactParticipantTrade({
-      ...row,
-      role: roleForUser(row, auth.user.id),
+      ...parsed,
+      role: parsed.role,
       access: "participant",
     });
   }

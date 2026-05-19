@@ -139,7 +139,17 @@ function addressSummary(row: TradeDetailRow): string {
     [row.buyer_shipping_city, row.buyer_shipping_state, row.buyer_shipping_postal_code].filter(Boolean).join(", "),
     row.buyer_shipping_country,
   ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "Buyer shipping address not captured yet.";
+  return parts.length ? parts.join(" · ") : "Delivery address not captured yet.";
+}
+
+function shippingAddressLine(row: TradeDetailRow): string {
+  if (row.role === "seller") {
+    return "Delivery to the buyer is handled by EXCH. after verification. You do not receive the buyer's personal address.";
+  }
+  if (row.access === "admin") {
+    return addressSummary(row);
+  }
+  return addressSummary(row);
 }
 
 function StatusTimeline({ row, role }: { row: TradeDetailRow; role: TradeDetailRole }) {
@@ -476,14 +486,18 @@ export function TradeDetailPage() {
             Buyer total
             <strong>{formatMoney(moneyFromCents(buyerTotalCents(trade), trade.currency))}</strong>
           </span>
-          <span>
-            Seller payout estimate
-            <strong>{formatMoney(moneyFromCents(sellerPayoutCents(trade), trade.currency))}</strong>
-          </span>
-          <span>
-            Payout status
-            <strong>{trade.stripe_transfer_id ?? trade.stripe_transfer_error ?? prettyStatus(trade.status)}</strong>
-          </span>
+          {trade.role === "seller" || trade.access === "admin" ? (
+            <span>
+              Seller payout estimate
+              <strong>{formatMoney(moneyFromCents(sellerPayoutCents(trade), trade.currency))}</strong>
+            </span>
+          ) : null}
+          {trade.role === "seller" || trade.access === "admin" ? (
+            <span>
+              Payout status
+              <strong>{trade.stripe_transfer_id ?? trade.stripe_transfer_error ?? prettyStatus(trade.status)}</strong>
+            </span>
+          ) : null}
         </div>
       </section>
 
@@ -514,7 +528,7 @@ export function TradeDetailPage() {
             <strong>{trade.buyer_tracking_number ?? "Not set"}</strong>
           </span>
         </div>
-        <p className={styles.addressLine}>{addressSummary(trade)}</p>
+        <p className={styles.addressLine}>{shippingAddressLine(trade)}</p>
       </section>
 
       {trade.verification_notes ? (
