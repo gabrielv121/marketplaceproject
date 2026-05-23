@@ -109,6 +109,12 @@ export function HomePage() {
           One account for shopping and listing. Each home row mixes brands and styles. Every order is verified by VRNA
           before delivery.
         </p>
+        <p className={styles.heroActions}>
+          <Link to="/waitlist?source=home" className={styles.waitlistBtn}>
+            Join the waitlist
+          </Link>
+          <span className={styles.heroHint}>Early access before public launch</span>
+        </p>
       </section>
 
       <section className={styles.deptSection} aria-labelledby="dept-heading">
