@@ -75,7 +75,7 @@ export function LoginPage() {
   return (
     <div className={styles.page}>
       <section className={styles.card}>
-        <p className={styles.eyebrow}>EXCH. account</p>
+        <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Sign in</h1>
         <p className={styles.lead}>
           Use your email and password to access buying, selling, bids, favorites, and payouts.
@@ -117,7 +117,7 @@ export function LoginPage() {
         {error ? <p className={`${styles.msg} ${styles.error}`}>{error}</p> : null}
 
         <p className={styles.switchAuth}>
-          New to EXCH.?{" "}
+          New to VRNA?{" "}
           <Link to={`/signup?next=${encodeURIComponent(next)}`}>
             Create an account
           </Link>

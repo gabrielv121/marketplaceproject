@@ -40,7 +40,7 @@ function roleForUser(row: { buyer_id: string; seller_id: string }, userId: strin
   return "admin";
 }
 
-/** Outbound EXCH→buyer labels are admin-only; never expose the printable URL to participants. */
+/** Outbound VRNA→buyer labels are admin-only; never expose the printable URL to participants. */
 function redactParticipantTrade(row: TradeDetailRow): TradeDetailRow {
   return redactTradeForParticipant({
     ...row,

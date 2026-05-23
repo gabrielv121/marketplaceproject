@@ -8,7 +8,7 @@ import { friendlyAuthError } from "@/lib/auth-errors";
 import styles from "./LoginPage.module.css";
 
 const SIGNUP_CONFIRM_MESSAGE =
-  "Account created. Check your inbox for a confirmation email from EXCH. (also check spam). After confirming, sign in below.";
+  "Account created. Check your inbox for a confirmation email from VRNA (also check spam). After confirming, sign in below.";
 
 export function SignupPage() {
   const location = useLocation();
@@ -91,7 +91,7 @@ export function SignupPage() {
   return (
     <div className={styles.page}>
       <section className={styles.card}>
-        <p className={styles.eyebrow}>EXCH. account</p>
+        <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Create account</h1>
         <p className={styles.lead}>Sign up to buy, sell, place bids, save favorites, and manage payouts.</p>
 

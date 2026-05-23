@@ -4,7 +4,7 @@ import styles from "./StaticPages.module.css";
 export function SellPage() {
   return (
     <article className={styles.article}>
-      <h1 className={styles.h1}>Sell on EXCH.</h1>
+      <h1 className={styles.h1}>Sell on VRNA</h1>
       <p className={styles.p}>
         Every account is a <strong>buyer</strong> first. When you want to sell, you use the same login — open any product,
         go to the <strong>Sell</strong> tab, and post an ask. There is no separate seller signup.

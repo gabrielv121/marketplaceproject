@@ -1,7 +1,7 @@
 /** Branded HTML + plain-text order emails (matches app dark theme + purple accent). */
 
 const BRAND = {
-  name: "EXCH.",
+  name: "VRNA",
   bg: "#0a0a0b",
   surface: "#141416",
   surface2: "#1c1c1f",
@@ -65,7 +65,7 @@ function productImageHtml(product: EmailProductCard): string {
   if (isSafeImageUrl(product.imageUrl)) {
     return `<img src="${escapeHtml(product.imageUrl)}" alt="${alt}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:contain;border-radius:8px;background:#1c1c1f;" />`;
   }
-  return '<div style="display:block;width:120px;height:120px;border-radius:8px;background:#1c1c1f;border:1px solid #2a2a2e;line-height:120px;text-align:center;font-size:22px;font-weight:700;color:#9d00ff;">EXCH.</div>';
+  return '<div style="display:block;width:120px;height:120px;border-radius:8px;background:#1c1c1f;border:1px solid #2a2a2e;line-height:120px;text-align:center;font-size:22px;font-weight:700;color:#9d00ff;">VRNA</div>';
 }
 
 function orderRowsHtml(rows: OrderDetailRow[]): string {

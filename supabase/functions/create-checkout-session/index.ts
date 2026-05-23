@@ -187,10 +187,10 @@ Deno.serve(async (req) => {
     .maybeSingle<CatalogProduct>();
 
   const productTitle = cleanText(catalogProduct?.title, trade.product_handle);
-  const productBrand = cleanText(catalogProduct?.brand, "EXCH.");
+  const productBrand = cleanText(catalogProduct?.brand, "VRNA");
   const productDescription = cleanText(
     catalogProduct?.description,
-    "EXCH. holds your payment while the seller ships the item to us for verification.",
+    "VRNA holds your payment while the seller ships the item to us for verification.",
   );
 
   try {
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
           shipping_rate_data: {
             type: "fixed_amount",
             fixed_amount: { amount: buyerShippingCents, currency },
-            display_name: "EXCH. verified delivery",
+            display_name: "VRNA verified delivery",
             delivery_estimate: {
               minimum: { unit: "business_day", value: 5 },
               maximum: { unit: "business_day", value: 10 },
@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
       },
       custom_text: {
         shipping_address: {
-          message: "Ship-to address is used after EXCH. verifies the item.",
+          message: "Ship-to address is used after VRNA verifies the item.",
         },
         submit: {
           message:

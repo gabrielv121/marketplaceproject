@@ -26,20 +26,20 @@ type TimelineStep = {
 type TimelineState = "done" | "current" | "upcoming" | "failed";
 
 const BUYER_TIMELINE: TimelineStep[] = [
-  { key: "seller_notified", label: "Paid", detail: "EXCH. is holding your payment.", date: "paid_at" },
-  { key: "seller_shipped_to_exch", label: "Seller shipped", detail: "Seller is sending the item to EXCH.", date: "seller_shipped_at" },
-  { key: "received_by_exch", label: "Received by EXCH.", detail: "The item arrived for inspection.", date: "received_by_exch_at" },
+  { key: "seller_notified", label: "Paid", detail: "VRNA is holding your payment.", date: "paid_at" },
+  { key: "seller_shipped_to_exch", label: "Seller shipped", detail: "Seller is sending the item to VRNA", date: "seller_shipped_at" },
+  { key: "received_by_exch", label: "Received by VRNA", detail: "The item arrived for inspection.", date: "received_by_exch_at" },
   { key: "verification_passed", label: "Verified", detail: "Authenticity and condition passed.", date: "verified_at" },
-  { key: "shipped_to_buyer", label: "On the way", detail: "EXCH. shipped the item to you.", date: "shipped_to_buyer_at" },
+  { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
 ];
 
 const SELLER_TIMELINE: TimelineStep[] = [
-  { key: "seller_notified", label: "Sale paid", detail: "Buyer payment is held by EXCH.", date: "paid_at" },
-  { key: "seller_shipped_to_exch", label: "Ship to EXCH.", detail: "Send your item with the prepaid label.", date: "seller_shipped_at" },
-  { key: "received_by_exch", label: "EXCH. received", detail: "We have the item for verification.", date: "received_by_exch_at" },
+  { key: "seller_notified", label: "Sale paid", detail: "Buyer payment is held by VRNA", date: "paid_at" },
+  { key: "seller_shipped_to_exch", label: "Ship to VRNA", detail: "Send your item with the prepaid label.", date: "seller_shipped_at" },
+  { key: "received_by_exch", label: "VRNA received", detail: "We have the item for verification.", date: "received_by_exch_at" },
   { key: "verification_passed", label: "Verified", detail: "Item passed verification.", date: "verified_at" },
-  { key: "shipped_to_buyer", label: "Sent to buyer", detail: "EXCH. shipped the item to the buyer.", date: "shipped_to_buyer_at" },
+  { key: "shipped_to_buyer", label: "Sent to buyer", detail: "VRNA shipped the item to the buyer.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "Buyer delivery confirmed.", date: "delivered_to_buyer_at" },
   { key: "payout_available", label: "Payout available", detail: "Seller payout can be released.", date: "payout_available_at" },
   { key: "payout_paid", label: "Paid out", detail: "Payout was sent to your Stripe account.", date: "payout_paid_at" },
@@ -144,7 +144,7 @@ function addressSummary(row: TradeDetailRow): string {
 
 function shippingAddressLine(row: TradeDetailRow): string {
   if (row.role === "seller") {
-    return "Delivery to the buyer is handled by EXCH. after verification. You do not receive the buyer's personal address.";
+    return "Delivery to the buyer is handled by VRNA after verification. You do not receive the buyer's personal address.";
   }
   if (row.access === "admin") {
     return addressSummary(row);
@@ -173,7 +173,7 @@ function StatusTimeline({ row, role }: { row: TradeDetailRow; role: TradeDetailR
           <span className={styles.timelineDot} aria-hidden />
           <span>
             <strong>Verification failed</strong>
-            <small>EXCH. will handle the refund/return process.</small>
+            <small>VRNA will handle the refund/return process.</small>
           </span>
         </li>
       ) : null}
@@ -182,7 +182,7 @@ function StatusTimeline({ row, role }: { row: TradeDetailRow; role: TradeDetailR
           <span className={styles.timelineDot} aria-hidden />
           <span>
             <strong>Payout failed</strong>
-            <small>EXCH. will retry or contact the seller.</small>
+            <small>VRNA will retry or contact the seller.</small>
           </span>
         </li>
       ) : null}
@@ -273,7 +273,7 @@ export function TradeDetailPage() {
     setError(null);
     void rpcSellerMarkTradeShipped(trade.id)
       .then(() => {
-        setNotice("Marked shipped to EXCH. The trade will update again when the item is received.");
+        setNotice("Marked shipped to VRNA The trade will update again when the item is received.");
         void refresh();
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not mark item shipped"))
@@ -363,7 +363,7 @@ export function TradeDetailPage() {
           {product && resolveFeaturedImageUrl(product) ? (
             <CatalogProductImage product={product} className={styles.productImage} loading="eager" />
           ) : (
-            <span className={styles.productPlaceholder}>EX</span>
+            <span className={styles.productPlaceholder}>VR</span>
           )}
         </div>
         <div>
@@ -423,7 +423,7 @@ export function TradeDetailPage() {
             ) : null}
             {canMarkSellerShipped ? (
               <button type="button" className={styles.ghostBtn} disabled={busy === "seller-shipped"} onClick={onMarkSellerShipped}>
-                {busy === "seller-shipped" ? "Saving..." : "Mark shipped to EXCH."}
+                {busy === "seller-shipped" ? "Saving..." : "Mark shipped to VRNA"}
               </button>
             ) : null}
             {canOpenBuyerLabel ? (
@@ -517,7 +517,7 @@ export function TradeDetailPage() {
                 </strong>
               </span>
               <span>
-                Seller tracking (to EXCH.)
+                Seller tracking (to VRNA)
                 <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
               </span>
               <span>
@@ -541,7 +541,7 @@ export function TradeDetailPage() {
                 </strong>
               </span>
               <span>
-                Your tracking to EXCH.
+                Your tracking to VRNA
                 <strong>{trade.seller_tracking_number ?? "Not set"}</strong>
               </span>
             </>

@@ -50,9 +50,9 @@ function templateForAction(
   switch (action) {
     case "signup":
       return {
-        subject: "Confirm your EXCH. account",
+        subject: "Confirm your VRNA account",
         content: {
-          preheader: "Confirm your email to start buying and selling on EXCH.",
+          preheader: "Confirm your email to start buying and selling on VRNA",
           headline: "Confirm your email",
           paragraphs: [
             "Thanks for signing up. Confirm your email to access your account, place bids, and list items for sale.",
@@ -64,9 +64,9 @@ function templateForAction(
       };
     case "magiclink":
       return {
-        subject: "Sign in to EXCH.",
+        subject: "Sign in to VRNA",
         content: {
-          preheader: "Use this link to sign in to your EXCH. account.",
+          preheader: "Use this link to sign in to your VRNA account.",
           headline: "Sign in",
           paragraphs: ["Click below to sign in. This link expires soon."],
           cta: { label: "Sign in", href: verifyUrl },
@@ -76,9 +76,9 @@ function templateForAction(
       };
     case "recovery":
       return {
-        subject: "Reset your EXCH. password",
+        subject: "Reset your VRNA password",
         content: {
-          preheader: "Reset your password for EXCH.",
+          preheader: "Reset your password for VRNA",
           headline: "Reset password",
           paragraphs: ["We received a request to reset your password. If this was you, use the button below."],
           cta: { label: "Reset password", href: verifyUrl },
@@ -88,11 +88,11 @@ function templateForAction(
       };
     case "invite":
       return {
-        subject: "You're invited to EXCH.",
+        subject: "You're invited to VRNA",
         content: {
-          preheader: "Accept your invitation to join EXCH.",
+          preheader: "Accept your invitation to join VRNA",
           headline: "You're invited",
-          paragraphs: ["You've been invited to create an account on EXCH."],
+          paragraphs: ["You've been invited to create an account on VRNA"],
           cta: { label: "Accept invite", href: verifyUrl },
           otpCode: otp,
           siteUrl,
@@ -102,7 +102,7 @@ function templateForAction(
       return {
         subject: "Confirm your email change",
         content: {
-          preheader: "Confirm the email change on your EXCH. account.",
+          preheader: "Confirm the email change on your VRNA account.",
           headline: "Confirm email change",
           paragraphs: ["Confirm this change to update the email on your account."],
           cta: { label: "Confirm change", href: verifyUrl },
@@ -114,7 +114,7 @@ function templateForAction(
       return {
         subject: "Confirm it's you",
         content: {
-          preheader: "Verification code for your EXCH. account.",
+          preheader: "Verification code for your VRNA account.",
           headline: "Confirm it's you",
           paragraphs: ["Enter this code to continue with a sensitive account action."],
           otpCode: otp,
@@ -123,9 +123,9 @@ function templateForAction(
       };
     default:
       return {
-        subject: "EXCH. account notification",
+        subject: "VRNA account notification",
         content: {
-          preheader: "Notification from EXCH.",
+          preheader: "Notification from VRNA",
           headline: "Account notification",
           paragraphs: ["Follow the link below to continue."],
           cta: { label: "Continue", href: verifyUrl },

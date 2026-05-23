@@ -112,7 +112,7 @@ export function Layout() {
           >
             <div className={styles.mobileMenuTop}>
               <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
-                EXCH<span className={styles.logoAccent}>.</span>
+                VRNA
               </NavLink>
               <button
                 type="button"
@@ -151,7 +151,7 @@ export function Layout() {
       <header className={mobileMenuOpen ? `${styles.header} ${styles.headerMenuOpen}` : styles.header}>
         <div className={styles.headerBar}>
           <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
-            EXCH<span className={styles.logoAccent}>.</span>
+            VRNA
           </NavLink>
 
           <nav className={styles.desktopNav} aria-label="Main">
@@ -201,7 +201,7 @@ export function Layout() {
       </main>
       <footer className={styles.footer}>
         <p>
-          EXCH. marketplace template. P2P asks, bids, trades, and payments use Supabase and Stripe Connect.
+          VRNA marketplace template. P2P asks, bids, trades, and payments use Supabase and Stripe Connect.
         </p>
         <nav className={styles.footerLinks} aria-label="Legal">
           <Link to="/legal">Legal</Link>

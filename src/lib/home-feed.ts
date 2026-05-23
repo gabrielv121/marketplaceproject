@@ -27,7 +27,7 @@ export type HomeRailSlug =
   | "popular-local"
   | "below-retail"
   | "featured-accessories"
-  | "new-at-exch";
+  | "new-at-vrna";
 
 function parseTagsForHome(tags: string[]): { rails: string[]; activities: string[] } {
   const rails: string[] = [];
@@ -504,7 +504,10 @@ export function resolveRecentProducts(all: CatalogProductSummary[], recent: { ha
 }
 
 export function pickNewAtExch(products: CatalogProductSummary[], limit: number, excludeHandles: string[] = []): CatalogProductSummary[] {
-  const tagged = products.filter((p) => (p.homeRails ?? []).includes("new-at-exch"));
+  const tagged = products.filter((p) => {
+    const rails = p.homeRails ?? [];
+    return rails.includes("new-at-vrna") || rails.includes("new-at-exch");
+  });
   const taggedHandles = new Set(tagged.map((p) => p.handle));
   const rest = products.filter((p) => !taggedHandles.has(p.handle));
   return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);

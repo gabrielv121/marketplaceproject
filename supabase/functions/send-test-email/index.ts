@@ -92,9 +92,9 @@ Deno.serve(async (req) => {
 
     const send = await sendTransactionalEmail({
       to,
-      subject: "EXCH. test email",
-      html: "<p>This is a test email from your EXCH. Supabase Edge Function.</p>",
-      text: "This is a test email from your EXCH. Supabase Edge Function.",
+      subject: "VRNA test email",
+      html: "<p>This is a test email from your VRNA Supabase Edge Function.</p>",
+      text: "This is a test email from your VRNA Supabase Edge Function.",
     });
 
     const auth_hint = failureHintForResult(send, emailEnvDiagnostics());

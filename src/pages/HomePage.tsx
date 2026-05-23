@@ -103,7 +103,7 @@ export function HomePage() {
   return (
     <div>
       <section className={styles.hero}>
-        <p className={styles.kicker}>EXCH.</p>
+        <p className={styles.kicker}>VRNA</p>
         <h1 className={styles.h1}>Buy first. Sell anytime.</h1>
         <p className={styles.lead}>
           One account for shopping and listing. Each home row mixes brands and styles — not the same label six times.
@@ -277,9 +277,9 @@ export function HomePage() {
 
           <HomeSection
             variant="market"
-            title="New at EXCH."
+            title="New at VRNA"
             subtitle="Fresh drops on the marketplace."
-            titleInfo="Uses home-new-at-exch tags when set; otherwise fills from newest picks."
+            titleInfo="Uses home-new-at-vrna tags when set; otherwise fills from newest picks."
             action={{ label: "See all →", to: "/new" }}
           >
             <ProductGrid products={rails.newAt} layout="homeSix" />

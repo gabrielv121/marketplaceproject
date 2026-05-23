@@ -34,7 +34,7 @@ export function normalizeMailerSendApiKey(raw: string | undefined | null): strin
   return t;
 }
 
-/** Parses `NOTIFICATION_FROM_EMAIL` values like `EXCH. <orders@domain.com>`. */
+/** Parses `NOTIFICATION_FROM_EMAIL` values like `VRNA <orders@domain.com>`. */
 export function parseNotificationFromHeader(from: string): MailerSendFrom {
   const trimmed = from.trim();
   const match = trimmed.match(/^(.+?)\s*<([^>]+)>$/);
@@ -137,7 +137,7 @@ export function fromDomainAllowed(fromEmail: string, domains: MailerSendDomainIn
 export function suggestFromForDomains(domains: MailerSendDomainInfo[]): string | null {
   const pick = domains.find((d) => d.name.endsWith(".mlsender.net")) ?? domains[0];
   if (!pick) return null;
-  return `EXCH. <noreply@${pick.name}>`;
+  return `VRNA <noreply@${pick.name}>`;
 }
 
 export async function sendMailerSendEmail(

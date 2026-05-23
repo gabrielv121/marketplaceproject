@@ -4,9 +4,9 @@ import styles from "./StaticPages.module.css";
 export function AboutPage() {
   return (
     <article className={styles.article}>
-      <h1 className={styles.h1}>About EXCH.</h1>
+      <h1 className={styles.h1}>About VRNA</h1>
       <p className={styles.p}>
-        EXCH. is a multi-vendor marketplace starter: peer asks and bids with Supabase, catalog in{" "}
+        VRNA is a multi-vendor marketplace starter: peer asks and bids with Supabase, catalog in{" "}
         <code className={styles.code}>catalog_products</code> (or a bundled local seed), and a storefront tuned for sneakers and
         streetwear-style categories.
       </p>

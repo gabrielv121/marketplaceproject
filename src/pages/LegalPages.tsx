@@ -22,7 +22,7 @@ const LEGAL_LINKS = [
   { to: "/legal/seller-agreement", label: "Seller Agreement", desc: "Seller listing, fulfillment, payout, and conduct rules." },
   { to: "/legal/fees", label: "Fees and Payouts", desc: "Marketplace fees, Stripe fees, taxes, and payout timing." },
   { to: "/legal/shipping-returns", label: "Shipping and Returns", desc: "Shipping expectations, cancellations, and return cases." },
-  { to: "/legal/prohibited-items", label: "Prohibited Items", desc: "Items and behavior not allowed on EXCH." },
+  { to: "/legal/prohibited-items", label: "Prohibited Items", desc: "Items and behavior not allowed on VRNA" },
   { to: "/legal/accessibility", label: "Accessibility", desc: "Accessibility goals and how to report issues." },
 ];
 
@@ -30,19 +30,19 @@ const PAGES: Record<string, LegalPageContent> = {
   terms: {
     title: "Terms of Service",
     intro:
-      "These terms explain the rules for using EXCH. as a buyer, seller, or visitor. This template text should be reviewed by counsel before production use.",
+      "These terms explain the rules for using VRNA as a buyer, seller, or visitor. This template text should be reviewed by counsel before production use.",
     sections: [
       {
-        title: "Using EXCH.",
+        title: "Using VRNA",
         body: [
           "You must provide accurate account information and keep your login secure. You are responsible for activity on your account.",
-          "You may not use EXCH. for fraud, abuse, spam, scraping, interference with the service, or any activity that violates applicable law.",
+          "You may not use VRNA for fraud, abuse, spam, scraping, interference with the service, or any activity that violates applicable law.",
         ],
       },
       {
         title: "Marketplace role",
         body: [
-          "EXCH. provides marketplace tools for product discovery, listings, bids, checkout, and account management. Unless stated otherwise, EXCH. is not the seller of peer-listed items.",
+          "VRNA provides marketplace tools for product discovery, listings, bids, checkout, and account management. Unless stated otherwise, VRNA is not the seller of peer-listed items.",
           "Peer transactions may use Stripe Connect or another payment provider. Payment provider terms also apply.",
         ],
       },
@@ -65,7 +65,7 @@ const PAGES: Record<string, LegalPageContent> = {
   privacy: {
     title: "Privacy Policy",
     intro:
-      "This policy describes the categories of information EXCH. may collect and how that information is used to operate the marketplace.",
+      "This policy describes the categories of information VRNA may collect and how that information is used to operate the marketplace.",
     sections: [
       {
         title: "Information we collect",
@@ -99,7 +99,7 @@ const PAGES: Record<string, LegalPageContent> = {
   },
   cookies: {
     title: "Cookie Policy",
-    intro: "EXCH. uses cookies and browser storage to keep the app signed in, remember preferences, and improve the product.",
+    intro: "VRNA uses cookies and browser storage to keep the app signed in, remember preferences, and improve the product.",
     sections: [
       {
         title: "Types of storage",
@@ -118,19 +118,19 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Managing cookies",
         body: [
-          "You can clear cookies and local storage in your browser. Some parts of EXCH. may stop working until you sign in again.",
+          "You can clear cookies and local storage in your browser. Some parts of VRNA may stop working until you sign in again.",
         ],
       },
     ],
   },
   "buyer-protection": {
     title: "Buyer Protection",
-    intro: "Buyer protection explains the baseline expectations for peer purchases completed through EXCH.",
+    intro: "Buyer protection explains the baseline expectations for peer purchases completed through VRNA",
     sections: [
       {
         title: "Covered purchases",
         body: [
-          "Protection generally applies to eligible purchases paid through EXCH. checkout, not off-platform payments or private arrangements.",
+          "Protection generally applies to eligible purchases paid through VRNA checkout, not off-platform payments or private arrangements.",
           "The order must be associated with your signed-in account and a recorded trade.",
         ],
       },
@@ -144,7 +144,7 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Resolution",
         body: [
-          "EXCH. may request more information, hold payouts, cancel trades, issue refunds, or restrict accounts depending on the case.",
+          "VRNA may request more information, hold payouts, cancel trades, issue refunds, or restrict accounts depending on the case.",
           "Payment provider dispute rules may also apply.",
         ],
       },
@@ -152,7 +152,7 @@ const PAGES: Record<string, LegalPageContent> = {
   },
   "seller-agreement": {
     title: "Seller Agreement",
-    intro: "These seller rules apply when you list items, accept payment, and receive payouts through EXCH.",
+    intro: "These seller rules apply when you list items, accept payment, and receive payouts through VRNA",
     sections: [
       {
         title: "Seller responsibilities",
@@ -190,7 +190,7 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Seller deductions",
         body: [
-          "EXCH. charges a 9% marketplace fee on the item sale price, deducted from the seller payout before funds are released.",
+          "VRNA charges a 9% marketplace fee on the item sale price, deducted from the seller payout before funds are released.",
           "Seller payouts may also be reduced by payment processing costs, refunds, chargebacks, prepaid inbound shipping labels, adjustments, or tax withholding where applicable.",
           "Stripe Connect payout timing depends on account status, region, risk checks, and Stripe settings.",
         ],
@@ -232,7 +232,7 @@ const PAGES: Record<string, LegalPageContent> = {
   },
   "prohibited-items": {
     title: "Prohibited Items",
-    intro: "Some items and behavior are not allowed on EXCH. to keep the marketplace safe and compliant.",
+    intro: "Some items and behavior are not allowed on VRNA to keep the marketplace safe and compliant.",
     sections: [
       {
         title: "Not allowed",
@@ -244,15 +244,15 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Enforcement",
         body: [
-          "EXCH. may remove listings, cancel trades, hold payouts, restrict features, or close accounts that violate policy.",
-          "When required, EXCH. may preserve records or cooperate with payment providers, platforms, or law enforcement.",
+          "VRNA may remove listings, cancel trades, hold payouts, restrict features, or close accounts that violate policy.",
+          "When required, VRNA may preserve records or cooperate with payment providers, platforms, or law enforcement.",
         ],
       },
     ],
   },
   accessibility: {
     title: "Accessibility",
-    intro: "EXCH. aims to provide a marketplace experience that is usable by as many people as possible.",
+    intro: "VRNA aims to provide a marketplace experience that is usable by as many people as possible.",
     sections: [
       {
         title: "Our goal",
@@ -310,7 +310,7 @@ export function LegalIndexPage() {
         Policies for buyers, sellers, checkout, privacy, payouts, shipping, and marketplace safety.
       </p>
       <p className={styles.notice}>
-        These pages are starter policies for the EXCH. template. Review and customize them before launch.
+        These pages are starter policies for the VRNA template. Review and customize them before launch.
       </p>
       <div className={styles.legalGrid}>
         {LEGAL_LINKS.map((link) => (

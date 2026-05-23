@@ -142,29 +142,29 @@ const SELLER_HISTORY_STATUSES = new Set(["verification_failed", "payout_paid", "
 const SELLER_SALE_STATUSES = new Set([...BUYER_ORDER_STATUSES]);
 const SELLER_LEVEL_SALE_STEP = 10;
 const BUYER_TIMELINE: TimelineStep[] = [
-  { key: "seller_notified", label: "Paid", detail: "EXCH. is holding your payment.", date: "paid_at" },
-  { key: "seller_shipped_to_exch", label: "Seller shipped", detail: "Seller is sending the item to EXCH.", date: "seller_shipped_at" },
-  { key: "received_by_exch", label: "Received by EXCH.", detail: "The item arrived for inspection.", date: "received_by_exch_at" },
+  { key: "seller_notified", label: "Paid", detail: "VRNA is holding your payment.", date: "paid_at" },
+  { key: "seller_shipped_to_exch", label: "Seller shipped", detail: "Seller is sending the item to VRNA", date: "seller_shipped_at" },
+  { key: "received_by_exch", label: "Received by VRNA", detail: "The item arrived for inspection.", date: "received_by_exch_at" },
   { key: "verification_passed", label: "Verified", detail: "Authenticity and condition passed.", date: "verified_at" },
-  { key: "shipped_to_buyer", label: "On the way", detail: "EXCH. shipped the item to you.", date: "shipped_to_buyer_at" },
+  { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
 ];
 const SELLER_TIMELINE: TimelineStep[] = [
-  { key: "seller_notified", label: "Sale paid", detail: "Buyer payment is held by EXCH.", date: "paid_at" },
-  { key: "seller_shipped_to_exch", label: "Ship to EXCH.", detail: "Send your item with the prepaid label.", date: "seller_shipped_at" },
-  { key: "received_by_exch", label: "EXCH. received", detail: "We have the item for verification.", date: "received_by_exch_at" },
+  { key: "seller_notified", label: "Sale paid", detail: "Buyer payment is held by VRNA", date: "paid_at" },
+  { key: "seller_shipped_to_exch", label: "Ship to VRNA", detail: "Send your item with the prepaid label.", date: "seller_shipped_at" },
+  { key: "received_by_exch", label: "VRNA received", detail: "We have the item for verification.", date: "received_by_exch_at" },
   { key: "verification_passed", label: "Verified", detail: "Item passed verification.", date: "verified_at" },
-  { key: "shipped_to_buyer", label: "Sent to buyer", detail: "EXCH. shipped the item to the buyer.", date: "shipped_to_buyer_at" },
+  { key: "shipped_to_buyer", label: "Sent to buyer", detail: "VRNA shipped the item to the buyer.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "Buyer delivery confirmed.", date: "delivered_to_buyer_at" },
   { key: "payout_available", label: "Payout available", detail: "Seller payout can be released.", date: "payout_available_at" },
   { key: "payout_paid", label: "Paid out", detail: "Payout was sent to your Stripe account.", date: "payout_paid_at" },
 ];
 
 function sellerActionCopy(status: string): string {
-  if (status === "paid" || status === "seller_notified") return "Ship this item to EXCH. for verification.";
-  if (status === "seller_shipped_to_exch") return "Waiting for EXCH. to receive the item.";
-  if (status === "received_by_exch") return "EXCH. is verifying authenticity and condition.";
-  if (status === "verification_passed") return "Verified. EXCH. will ship this item to the buyer.";
+  if (status === "paid" || status === "seller_notified") return "Ship this item to VRNA for verification.";
+  if (status === "seller_shipped_to_exch") return "Waiting for VRNA to receive the item.";
+  if (status === "received_by_exch") return "VRNA is verifying authenticity and condition.";
+  if (status === "verification_passed") return "Verified. VRNA will ship this item to the buyer.";
   if (status === "shipped_to_buyer") return "In transit to buyer.";
   if (status === "delivered_to_buyer") return "Delivered. Payout will become available.";
   if (status === "payout_available") return "Payout available once your payout method is ready.";
@@ -239,7 +239,7 @@ function StatusTimeline({ row, role }: { row: MyTradeRow; role: TimelineRole }) 
           <span className={styles.timelineDot} aria-hidden />
           <span>
             <strong>Verification failed</strong>
-            <small>EXCH. will handle the refund/return process.</small>
+            <small>VRNA will handle the refund/return process.</small>
           </span>
         </li>
       ) : null}
@@ -248,7 +248,7 @@ function StatusTimeline({ row, role }: { row: MyTradeRow; role: TimelineRole }) 
           <span className={styles.timelineDot} aria-hidden />
           <span>
             <strong>Payout failed</strong>
-            <small>EXCH. will retry or contact the seller.</small>
+            <small>VRNA will retry or contact the seller.</small>
           </span>
         </li>
       ) : null}
@@ -477,7 +477,7 @@ export function AccountPage() {
       if (checkoutSessionId) {
         void confirmCheckoutSession(checkoutSessionId)
           .then(() => {
-            setCheckoutBanner("Payment confirmed. EXCH. is holding funds while the seller ships the item to us for verification.");
+            setCheckoutBanner("Payment confirmed. VRNA is holding funds while the seller ships the item to us for verification.");
             void refresh();
           })
           .catch((e: unknown) => {
@@ -717,7 +717,7 @@ export function AccountPage() {
     setBusyId(`ship-${trade.id}`);
     void rpcSellerMarkTradeShipped(trade.id)
       .then(() => {
-        setCheckoutBanner("Marked shipped to EXCH. We will update the trade again when the item is received.");
+        setCheckoutBanner("Marked shipped to VRNA We will update the trade again when the item is received.");
         void refresh();
       })
       .catch((e: unknown) => {
@@ -1257,7 +1257,7 @@ export function AccountPage() {
             <div>
               <strong>Connect Stripe to receive seller payouts.</strong>
               <p>
-                You can keep selling, but EXCH. cannot release payouts until your Stripe Connect account is ready.
+                You can keep selling, but VRNA cannot release payouts until your Stripe Connect account is ready.
               </p>
             </div>
             <button type="button" className={styles.btn} disabled={busyId === "connect"} onClick={onStartSellerOnboarding}>
@@ -1396,7 +1396,7 @@ export function AccountPage() {
                                 checked={draft.verificationAccepted}
                                 onChange={(e) => updateListingDraft(row.id, { verificationAccepted: e.target.checked })}
                               />
-                              I confirm these listing details are accurate and can be used by EXCH. during verification.
+                              I confirm these listing details are accurate and can be used by VRNA during verification.
                             </label>
                             {rowErrors[row.id] ? <p className={styles.warn}>{rowErrors[row.id]}</p> : null}
                             <div className={styles.buttonRow}>
@@ -1523,7 +1523,7 @@ export function AccountPage() {
           <div className={showAllFavorites ? `${styles.favoriteGrid} ${styles.favoriteGridExpanded}` : styles.favoriteGrid}>
             {favoriteItems.map((item) => (
               <ReturnLink key={item.handle} to={`/product/${item.handle}`} className={styles.favoriteCard}>
-                {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <span className={styles.productThumbPlaceholder}>EX</span>}
+                {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <span className={styles.productThumbPlaceholder}>VR</span>}
                 <span>{item.title}</span>
                 <small>{item.handle}</small>
               </ReturnLink>

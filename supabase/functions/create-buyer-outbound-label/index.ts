@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { BRAND_NAME, requiredVerificationHubEnv, verificationHubEnv } from "../_shared/brand.ts";
 import { sendBuyerShippedEmail } from "../_shared/order-emails.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
@@ -70,15 +71,15 @@ function requiredEnv(name: string): string {
 
 function envAddress(): ShipAddress {
   return {
-    name: requiredEnv("EXCH_SHIP_TO_NAME"),
-    street1: requiredEnv("EXCH_SHIP_TO_STREET1"),
-    street2: Deno.env.get("EXCH_SHIP_TO_STREET2")?.trim() || undefined,
-    city: requiredEnv("EXCH_SHIP_TO_CITY"),
-    state: requiredEnv("EXCH_SHIP_TO_STATE"),
-    zip: requiredEnv("EXCH_SHIP_TO_ZIP"),
-    country: Deno.env.get("EXCH_SHIP_TO_COUNTRY")?.trim() || "US",
-    phone: Deno.env.get("EXCH_SHIP_TO_PHONE")?.trim() || undefined,
-    email: Deno.env.get("EXCH_SHIP_TO_EMAIL")?.trim() || undefined,
+    name: requiredVerificationHubEnv("NAME"),
+    street1: requiredVerificationHubEnv("STREET1"),
+    street2: verificationHubEnv("STREET2") || undefined,
+    city: requiredVerificationHubEnv("CITY"),
+    state: requiredVerificationHubEnv("STATE"),
+    zip: requiredVerificationHubEnv("ZIP"),
+    country: verificationHubEnv("COUNTRY") || "US",
+    phone: verificationHubEnv("PHONE") || undefined,
+    email: verificationHubEnv("EMAIL") || undefined,
   };
 }
 
@@ -281,7 +282,7 @@ Deno.serve(async (req) => {
     }
 
     const toAddress = buyerAddress(tradeWithAddress, buyerEmail);
-    const metadata = labelMetadata("EXCH outbound", trade);
+    const metadata = labelMetadata(`${BRAND_NAME} outbound`, trade);
     const shipment = await shippoPost<{ object_id: string; rates?: ShippoRate[] }>("/shipments/", shippoToken, {
       address_from: exchAddress,
       address_to: toAddress,

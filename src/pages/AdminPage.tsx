@@ -287,7 +287,7 @@ export function AdminPage() {
           <p className={styles.eyebrow}>Admin</p>
           <h1 className={styles.h1}>Verification dashboard</h1>
           <p className={styles.lead}>
-            Move paid trades through seller shipment, EXCH. verification, buyer delivery, and payout readiness.
+            Move paid trades through seller shipment, VRNA verification, buyer delivery, and payout readiness.
           </p>
         </div>
         <div className={styles.metrics}>
@@ -492,13 +492,13 @@ export function AdminPage() {
                     <span className={styles.small}>Tracking numbers</span>
                     <input
                       className={styles.input}
-                      placeholder="Seller-to-EXCH tracking"
+                      placeholder="Seller-to-VRNA tracking"
                       value={draft.sellerTracking}
                       onChange={(e) => setDraft(row.id, { sellerTracking: e.target.value })}
                     />
                     <input
                       className={styles.input}
-                      placeholder="EXCH-to-buyer tracking"
+                      placeholder="VRNA-to-buyer tracking"
                       value={draft.buyerTracking}
                       onChange={(e) => setDraft(row.id, { buyerTracking: e.target.value })}
                     />

@@ -73,13 +73,13 @@ function transitionBlocker(current: TradeRow, nextStatus: string, body: Body): s
     return "Seller shipment requires a prepaid label or seller tracking number.";
   }
   if (nextStatus === "received_by_exch" && !current.seller_shipped_at && !sellerTracking) {
-    return "EXCH. can only mark received after the seller shipment is recorded.";
+    return "VRNA can only mark received after the seller shipment is recorded.";
   }
   if ((nextStatus === "verification_passed" || nextStatus === "verification_failed") && !current.received_by_exch_at) {
-    return "Verification can only be completed after EXCH. receives the item.";
+    return "Verification can only be completed after VRNA receives the item.";
   }
   if (nextStatus === "shipped_to_buyer" && (!current.buyer_label_url || !buyerTracking)) {
-    return "Buyer shipment requires an EXCH-to-buyer label and tracking number.";
+    return "Buyer shipment requires a VRNA-to-buyer label and tracking number.";
   }
   if (nextStatus === "delivered_to_buyer" && !buyerTracking) {
     return "Buyer delivery requires buyer tracking number.";

@@ -56,17 +56,17 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
       preheader: `Payment received for ${product.title}`,
       headline: "Payment received",
       paragraphs: [
-        `Thanks for your purchase. EXCH. is holding ${total} while the seller ships the item to us for verification.`,
+        `Thanks for your purchase. VRNA is holding ${total} while the seller ships the item to us for verification.`,
       ],
       product,
       orderRows: rows,
       cta: { label: "View your order", href: accountLink },
     }),
-    sendTemplated(sellerEmail, `Ship to EXCH. — ${product.title}`, {
+    sendTemplated(sellerEmail, `Ship to VRNA — ${product.title}`, {
       preheader: `Your ${product.title} sold — ship by ${shipBy}`,
       headline: "Your item sold",
       paragraphs: [
-        `Create or use your prepaid label in your account and ship this item to EXCH. by ${shipBy}.`,
+        `Create or use your prepaid label in your account and ship this item to VRNA by ${shipBy}.`,
         `Estimated payout after verification and delivery: ${payout}.`,
       ],
       product,
@@ -88,7 +88,7 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
       user_id: trade.seller_id,
       kind: "sale_paid",
       title: "Your item sold",
-      body: `Ship ${product.title} to EXCH. by ${shipBy}. Est. payout ${payout}.`,
+      body: `Ship ${product.title} to VRNA by ${shipBy}. Est. payout ${payout}.`,
       href: accountPath("selling"),
       trade_id: trade.id,
     },
@@ -127,7 +127,7 @@ export async function sendBidMatchEmails(
       preheader: `Complete checkout for ${product.title} at ${priceLabel}`,
       headline: "Your bid matched",
       paragraphs: [
-        "Your bid matched an active listing. Complete checkout to secure the item — payment is held by EXCH. until verification.",
+        "Your bid matched an active listing. Complete checkout to secure the item — payment is held by VRNA until verification.",
       ],
       product,
       orderRows: rows,
@@ -204,17 +204,17 @@ export async function sendTradeStatusEmails(
       .maybeSingle<{ stripe_account_id: string | null }>();
     const hasStripe = Boolean(profile?.stripe_account_id?.trim());
     const sellerParagraphs = hasStripe
-      ? ["EXCH. will ship the item to the buyer next.", "Your payout will become available after buyer delivery."]
+      ? ["VRNA will ship the item to the buyer next.", "Your payout will become available after buyer delivery."]
       : [
-          "EXCH. will ship the item to the buyer next.",
+          "VRNA will ship the item to the buyer next.",
           "Connect Stripe in your account so we can release your payout after delivery.",
         ];
 
     await Promise.all([
       sendTemplated(buyerEmail, `Verified — ${product.title}`, {
-        preheader: "Your order passed EXCH. verification",
+        preheader: "Your order passed VRNA verification",
         headline: "Verification passed",
-        paragraphs: ["Your order passed EXCH. authentication. We will ship it to you next."],
+        paragraphs: ["Your order passed VRNA authentication. We will ship it to you next."],
         product,
         orderRows: rows,
         cta: { label: "Track your order", href: accountLink },
@@ -233,7 +233,7 @@ export async function sendTradeStatusEmails(
         user_id: trade.buyer_id,
         kind: "verification_passed",
         title: "Verification passed",
-        body: `${product.title} passed EXCH. authentication. Shipping to you soon.`,
+        body: `${product.title} passed VRNA authentication. Shipping to you soon.`,
         href: tradePath(trade.id),
         trade_id: trade.id,
       },
@@ -254,7 +254,7 @@ export async function sendTradeStatusEmails(
       sendTemplated(buyerEmail, `Verification update — ${product.title}`, {
         preheader: "Your order did not pass verification",
         headline: "Verification did not pass",
-        paragraphs: ["The item did not pass EXCH. verification. We will handle the refund process."],
+        paragraphs: ["The item did not pass VRNA verification. We will handle the refund process."],
         product,
         orderRows: rows,
         cta: { label: "View order", href: accountLink },
@@ -262,7 +262,7 @@ export async function sendTradeStatusEmails(
       sendTemplated(sellerEmail, `Verification failed — ${product.title}`, {
         preheader: "Your item did not pass verification",
         headline: "Verification did not pass",
-        paragraphs: ["Your item did not pass verification. EXCH. will follow up about return or next steps."],
+        paragraphs: ["Your item did not pass verification. VRNA will follow up about return or next steps."],
         product,
         orderRows: rows,
         cta: { label: "View sale", href: accountLink },
@@ -281,7 +281,7 @@ export async function sendTradeStatusEmails(
         user_id: trade.seller_id,
         kind: "verification_failed",
         title: "Verification did not pass",
-        body: `${product.title} did not pass verification. EXCH. will follow up.`,
+        body: `${product.title} did not pass verification. VRNA will follow up.`,
         href: tradePath(trade.id),
         trade_id: trade.id,
       },
@@ -295,7 +295,7 @@ export async function sendTradeStatusEmails(
     await sendTemplated(buyerEmail, `On the way — ${product.title}`, {
       preheader: "Your verified order has shipped",
       headline: "Your order is on the way",
-      paragraphs: ["Your verified order has left EXCH. and is heading to you."],
+      paragraphs: ["Your verified order has left VRNA and is heading to you."],
       product,
       orderRows: [...rows, ...extra],
       cta: { label: "View your order", href: accountLink },
@@ -307,7 +307,7 @@ export async function sendTradeStatusEmails(
         title: "Order on the way",
         body: tracking
           ? `${product.title} shipped. Tracking: ${tracking}.`
-          : `${product.title} shipped from EXCH.`,
+          : `${product.title} shipped from VRNA`,
         href: tradePath(trade.id),
         trade_id: trade.id,
       },
@@ -318,9 +318,9 @@ export async function sendTradeStatusEmails(
   if (status === "delivered_to_buyer") {
     await Promise.all([
       sendTemplated(buyerEmail, `Delivered — ${product.title}`, {
-        preheader: "Your EXCH. order was delivered",
+        preheader: "Your VRNA order was delivered",
         headline: "Order delivered",
-        paragraphs: ["Your order was delivered. Thanks for shopping on EXCH."],
+        paragraphs: ["Your order was delivered. Thanks for shopping on VRNA"],
         product,
         orderRows: rows,
         cta: { label: "View your order", href: accountLink },
@@ -330,7 +330,7 @@ export async function sendTradeStatusEmails(
         headline: "Buyer received your item",
         paragraphs: [
           "The buyer received your item.",
-          "EXCH. will mark your payout available next — you will get another email when funds are ready to release.",
+          "VRNA will mark your payout available next — you will get another email when funds are ready to release.",
         ],
         product,
         orderRows: rows,
@@ -342,7 +342,7 @@ export async function sendTradeStatusEmails(
         user_id: trade.buyer_id,
         kind: "delivered_to_buyer",
         title: "Order delivered",
-        body: `${product.title} was delivered. Thanks for shopping on EXCH.`,
+        body: `${product.title} was delivered. Thanks for shopping on VRNA`,
         href: tradePath(trade.id),
         trade_id: trade.id,
       },
@@ -418,7 +418,7 @@ export async function sendShippingLabelEmail(params: {
     preheader: `Prepaid label ready for ${product.title}`,
     headline: "Your shipping label is ready",
     paragraphs: [
-      "Print the label, attach it to your package, and ship the item to EXCH. for verification.",
+      "Print the label, attach it to your package, and ship the item to VRNA for verification.",
     ],
     product,
     orderRows: baseOrderRows({
@@ -444,7 +444,7 @@ export async function sendShippingLabelEmail(params: {
         user_id: params.sellerUserId,
         kind: "seller_label_ready",
         title: "Shipping label ready",
-        body: `Print and ship ${product.title} to EXCH.${trackingNote}`,
+        body: `Print and ship ${product.title} to VRNA${trackingNote}`,
         href: tradePath(params.tradeId),
         trade_id: params.tradeId,
       },
@@ -475,7 +475,7 @@ export async function sendBuyerShippedEmail(params: {
   await sendTemplated(params.to, `Shipped — ${product.title}`, {
     preheader: "Your verified order is on the way",
     headline: "Your order is on the way",
-    paragraphs: ["Your verified order has shipped from EXCH. and is heading to you."],
+    paragraphs: ["Your verified order has shipped from VRNA and is heading to you."],
     product,
     orderRows: baseOrderRows({
       tradeId: params.tradeId,
@@ -493,7 +493,7 @@ export async function sendBuyerShippedEmail(params: {
       title: "Order on the way",
       body: tracking
         ? `${product.title} shipped. Tracking: ${tracking}.`
-        : `${product.title} shipped from EXCH.`,
+        : `${product.title} shipped from VRNA`,
       href: params.tradeId ? tradePath(params.tradeId) : accountPath("buying"),
       trade_id: params.tradeId ?? null,
     },

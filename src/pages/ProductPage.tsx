@@ -583,7 +583,7 @@ export function ProductPage() {
               )}
               <p className={styles.hint}>
                 Reserves the listing, then opens <strong>Stripe Checkout</strong> with item price, a 3% processing fee,
-                and verified delivery shipping. EXCH. holds payment while the seller ships to us for verification.
+                and verified delivery shipping. VRNA holds payment while the seller ships to us for verification.
               </p>
             </div>
           )}
@@ -594,13 +594,13 @@ export function ProductPage() {
                 <p className={styles.sectionLabel}>Listing intake</p>
                 <h2 className={styles.formTitle}>Tell us exactly what you are selling</h2>
                 <p className={styles.hint}>
-                  These details help EXCH. verify the item and reduce buyer disputes after checkout.
+                  These details help VRNA verify the item and reduce buyer disputes after checkout.
                 </p>
               </div>
               {user && !stripeAccountId ? (
                 <div className={styles.payoutGuard}>
                   <strong>Connect Stripe before payout.</strong>
-                  <p>You can list now, but EXCH. cannot release seller payout until Stripe Connect is ready.</p>
+                  <p>You can list now, but VRNA cannot release seller payout until Stripe Connect is ready.</p>
                   <button type="button" className={styles.secondary} disabled={connectBusy} onClick={onStartSellerOnboarding}>
                     {connectBusy ? "Opening..." : "Connect Stripe"}
                   </button>
@@ -666,11 +666,11 @@ export function ProductPage() {
                       <dd>{formatMoney(sellPayoutEstimate.ask)}</dd>
                     </div>
                     <div className={styles.payoutEstimateRow}>
-                      <dt>EXCH. fee ({sellerFeePercentLabel(sellPayoutEstimate.feeBps)})</dt>
+                      <dt>VRNA fee ({sellerFeePercentLabel(sellPayoutEstimate.feeBps)})</dt>
                       <dd>−{formatMoney(sellPayoutEstimate.fee)}</dd>
                     </div>
                     <div className={styles.payoutEstimateRow}>
-                      <dt>Prepaid ship to EXCH. (est.)</dt>
+                      <dt>Prepaid ship to VRNA (est.)</dt>
                       <dd>−{formatMoney(sellPayoutEstimate.inboundLabel)}</dd>
                     </div>
                     <div className={`${styles.payoutEstimateRow} ${styles.payoutEstimateNet}`}>
@@ -720,7 +720,7 @@ export function ProductPage() {
                 <span className={styles.k}>Seller notes</span>
                 <textarea
                   className={styles.textarea}
-                  placeholder="Anything EXCH. should know during verification."
+                  placeholder="Anything VRNA should know during verification."
                   value={listingNotes}
                   onChange={(e) => setListingNotes(e.target.value)}
                 />
@@ -732,14 +732,14 @@ export function ProductPage() {
                   onChange={(e) => setListingVerificationAccepted(e.target.checked)}
                 />
                 <span>
-                  I understand EXCH. will verify authenticity, condition, size, box/accessories, and may fail or return the item if it does not match this listing.
+                  I understand VRNA will verify authenticity, condition, size, box/accessories, and may fail or return the item if it does not match this listing.
                 </span>
               </label>
               <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onListForSale()}>
                 {actionBusy ? "Submitting..." : "Submit listing"}
               </button>
               <p className={styles.hint}>
-                After a buyer pays, you will create a prepaid label, ship to EXCH., and payout is released only after
+                After a buyer pays, you will create a prepaid label, ship to VRNA, and payout is released only after
                 verification and buyer delivery.
               </p>
             </div>
