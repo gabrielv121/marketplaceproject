@@ -106,7 +106,8 @@ export function HomePage() {
         <p className={styles.kicker}>VRNA</p>
         <h1 className={styles.h1}>Buy first. Sell anytime.</h1>
         <p className={styles.lead}>
-          One account for shopping and listing. Each home row mixes brands and styles — not the same label six times.
+          One account for shopping and listing. Each home row mixes brands and styles. Every order is verified by VRNA
+          before delivery.
         </p>
       </section>
 
