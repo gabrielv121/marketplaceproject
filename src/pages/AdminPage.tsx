@@ -14,7 +14,6 @@ import {
 import { formatMoney } from "@/lib/money-format";
 import { moneyFromCents } from "@/lib/p2p";
 import { isP2pConfigured } from "@/lib/supabase";
-import { fetchAdminWaitlist, fetchAdminWaitlistCount, type WaitlistSignupRow } from "@/lib/waitlist";
 import styles from "./AdminPage.module.css";
 
 type Draft = {
@@ -122,10 +121,6 @@ export function AdminPage() {
   const [testBusy, setTestBusy] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testDetail, setTestDetail] = useState<unknown>(null);
-  const [waitlist, setWaitlist] = useState<WaitlistSignupRow[]>([]);
-  const [waitlistCount, setWaitlistCount] = useState(0);
-  const [waitlistMsg, setWaitlistMsg] = useState<string | null>(null);
-
   const refresh = useCallback(async () => {
     if (!isP2pConfigured() || !user) return;
     setLoading(true);
@@ -149,31 +144,11 @@ export function AdminPage() {
     } finally {
       setLoading(false);
     }
-
-    try {
-      const [rows, count] = await Promise.all([fetchAdminWaitlist(500), fetchAdminWaitlistCount()]);
-      setWaitlist(rows);
-      setWaitlistCount(count);
-    } catch {
-      setWaitlist([]);
-      setWaitlistCount(0);
-    }
   }, [user]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
-  const copyWaitlistEmails = async () => {
-    if (!waitlist.length) return;
-    const text = waitlist.map((row) => row.email).join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setWaitlistMsg(`Copied ${waitlist.length} email(s).`);
-    } catch {
-      setWaitlistMsg("Could not copy to clipboard.");
-    }
-  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -328,52 +303,6 @@ export function AdminPage() {
             <span>Payout ready</span>
           </div>
         </div>
-      </section>
-
-      <section className={styles.panel} aria-label="Waitlist">
-        <p className={styles.eyebrow}>Marketing</p>
-        <h2 className={styles.h1} style={{ fontSize: "1.25rem" }}>
-          Waitlist ({waitlistCount})
-        </h2>
-        <p className={styles.lead}>
-          Signups from /waitlist — put <strong>yoursite.com/waitlist?source=tiktok</strong> in your TikTok bio.
-        </p>
-        <div className={styles.buttonRow}>
-          <button type="button" className={styles.btn} disabled={!waitlist.length} onClick={() => void copyWaitlistEmails()}>
-            Copy emails
-          </button>
-          <Link to="/waitlist?source=admin" className={styles.ghostBtn} target="_blank" rel="noreferrer">
-            Open waitlist page
-          </Link>
-        </div>
-        {waitlistMsg ? <p className={styles.muted}>{waitlistMsg}</p> : null}
-        {waitlist.length === 0 ? (
-          <p className={styles.muted}>No signups yet.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Email</th>
-                  <th>Name</th>
-                  <th>Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {waitlist.slice(0, 50).map((row) => (
-                  <tr key={row.id}>
-                    <td>{shortDate(row.created_at)}</td>
-                    <td>{row.email}</td>
-                    <td>{row.name ?? "—"}</td>
-                    <td>{row.source}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {waitlist.length > 50 ? <p className={styles.muted}>Showing latest 50 of {waitlist.length}.</p> : null}
       </section>
 
       <section className={`${styles.panel} ${styles.emailTestPanel}`} aria-label="MailerSend test">
