@@ -48,6 +48,14 @@ const MOBILE_SITEMAP: NavItem[] = [
 
 const MQ_WIDE = "(min-width: 900px)";
 
+function BrandLogo() {
+  return (
+    <>
+      V<span className={styles.logoAccent}>R</span>NA
+    </>
+  );
+}
+
 export function Layout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -111,8 +119,8 @@ export function Layout() {
             aria-label="Site menu"
           >
             <div className={styles.mobileMenuTop}>
-              <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
-                VRNA
+              <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)} aria-label="VRNA home">
+                <BrandLogo />
               </NavLink>
               <button
                 type="button"
@@ -150,8 +158,8 @@ export function Layout() {
 
       <header className={mobileMenuOpen ? `${styles.header} ${styles.headerMenuOpen}` : styles.header}>
         <div className={styles.headerBar}>
-          <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)}>
-            VRNA
+          <NavLink to="/" className={styles.logo} end onClick={() => setMenuOpen(false)} aria-label="VRNA home">
+            <BrandLogo />
           </NavLink>
 
           <nav className={styles.desktopNav} aria-label="Main">
