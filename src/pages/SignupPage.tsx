@@ -60,10 +60,9 @@ export function SignupPage() {
       <div className={styles.page}>
         <section className={styles.card}>
           <p className={styles.eyebrow}>Sign up</p>
-          <h1 className={styles.h1}>Supabase is not configured</h1>
+          <h1 className={styles.h1}>Sign-up unavailable</h1>
           <p className={styles.lead}>
-            Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code> (local) or
-            Vercel Environment Variables (production), then redeploy.
+            New accounts cannot be created on this site right now. Please try again later or contact support.
           </p>
           <BackButton fallback="/" className={styles.secondaryLink}>
             Back

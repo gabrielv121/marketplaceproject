@@ -32,7 +32,7 @@ export function NewArrivalsPage() {
       <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "New arrivals" }]} />
       <header className={styles.header}>
         <h1 className={styles.h1}>New arrivals</h1>
-        <p className={styles.lead}>Recently updated rows from Supabase, or reversed local seed order.</p>
+        <p className={styles.lead}>The latest additions and updates across the catalog.</p>
       </header>
       {error ? (
         <p className={styles.warn} role="status">

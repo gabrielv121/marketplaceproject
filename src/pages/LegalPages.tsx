@@ -30,7 +30,7 @@ const PAGES: Record<string, LegalPageContent> = {
   terms: {
     title: "Terms of Service",
     intro:
-      "These terms explain the rules for using VRNA as a buyer, seller, or visitor. This template text should be reviewed by counsel before production use.",
+      "These terms explain the rules for using VRNA as a buyer, seller, or visitor.",
     sections: [
       {
         title: "Using VRNA",
@@ -84,7 +84,7 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Sharing",
         body: [
-          "We share information with service providers needed to operate the marketplace, including Supabase, Stripe, hosting, analytics, email, and shipping tools.",
+          "We share information with service providers needed to operate the marketplace, including payment processors, hosting, analytics, email, and shipping partners.",
           "Buyer and seller information may be shared as needed to complete a transaction, prevent fraud, or resolve disputes.",
         ],
       },
@@ -198,7 +198,7 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Changes",
         body: [
-          "Fees may change as payment, shipping, tax, or marketplace features evolve. Any production fee schedule should be displayed before checkout or listing.",
+          "Fees may change as payment, shipping, tax, or marketplace features evolve. Current fees are shown before checkout or when you list an item.",
         ],
       },
     ],
@@ -281,10 +281,7 @@ function LegalArticle({ page }: { page: LegalPageContent }) {
       <h1 className={styles.h1}>{page.title}</h1>
       <p className={styles.updated}>Last updated: {UPDATED}</p>
       <p className={styles.p}>{page.intro}</p>
-      <p className={styles.notice}>
-        This is marketplace template policy text and is not legal advice. Have a qualified attorney review it before using it
-        in production.
-      </p>
+      <p className={styles.notice}>This page is provided for information and is not legal advice.</p>
       {page.sections.map((section) => (
         <section key={section.title} className={styles.section}>
           <h2 className={styles.h2}>{section.title}</h2>
@@ -310,7 +307,7 @@ export function LegalIndexPage() {
         Policies for buyers, sellers, checkout, privacy, payouts, shipping, and marketplace safety.
       </p>
       <p className={styles.notice}>
-        These pages are starter policies for the VRNA template. Review and customize them before launch.
+        Policies may be updated from time to time. The date at the top of each page shows when it was last revised.
       </p>
       <div className={styles.legalGrid}>
         {LEGAL_LINKS.map((link) => (

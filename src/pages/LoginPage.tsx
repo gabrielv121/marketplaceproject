@@ -44,10 +44,9 @@ export function LoginPage() {
       <div className={styles.page}>
         <section className={styles.card}>
           <p className={styles.eyebrow}>Sign in</p>
-          <h1 className={styles.h1}>Supabase is not configured</h1>
+          <h1 className={styles.h1}>Sign-in unavailable</h1>
           <p className={styles.lead}>
-            Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code> (local) or
-            Vercel Environment Variables (production), then redeploy.
+            Account sign-in is not available on this site right now. Please try again later or contact support.
           </p>
           <BackButton fallback="/" className={styles.secondaryLink}>
             Back

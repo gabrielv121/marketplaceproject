@@ -16,7 +16,7 @@ export function SellPage() {
       <ul className={styles.ul}>
         <li>Accurate photos and size tags reduce disputes.</li>
         <li>Ship within your stated window to keep good standing.</li>
-        <li>Payouts go through whatever processor you connect next (Stripe recommended).</li>
+        <li>Complete seller payout setup in your account before funds can be released.</li>
       </ul>
       <p className={styles.p}>
         <Link to="/catalog">Browse catalog</Link> to pick a product, open the <strong>Sell</strong> tab, and set your ask.

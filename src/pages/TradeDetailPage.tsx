@@ -310,7 +310,7 @@ export function TradeDetailPage() {
     return (
       <div className={styles.page}>
         <h1 className={styles.h1}>Trade detail</h1>
-        <p className={styles.lead}>Supabase is not configured yet.</p>
+        <p className={styles.lead}>This page is unavailable right now. Please try again later.</p>
       </div>
     );
   }

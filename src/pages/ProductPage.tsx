@@ -578,7 +578,7 @@ export function ProductPage() {
                 </button>
               ) : (
                 <button type="button" className={`${styles.primary} ${styles.btnDisabled}`} disabled>
-                  {p2p ? "No peer ask at this size" : "Peer checkout uses Supabase P2P when configured"}
+                  {p2p ? "No peer ask at this size" : "Sign in to buy or sell from the live order book"}
                 </button>
               )}
               <p className={styles.hint}>

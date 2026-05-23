@@ -209,7 +209,7 @@ export function Layout() {
       </main>
       <footer className={styles.footer}>
         <p>
-          VRNA marketplace template. P2P asks, bids, trades, and payments use Supabase and Stripe Connect.
+          © {new Date().getFullYear()} VRNA. Verified peer-to-peer marketplace for sneakers and streetwear.
         </p>
         <nav className={styles.footerLinks} aria-label="Legal">
           <Link to="/legal">Legal</Link>

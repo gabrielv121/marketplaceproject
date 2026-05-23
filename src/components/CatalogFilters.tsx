@@ -161,7 +161,7 @@ export function CatalogFilters({ products, hideWithoutProductPhoto = false, chil
       </section>
       <p className={styles.count}>
         Showing {filtered.length} of {products.length} products
-        {hiddenPhotoCount ? ` · ${hiddenPhotoCount} hidden (no product photo from Kicks)` : ""}
+        {hiddenPhotoCount ? ` · ${hiddenPhotoCount} hidden (no product photo)` : ""}
         {brand !== "all" ? ` · brand: ${brands.find(([s]) => s === brand)?.[1] ?? brand}` : ""}
         {query.trim() ? ` · search: “${query.trim()}”` : ""}
       </p>

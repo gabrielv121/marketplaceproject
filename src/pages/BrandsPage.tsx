@@ -27,7 +27,7 @@ export function BrandsPage() {
       <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "Brands" }]} />
       <header className={styles.header}>
         <h1 className={styles.h1}>Brands</h1>
-        <p className={styles.lead}>Shop by maker. Set the <code className={styles.code}>brand</code> field on catalog rows to populate this list.</p>
+        <p className={styles.lead}>Shop by maker — from heritage sportswear to designer labels.</p>
       </header>
       {loading ? (
         <p className={styles.muted}>Loading…</p>

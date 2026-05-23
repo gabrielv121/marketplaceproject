@@ -56,7 +56,7 @@ export function ActivityCatalogPage() {
       />
       <header className={styles.header}>
         <h1 className={styles.h1}>{meta.title}</h1>
-        <p className={styles.lead}>Products linked to this activity from catalog metadata and sport-specific product imports.</p>
+        <p className={styles.lead}>Footwear and apparel picked for this activity.</p>
       </header>
       {loading ? (
         <p className={styles.muted}>Loading…</p>

@@ -188,7 +188,7 @@ export function HomePage() {
             variant="market"
             title="Recommended for you"
             subtitle={signedIn ? "Outside your recent history." : "Curated from the catalog."}
-            titleInfo="Same ranking rules as the rest of the home feed, but excludes the six pairs in Trending sneakers so this row is not a duplicate."
+            titleInfo="Picks tailored to what is popular on VRNA, separate from the trending sneakers row."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.recommended} emptyMessage="Nothing to recommend yet." layout="homeSix" />
@@ -197,7 +197,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Trending sneakers"
-            titleInfo="Footwear only. Jordan, Nike and collabs (e.g. Travis Scott, Dior) preferred; then Yeezy, UGG, Balenciaga ahead of generic Adidas."
+            titleInfo="Popular footwear from leading brands and collaborations."
             action={{ label: "See all →", to: "/catalog/men" }}
           >
             <ProductGrid products={rails.trending} layout="homeSix" />
@@ -206,7 +206,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Featured apparel"
-            titleInfo="Clothing only — one pick per brand when possible (Stussy, Denim Tears, Sp5der, Essentials, etc.)."
+            titleInfo="Standout clothing across streetwear and contemporary labels."
             action={{ label: "See all →", to: "/catalog/women" }}
           >
             <ProductGrid products={rails.apparel} layout="homeSix" />
@@ -215,7 +215,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Designer & avant-garde"
-            titleInfo="Tagged home-featured-designer in catalog_products."
+            titleInfo="Designer and avant-garde footwear and apparel."
             action={{ label: "Browse brands →", to: "/brands" }}
           >
             <ProductGrid products={rails.designer} layout="homeSix" emptyMessage="Designer picks loading soon." />
@@ -225,7 +225,7 @@ export function HomePage() {
             id="shop-activity"
             variant="market"
             title="Shop by activity"
-            titleInfo="Jump into a sport — products filter by activity-* tags."
+            titleInfo="Shop gear organized by sport and activity."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ul className={styles.activityGridStockx}>
@@ -252,7 +252,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Most popular around you"
-            titleInfo="Editorial mix for now — swap for geo, velocity, or sales."
+            titleInfo="Styles getting attention on VRNA right now."
             action={{ label: "See all →", to: "/new" }}
           >
             <ProductGrid products={rails.popular} layout="homeSix" />
@@ -261,7 +261,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Below retail price"
-            titleInfo="Tagged deals and value picks."
+            titleInfo="Listings priced below typical market value."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.below} layout="homeSix" />
@@ -280,7 +280,7 @@ export function HomePage() {
             variant="market"
             title="New at VRNA"
             subtitle="Fresh drops on the marketplace."
-            titleInfo="Uses home-new-at-vrna tags when set; otherwise fills from newest picks."
+            titleInfo="The newest listings added to VRNA."
             action={{ label: "See all →", to: "/new" }}
           >
             <ProductGrid products={rails.newAt} layout="homeSix" />

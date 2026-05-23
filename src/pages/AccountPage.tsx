@@ -907,12 +907,7 @@ export function AccountPage() {
       <div className={styles.page}>
         <h1 className={styles.h1}>Account</h1>
         <p className={styles.lead}>
-          Add Supabase env vars to sign in. Everyone uses one account type: you shop as a buyer and can list items to sell
-          anytime.
-        </p>
-        <p className={styles.muted}>
-          See <code className={styles.code}>.env.example</code> for <code className={styles.code}>VITE_SUPABASE_URL</code> and{" "}
-          <code className={styles.code}>VITE_SUPABASE_ANON_KEY</code>.
+          Sign-in is not available right now. When accounts are enabled, you can shop, bid, and list from one profile.
         </p>
       </div>
     );

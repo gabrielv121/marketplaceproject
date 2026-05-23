@@ -260,7 +260,7 @@ export function AdminPage() {
     return (
       <div className={styles.page}>
         <h1 className={styles.h1}>Admin</h1>
-        <p className={styles.lead}>Supabase is not configured yet.</p>
+        <p className={styles.lead}>Admin tools are unavailable until the backend is connected.</p>
       </div>
     );
   }

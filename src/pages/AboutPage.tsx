@@ -6,12 +6,11 @@ export function AboutPage() {
     <article className={styles.article}>
       <h1 className={styles.h1}>About VRNA</h1>
       <p className={styles.p}>
-        VRNA is a multi-vendor marketplace starter: peer asks and bids with Supabase, catalog in{" "}
-        <code className={styles.code}>catalog_products</code> (or a bundled local seed), and a storefront tuned for sneakers and
-        streetwear-style categories.
+        VRNA is a verified marketplace for sneakers and streetwear. Shop from peer listings, place bids, or list your own
+        items from one account.
       </p>
       <p className={styles.p}>
-        Use it as a starting point for authentication, departments, brands, and payment flows you control end to end.
+        Every order is checked at our hub before it ships to you, so buyers and sellers can trade with confidence.
       </p>
       <p className={styles.p}>
         <BackButton fallback="/">Back</BackButton>

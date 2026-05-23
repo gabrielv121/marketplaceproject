@@ -319,6 +319,6 @@ export function getDemoProductByHandle(handle: string): CatalogProductDetail | n
   if (!base) return null;
   return buildProductDetailFromSummary(base, {
     description:
-      "Sample listing from the bundled seed catalog. Add rows to Supabase `catalog_products` to run entirely from your database.",
+      "Authentic sneakers and streetwear on VRNA. Every order is verified before delivery.",
   });
 }

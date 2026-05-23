@@ -9,8 +9,7 @@ export function CatalogIndexPage() {
       <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "Catalog" }]} />
       <h1 className={styles.h1}>Catalog</h1>
       <p className={styles.lead}>
-        Shop by department — StockX-style aisles, filtered by tags or the{" "}
-        <code className={styles.code}>department_slug</code> column in Supabase.
+        Browse sneakers, apparel, and accessories by department. Each aisle is curated for how you shop.
       </p>
       <ul className={styles.grid}>
         {DEPARTMENTS.map((d) => (
@@ -23,11 +22,6 @@ export function CatalogIndexPage() {
           </li>
         ))}
       </ul>
-      <p className={styles.hint}>
-        Use tags <code className={styles.code}>dept-men</code>, <code className={styles.code}>dept-women</code>,{" "}
-        <code className={styles.code}>dept-kids</code>, or <code className={styles.code}>dept-accessories</code> (or set{" "}
-        <code className={styles.code}>department_slug</code> in the database) so products land in the right aisle.
-      </p>
     </div>
   );
 }
