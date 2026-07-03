@@ -601,13 +601,14 @@ export function ProductPage() {
                     type="button"
                     className={shoeGender === g ? styles.sizeToggleOn : styles.sizeToggle}
                     aria-pressed={shoeGender === g}
+                    aria-label={g === "men" ? "US men's sizes" : "US women's sizes"}
                     onClick={() => setShoeGender(g)}
                   >
-                    {g === "men" ? "US Men" : "US Women"}
+                    {g === "men" ? "US M" : "US W"}
                   </button>
                 ))}
               </div>
-              <div className={styles.sizeToggleGroup} role="group" aria-label="Size format">
+              <div className={`${styles.sizeToggleGroup} ${styles.sizeToggleGroupScroll}`} role="group" aria-label="Size format">
                 {(
                   [
                     ["us", "US"],

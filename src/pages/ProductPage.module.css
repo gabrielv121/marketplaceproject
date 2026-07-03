@@ -150,19 +150,34 @@
 
 .sizeToolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
   margin-bottom: 0.75rem;
+  min-width: 0;
 }
 
 .sizeToggleGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  gap: 0.25rem;
   padding: 0.2rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
+}
+
+.sizeToggleGroupScroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sizeToggleGroupScroll::-webkit-scrollbar {
+  display: none;
 }
 
 .sizeToggle,
@@ -170,11 +185,13 @@
   border: none;
   background: transparent;
   color: var(--muted);
-  padding: 0.35rem 0.65rem;
+  padding: 0.35rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 650;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sizeToggleOn {
