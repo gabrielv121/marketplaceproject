@@ -148,9 +148,57 @@
   color: var(--muted);
 }
 
+.sizeToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sizeToggleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.sizeToggle,
+.sizeToggleOn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.sizeToggleOn {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.sizeConversion {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.sizesScroll {
+  max-height: 17rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
 .sizes {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 0.5rem;
   margin-bottom: 1.25rem;
 }

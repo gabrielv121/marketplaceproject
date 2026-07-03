@@ -319,22 +319,24 @@ export async function rpcSellerMarkTradeShipped(tradeId: string): Promise<void> 
   if (error) throw readableRpcError(error);
 }
 
+import { sizeLabelsMatch } from "@/lib/size-labels";
+
 export function moneyFromCents(cents: number, currency: string): Money {
   return { amount: (cents / 100).toFixed(2), currencyCode: currency };
 }
 
 export function lowestListingForSize(listings: ActiveListingRow[], sizeLabel: string): ActiveListingRow | null {
-  const subset = listings.filter((l) => l.size_label === sizeLabel).sort((a, b) => a.price_cents - b.price_cents);
+  const subset = listings.filter((l) => sizeLabelsMatch(l.size_label, sizeLabel)).sort((a, b) => a.price_cents - b.price_cents);
   return subset[0] ?? null;
 }
 
 export function highestBidForSize(bids: OpenBidRow[], sizeLabel: string): OpenBidRow | null {
-  const subset = bids.filter((b) => b.size_label === sizeLabel).sort((a, b) => b.max_price_cents - a.max_price_cents);
+  const subset = bids.filter((b) => sizeLabelsMatch(b.size_label, sizeLabel)).sort((a, b) => b.max_price_cents - a.max_price_cents);
   return subset[0] ?? null;
 }
 
 export function lastSaleForSize(sales: RecentSaleRow[], sizeLabel: string): Money | null {
-  const hit = sales.find((s) => s.size_label === sizeLabel);
+  const hit = sales.find((s) => sizeLabelsMatch(s.size_label, sizeLabel));
   return hit ? moneyFromCents(hit.price_cents, hit.currency) : null;
 }
 
@@ -364,7 +366,7 @@ export async function fetchLatestSalesByHandle(handles: string[]): Promise<Map<s
 }
 
 export function aggregateListingsToAsks(listings: ActiveListingRow[], sizeLabel: string): BookEntry[] {
-  const subset = listings.filter((l) => l.size_label === sizeLabel);
+  const subset = listings.filter((l) => sizeLabelsMatch(l.size_label, sizeLabel));
   const levels = new Map<number, number>();
   for (const l of subset) {
     levels.set(l.price_cents, (levels.get(l.price_cents) ?? 0) + 1);
@@ -380,7 +382,7 @@ export function aggregateListingsToAsks(listings: ActiveListingRow[], sizeLabel:
 }
 
 export function aggregateBidsToBook(bids: OpenBidRow[], sizeLabel: string): BookEntry[] {
-  const subset = bids.filter((b) => b.size_label === sizeLabel);
+  const subset = bids.filter((b) => sizeLabelsMatch(b.size_label, sizeLabel));
   const levels = new Map<number, number>();
   for (const b of subset) {
     levels.set(b.max_price_cents, (levels.get(b.max_price_cents) ?? 0) + 1);

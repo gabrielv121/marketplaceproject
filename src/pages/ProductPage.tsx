@@ -38,6 +38,18 @@ import { recordProductView } from "@/lib/recently-viewed";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
+import { isShoeProduct } from "@/lib/product-sizes";
+import {
+  buildShoeSizeRows,
+  conversionLineForSizeRow,
+  defaultShoeGenderFromProduct,
+  findShoeSizeById,
+  shoeSizeLabelForBook,
+  shoeSizesForGender,
+  type ShoeGender,
+  type ShoeSizeSystem,
+} from "@/lib/shoe-sizes";
+import { sizeLabelsMatch } from "@/lib/size-labels";
 import { isP2pConfigured } from "@/lib/supabase";
 import type { BookEntry, SizeRow } from "@/types/marketplace";
 import styles from "./ProductPage.module.css";
@@ -72,6 +84,8 @@ export function ProductPage() {
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [p2pTick, setP2pTick] = useState(0);
   const [myBids, setMyBids] = useState<MyBidRow[]>([]);
+  const [shoeGender, setShoeGender] = useState<ShoeGender>("men");
+  const [sizeSystem, setSizeSystem] = useState<ShoeSizeSystem>("us");
 
   const refreshP2p = useCallback(() => {
     setP2pTick((t) => t + 1);
@@ -85,8 +99,6 @@ export function ProductPage() {
         const p = await resolveProductDetailByHandle(handle);
         if (!cancelled) {
           setProduct(p);
-          const first = p?.variants.find((v) => v.available) ?? p?.variants[0];
-          setSelectedVariantId(first?.id ?? null);
         }
       } catch {
         if (!cancelled) {
@@ -193,8 +205,45 @@ export function ProductPage() {
     };
   }, [user, p2p, p2pTick]);
 
+  const shoeProduct = product ? isShoeProduct(product) : false;
+
+  useEffect(() => {
+    if (!product) return;
+    if (shoeProduct) {
+      const gender = defaultShoeGenderFromProduct(product.gender, product.departmentSlug);
+      setShoeGender(gender);
+      const pool = shoeSizesForGender(gender);
+      const pick = pool.find((s) => s.us === 10) ?? pool[0];
+      setSelectedVariantId(pick?.id ?? null);
+      return;
+    }
+    const first = product.variants.find((v) => v.available) ?? product.variants[0];
+    setSelectedVariantId(first?.id ?? null);
+  }, [product?.handle, shoeProduct]);
+
+  useEffect(() => {
+    if (!product || !shoeProduct) return;
+    setSelectedVariantId((prev) => {
+      const current = findShoeSizeById(prev ?? "");
+      const pool = shoeSizesForGender(shoeGender);
+      const targetUs = current?.us ?? 10;
+      const match = pool.find((s) => s.us === targetUs) ?? pool.find((s) => s.us === 10) ?? pool[0];
+      return match?.id ?? prev;
+    });
+  }, [shoeGender, product?.handle, shoeProduct]);
+
   const sizeRows: SizeRow[] = useMemo(() => {
     if (!product) return [];
+    if (shoeProduct) {
+      return buildShoeSizeRows({
+        gender: shoeGender,
+        system: sizeSystem,
+        listings,
+        bids,
+        sales,
+        p2p,
+      });
+    }
     return product.variants.map((v) => {
       const low = lowestListingForSize(listings, v.title);
       const high = highestBidForSize(bids, v.title);
@@ -207,9 +256,11 @@ export function ProductPage() {
         lastSale: p2p ? lastP2p : null,
       };
     });
-  }, [product, listings, bids, sales, p2p]);
+  }, [product, shoeProduct, shoeGender, sizeSystem, listings, bids, sales, p2p]);
 
   const selectedRow = sizeRows.find((r) => r.id === selectedVariantId) ?? sizeRows[0];
+  const activeSizeLabel = selectedRow ? shoeSizeLabelForBook(selectedRow) : "";
+  const selectedConversionLine = selectedRow ? conversionLineForSizeRow(selectedRow) : null;
 
   const sellPayoutEstimate = useMemo(() => {
     const cents = parseToCents(sellPrice);
@@ -230,35 +281,41 @@ export function ProductPage() {
 
   useEffect(() => {
     if (!p2p || listings.length === 0 || sizeRows.length === 0) return;
-    const selectedHasAsk = selectedRow ? listings.some((listing) => listing.size_label === selectedRow.label) : false;
+    const selectedHasAsk = selectedRow
+      ? listings.some((listing) => sizeLabelsMatch(listing.size_label, activeSizeLabel))
+      : false;
     if (selectedHasAsk) return;
-    const firstSizeWithAsk = sizeRows.find((row) => listings.some((listing) => listing.size_label === row.label));
+    const firstSizeWithAsk = sizeRows.find((row) =>
+      listings.some((listing) => sizeLabelsMatch(listing.size_label, shoeSizeLabelForBook(row))),
+    );
     if (firstSizeWithAsk && firstSizeWithAsk.id !== selectedVariantId) {
       setSelectedVariantId(firstSizeWithAsk.id);
     }
-  }, [p2p, listings, sizeRows, selectedRow, selectedVariantId]);
+  }, [p2p, listings, sizeRows, selectedRow, selectedVariantId, activeSizeLabel]);
 
   const book = useMemo(() => {
     if (!selectedRow || !p2p) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };
     return {
-      asks: aggregateListingsToAsks(listings, selectedRow.label),
-      bids: aggregateBidsToBook(bids, selectedRow.label),
+      asks: aggregateListingsToAsks(listings, activeSizeLabel),
+      bids: aggregateBidsToBook(bids, activeSizeLabel),
     };
-  }, [p2p, listings, bids, selectedRow]);
+  }, [p2p, listings, bids, selectedRow, activeSizeLabel]);
 
-  const lowestPeerListing =
-    p2p && selectedRow ? lowestListingForSize(listings, selectedRow.label) : null;
+  const lowestPeerListing = p2p && selectedRow ? lowestListingForSize(listings, activeSizeLabel) : null;
 
   const myOpenBidAtSize = useMemo(() => {
     if (!product || !selectedRow) return null;
     return (
       myBids.find(
-        (b) => b.status === "open" && b.product_handle === product.handle && b.size_label === selectedRow.label,
+        (b) =>
+          b.status === "open" &&
+          b.product_handle === product.handle &&
+          sizeLabelsMatch(b.size_label, activeSizeLabel),
       ) ?? null
     );
-  }, [myBids, product, selectedRow]);
+  }, [myBids, product, selectedRow, activeSizeLabel]);
 
-  const highestOpenBidAtSize = selectedRow ? highestBidForSize(bids, selectedRow.label) : null;
+  const highestOpenBidAtSize = selectedRow ? highestBidForSize(bids, activeSizeLabel) : null;
 
   const onListForSale = () => {
     if (!product || !selectedRow) return;
@@ -291,7 +348,7 @@ export function ProductPage() {
         insertListing({
           id: listingId,
           product_handle: product.handle,
-          size_label: selectedRow.label,
+          size_label: activeSizeLabel,
           catalog_variant_id: selectedVariantId ?? null,
           price_cents: cents,
           currency,
@@ -383,7 +440,7 @@ export function ProductPage() {
     setActionBusy(true);
     void rpcPlaceBid({
       product_handle: product.handle,
-      size_label: selectedRow.label,
+      size_label: activeSizeLabel,
       max_price_cents: cents,
       currency,
     })
@@ -535,7 +592,45 @@ export function ProductPage() {
           </div>
 
           <p className={styles.sectionLabel}>Size</p>
-          <div className={styles.sizes}>
+          {shoeProduct ? (
+            <div className={styles.sizeToolbar}>
+              <div className={styles.sizeToggleGroup} role="group" aria-label="Size gender">
+                {(["men", "women"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={shoeGender === g ? styles.sizeToggleOn : styles.sizeToggle}
+                    aria-pressed={shoeGender === g}
+                    onClick={() => setShoeGender(g)}
+                  >
+                    {g === "men" ? "US Men" : "US Women"}
+                  </button>
+                ))}
+              </div>
+              <div className={styles.sizeToggleGroup} role="group" aria-label="Size format">
+                {(
+                  [
+                    ["us", "US"],
+                    ["eu", "EU"],
+                    ["uk", "UK"],
+                    ["cm", "CM"],
+                    ["kr", "KR"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={sizeSystem === key ? styles.sizeToggleOn : styles.sizeToggle}
+                    aria-pressed={sizeSystem === key}
+                    onClick={() => setSizeSystem(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className={shoeProduct ? `${styles.sizes} ${styles.sizesScroll}` : styles.sizes}>
             {sizeRows.map((row) => (
               <button
                 key={row.id}
@@ -552,6 +647,11 @@ export function ProductPage() {
               </button>
             ))}
           </div>
+          {selectedConversionLine ? (
+            <p className={styles.sizeConversion} aria-live="polite">
+              {selectedConversionLine}
+            </p>
+          ) : null}
 
           {actionMsg ? (
             <p className={styles.actionMsg} role="status">

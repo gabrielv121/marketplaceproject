@@ -1,31 +1,8 @@
 import type { CatalogProductDetail, CatalogProductSummary } from "./catalog-product";
+import { sizeTitlesForProduct } from "./product-sizes";
 
-const SHOE_SIZES = ["US 7", "US 7.5", "US 8", "US 8.5", "US 9", "US 9.5", "US 10", "US 10.5", "US 11"];
-const APPAREL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
-const HAT_SIZES = ["S/M", "M/L", "L/XL", "One size"];
-const ACCESSORY_ONE = ["One size"];
-
-function sizeTitlesForProduct(p: CatalogProductSummary): string[] {
-  if (p.variantSizePreset === "apparel") return APPAREL_SIZES;
-  if (p.variantSizePreset === "accessory") {
-    return p.tags?.some((t) => t.toLowerCase().includes("headwear")) ? HAT_SIZES : ACCESSORY_ONE;
-  }
-  if (p.variantSizePreset === "shoe") return SHOE_SIZES;
-  const inferred = inferPresetFromTags(p.tags ?? []);
-  if (inferred === "apparel") return APPAREL_SIZES;
-  if (inferred === "accessory") {
-    return p.tags?.some((t) => t.toLowerCase().includes("headwear")) ? HAT_SIZES : ACCESSORY_ONE;
-  }
-  return SHOE_SIZES;
-}
-
-function inferPresetFromTags(tags: string[]): "shoe" | "apparel" | "accessory" {
-  const t = tags.map((x) => x.toLowerCase()).join(" ");
-  if (/\bbags?\b|\btote\b|watch|watches|chrono|headwear|\bcap\b|\bhat\b/.test(t)) return "accessory";
-  if (/\bouterwear|hoodie|short|tight|tee|jersey|jacket|apparel\b/.test(t)) return "apparel";
-  if (/\bsneakers|soccer|football|basketball|tennis|cleat|youth|lifestyle|runner|trainer\b/.test(t)) return "shoe";
-  return "shoe";
-}
+const DEFAULT_DETAIL_COPY =
+  "Marketplace listing. Inventory and fulfillment are managed by sellers; capture payment before completing trades.";
 
 /** Bundled seed catalog — tag products with `dept-*`, `home-*`, `activity-*` (same as Supabase `catalog_products`). */
 export const DEMO_PRODUCTS: CatalogProductSummary[] = [
@@ -290,9 +267,6 @@ export const DEMO_PRODUCTS: CatalogProductSummary[] = [
     priceRange: { min: "92.00", max: "110.00", currency: "USD" },
   },
 ];
-
-const DEFAULT_DETAIL_COPY =
-  "Marketplace listing. Inventory and fulfillment are managed by sellers; capture payment before completing trades.";
 
 export function buildProductDetailFromSummary(
   base: CatalogProductSummary,
