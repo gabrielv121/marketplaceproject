@@ -23,13 +23,8 @@ export type ShoeSizeSpec = {
   kr: number;
 };
 
-/** Men's US 3.5–18 (half sizes). */
+/** Men's US 6–15.5 (half sizes). */
 const MEN_US: Record<string, { eu: number; uk: number; cm: number }> = {
-  "3.5": { eu: 36, uk: 3, cm: 22.5 },
-  "4": { eu: 36, uk: 3.5, cm: 23 },
-  "4.5": { eu: 37, uk: 4, cm: 23.5 },
-  "5": { eu: 37.5, uk: 4.5, cm: 23.5 },
-  "5.5": { eu: 38, uk: 5, cm: 24 },
   "6": { eu: 38.5, uk: 5.5, cm: 24 },
   "6.5": { eu: 39, uk: 6, cm: 24.5 },
   "7": { eu: 40, uk: 6, cm: 25 },
@@ -47,17 +42,11 @@ const MEN_US: Record<string, { eu: number; uk: number; cm: number }> = {
   "13": { eu: 47.5, uk: 12, cm: 31 },
   "14": { eu: 48.5, uk: 13, cm: 32 },
   "15": { eu: 49.5, uk: 14, cm: 33 },
-  "16": { eu: 50, uk: 15, cm: 34 },
-  "17": { eu: 51, uk: 16, cm: 35 },
-  "18": { eu: 52, uk: 17, cm: 36 },
+  "15.5": { eu: 50, uk: 14.5, cm: 33.5 },
 };
 
-/** Women's US 4–16 (half sizes). */
+/** Women's US 6–15.5 (half sizes). */
 const WOMEN_US: Record<string, { eu: number; uk: number; cm: number }> = {
-  "4": { eu: 34.5, uk: 1.5, cm: 21 },
-  "4.5": { eu: 35, uk: 2, cm: 21.5 },
-  "5": { eu: 35.5, uk: 2.5, cm: 22 },
-  "5.5": { eu: 36, uk: 3, cm: 22.5 },
   "6": { eu: 36.5, uk: 3.5, cm: 23 },
   "6.5": { eu: 37, uk: 4, cm: 23.5 },
   "7": { eu: 37.5, uk: 4.5, cm: 24 },
@@ -75,7 +64,7 @@ const WOMEN_US: Record<string, { eu: number; uk: number; cm: number }> = {
   "13": { eu: 44, uk: 10.5, cm: 30 },
   "14": { eu: 44.5, uk: 11.5, cm: 31 },
   "15": { eu: 45.5, uk: 12.5, cm: 32 },
-  "16": { eu: 46.5, uk: 13.5, cm: 33 },
+  "15.5": { eu: 46, uk: 13, cm: 32.5 },
 };
 
 function buildChart(gender: ShoeGender, table: Record<string, { eu: number; uk: number; cm: number }>): ShoeSizeSpec[] {
