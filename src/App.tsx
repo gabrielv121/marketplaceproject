@@ -30,6 +30,7 @@ import { SearchPage } from "@/pages/SearchPage";
 import { SellPage } from "@/pages/SellPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { TradeDetailPage } from "@/pages/TradeDetailPage";
+import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="search" element={<SearchPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
+        <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="trade/:tradeId" element={<TradeDetailPage />} />

@@ -4,8 +4,7 @@ export function friendlyAuthError(message: string): string {
   if (lower.includes("email rate limit")) {
     return (
       "Too many auth emails were sent from this project (Supabase rate limit). " +
-      "Wait about an hour, or open Supabase → Authentication → Rate Limits and increase email / signup limits. " +
-      "For local testing you can turn off Confirm email under Authentication → Providers → Email."
+      "Wait about an hour, or open Supabase → Authentication → Rate Limits and increase email / signup limits."
     );
   }
   if (
@@ -14,7 +13,8 @@ export function friendlyAuthError(message: string): string {
     (lower.includes("hook") && (lower.includes("500") || lower.includes("401")))
   ) {
     return (
-      "Could not send the confirmation email (auth hook failed). In Supabase: Authentication → Auth Hooks → Send Email — confirm the URL is …/auth-send-email, then regenerate the hook secret and run: npx supabase@latest secrets set SEND_EMAIL_HOOK_SECRET=v1,whsec_... (full value). Also check Edge Functions → auth-send-email → Logs and that Admin → Send test email succeeds."
+      "Could not send an auth email (hook failed). Check Authentication → Auth Hooks → Send Email, " +
+      "Edge Function secrets for MailerSend, and Admin → Send test email."
     );
   }
   return message;

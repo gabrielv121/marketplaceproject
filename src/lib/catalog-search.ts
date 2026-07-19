@@ -22,6 +22,16 @@ function textFieldMatchesTerm(field: string, term: string): boolean {
   if (!f || !t) return false;
   if (f === t) return true;
 
+  // Common catalog synonyms (search "sneakers" should hit product_type "sneaker").
+  const synonyms: Record<string, string[]> = {
+    sneakers: ["sneaker", "sneakers", "footwear"],
+    sneaker: ["sneaker", "sneakers", "footwear"],
+    apparel: ["apparel", "clothing"],
+    designer: ["designer", "avant-garde", "featured-designer"],
+  };
+  const alias = synonyms[t];
+  if (alias?.some((a) => f === a || f.split(/[-_]/).includes(a))) return true;
+
   const slugParts = f.split(/[-_]/);
   if (slugParts.some((part) => part === t)) return true;
 

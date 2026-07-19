@@ -98,7 +98,7 @@ export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
   return false;
 }
 
-function isDesignerHomeProduct(p: CatalogProductSummary): boolean {
+export function isDesignerHomeProduct(p: CatalogProductSummary): boolean {
   if (p.homeRails?.includes("featured-designer")) return true;
   const tags = (p.tags ?? []).join(" ").toLowerCase();
   if (/\bdesigner\b|avant-garde/.test(tags)) return true;

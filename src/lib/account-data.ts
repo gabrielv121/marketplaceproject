@@ -6,6 +6,8 @@ export type ProfileRow = {
   phone: string | null;
   created_at: string;
   stripe_account_id: string | null;
+  email_verified?: boolean;
+  is_admin?: boolean;
 };
 
 export type ProfileAddressRow = {
@@ -88,11 +90,17 @@ export async function fetchMyProfile(): Promise<ProfileRow | null> {
   if (authErr || !auth.user) return null;
   const { data, error } = await sb
     .from("profiles")
-    .select("id, display_name, phone, created_at, stripe_account_id")
+    .select("id, display_name, phone, created_at, stripe_account_id, email_verified, is_admin")
     .eq("id", auth.user.id)
     .maybeSingle();
   if (error) throw error;
   return data as ProfileRow | null;
+}
+
+/** True when the signed-in profile has profiles.is_admin. */
+export async function fetchIsAdmin(): Promise<boolean> {
+  const profile = await fetchMyProfile();
+  return Boolean(profile?.is_admin);
 }
 
 export async function updateMyProfile(input: { displayName: string; phone: string }): Promise<void> {

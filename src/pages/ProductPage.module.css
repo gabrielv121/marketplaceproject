@@ -287,6 +287,34 @@
   line-height: 1.45;
 }
 
+.guestAuthActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.guestAuthActions .primary {
+  width: auto;
+  min-width: 9rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  text-align: center;
+}
+
+.ghostAuthLink {
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.ghostAuthLink:hover {
+  text-decoration: underline;
+}
+
 .payoutReady {
   margin: 0 0 0.8rem;
   color: var(--accent);
@@ -541,6 +569,22 @@
   font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.textBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.textBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .depth {

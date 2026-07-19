@@ -3,18 +3,16 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
+import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
 import { isP2pConfigured } from "@/lib/supabase";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import styles from "./LoginPage.module.css";
-
-const SIGNUP_CONFIRM_MESSAGE =
-  "Account created. Check your inbox for a confirmation email from VRNA (also check spam). After confirming, sign in below.";
 
 export function SignupPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, signUpWithPassword } = useAuth();
-  const next = new URLSearchParams(location.search).get("next") || "/account";
+  const next = new URLSearchParams(location.search).get("next") || "/";
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,19 +35,28 @@ export function SignupPage() {
 
     setBusy(true);
     void signUpWithPassword(email, password, displayName)
-      .then(({ error: err, session }) => {
+      .then(async ({ error: err, session }) => {
         if (err) {
           setError(friendlyAuthError(err.message));
           return;
         }
         if (session) {
+          try {
+            await requestWelcomeOrVerifyEmail({ reason: "welcome" });
+          } catch {
+            /* welcome email is best-effort; user can resend from Account */
+          }
           navigate(next, { replace: true });
           return;
         }
         const loginSearch = new URLSearchParams({ next });
         navigate(`/login?${loginSearch.toString()}`, {
           replace: true,
-          state: { signupMessage: SIGNUP_CONFIRM_MESSAGE, email: email.trim() },
+          state: {
+            signupMessage:
+              "Account created, but you were not signed in automatically. Sign in below. If this keeps happening, turn Confirm email OFF in Supabase Auth → Providers → Email.",
+            email: email.trim(),
+          },
         });
       })
       .finally(() => setBusy(false));
@@ -92,7 +99,9 @@ export function SignupPage() {
       <section className={styles.card}>
         <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Create account</h1>
-        <p className={styles.lead}>Sign up to buy, sell, place bids, save favorites, and manage payouts.</p>
+        <p className={styles.lead}>
+          Sign up to browse instantly. Verify your email later when you buy, bid, or list.
+        </p>
 
         <form className={styles.form} onSubmit={onSubmit}>
           <label className={styles.label}>

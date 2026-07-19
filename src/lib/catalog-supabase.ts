@@ -164,12 +164,15 @@ export async function searchCatalogSummariesFromSupabase(query: string): Promise
   const primary = terms[0]!;
   const pattern = `%${primary}%`;
   // Description excluded: ilike %ugg% matched "rugged", "UGGplush", etc. and pulled unrelated brands.
+  // Also match exact tag / home_rail tokens (e.g. sneakers, below-retail, designer).
   const orFilter = [
     `title.ilike.${pattern}`,
     `brand.ilike.${pattern}`,
     `handle.ilike.${pattern}`,
     `product_type.ilike.${pattern}`,
     `category.ilike.${pattern}`,
+    `tags.cs.{${primary}}`,
+    `home_rails.cs.{${primary}}`,
   ].join(",");
 
   const rows: CatalogProductRow[] = [];

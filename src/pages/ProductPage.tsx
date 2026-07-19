@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
@@ -38,6 +38,11 @@ import { recordProductView } from "@/lib/recently-viewed";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
+import {
+  EMAIL_VERIFY_REQUIRED_MESSAGE,
+  fetchEmailVerified,
+  requestWelcomeOrVerifyEmail,
+} from "@/lib/email-verification";
 import { isShoeProduct } from "@/lib/product-sizes";
 import {
   buildShoeSizeRows,
@@ -58,10 +63,14 @@ type Mode = "buy" | "sell" | "bid";
 
 export function ProductPage() {
   const { handle = "" } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const [product, setProduct] = useState<CatalogProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<Mode>("buy");
+  const [mode, setMode] = useState<Mode>(() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    return tab === "sell" || tab === "bid" || tab === "buy" ? tab : "buy";
+  });
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [sellPrice, setSellPrice] = useState("");
   const [listingCondition, setListingCondition] = useState<ListingCondition>("new");
@@ -86,6 +95,17 @@ export function ProductPage() {
   const [myBids, setMyBids] = useState<MyBidRow[]>([]);
   const [shoeGender, setShoeGender] = useState<ShoeGender>("men");
   const [sizeSystem, setSizeSystem] = useState<ShoeSizeSystem>("us");
+  const [emailVerified, setEmailVerified] = useState(true);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+
+  const authReturnPath = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    if (mode === "sell") params.set("tab", "sell");
+    else params.delete("tab");
+    const q = params.toString();
+    return `${location.pathname}${q ? `?${q}` : ""}`;
+  }, [location.pathname, location.search, mode]);
+  const authNextQuery = `next=${encodeURIComponent(authReturnPath)}`;
 
   const refreshP2p = useCallback(() => {
     setP2pTick((t) => t + 1);
@@ -317,16 +337,52 @@ export function ProductPage() {
 
   const highestOpenBidAtSize = selectedRow ? highestBidForSize(bids, activeSizeLabel) : null;
 
+  useEffect(() => {
+    if (!user || !p2p) {
+      setEmailVerified(true);
+      return;
+    }
+    let cancelled = false;
+    void fetchEmailVerified()
+      .then((ok) => {
+        if (!cancelled) setEmailVerified(ok);
+      })
+      .catch(() => {
+        if (!cancelled) setEmailVerified(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, p2p, p2pTick]);
+
+  const requireVerifiedEmail = (): boolean => {
+    if (emailVerified) return true;
+    setActionMsg(EMAIL_VERIFY_REQUIRED_MESSAGE);
+    return false;
+  };
+
+  const onResendVerifyEmail = () => {
+    setVerifyBusy(true);
+    setActionMsg(null);
+    void requestWelcomeOrVerifyEmail({ reason: "reminder" })
+      .then((result) => {
+        if (result.alreadyVerified) {
+          setEmailVerified(true);
+          setActionMsg("Your email is already verified.");
+          return;
+        }
+        setActionMsg(result.sent ? "Verification email sent. Check your inbox (and spam)." : "Could not send email.");
+      })
+      .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not send verification email"))
+      .finally(() => setVerifyBusy(false));
+  };
+
   const onListForSale = () => {
     if (!product || !selectedRow) return;
     setActionMsg(null);
     const cents = parseToCents(sellPrice);
     if (cents == null) {
       setActionMsg("Enter a valid price.");
-      return;
-    }
-    if (!user) {
-      setActionMsg("Sign in to list.");
       return;
     }
     if (listingPhotos.length === 0) {
@@ -341,6 +397,13 @@ export function ProductPage() {
       setActionMsg("Accept the verification requirements before listing.");
       return;
     }
+    if (!user) {
+      setActionMsg(
+        "Sign in or create an account to publish this listing. Use the buttons above — you will return to the Sell tab.",
+      );
+      return;
+    }
+    if (!requireVerifiedEmail()) return;
     setActionBusy(true);
     const listingId = crypto.randomUUID();
     void uploadListingPhotos(listingPhotos, listingId)
@@ -437,6 +500,7 @@ export function ProductPage() {
       setActionMsg("Sign in to bid.");
       return;
     }
+    if (!requireVerifiedEmail()) return;
     setActionBusy(true);
     void rpcPlaceBid({
       product_handle: product.handle,
@@ -460,6 +524,7 @@ export function ProductPage() {
   const onUpdateMyBid = () => {
     if (!myOpenBidAtSize) return;
     setActionMsg(null);
+    if (!requireVerifiedEmail()) return;
     const cents = parseToCents(bidPrice);
     if (cents == null) {
       setActionMsg("Enter a valid bid.");
@@ -495,6 +560,7 @@ export function ProductPage() {
       setActionMsg("Sign in to buy from a peer.");
       return;
     }
+    if (!requireVerifiedEmail()) return;
     setActionMsg(null);
     setActionBusy(true);
     void rpcTakeListing(lowestPeerListing.id)
@@ -657,6 +723,14 @@ export function ProductPage() {
           {actionMsg ? (
             <p className={styles.actionMsg} role="status">
               {actionMsg}
+            </p>
+          ) : null}
+          {user && !emailVerified ? (
+            <p className={styles.hint}>
+              Verify your email to buy, bid, or list.{" "}
+              <button type="button" className={styles.textBtn} disabled={verifyBusy} onClick={onResendVerifyEmail}>
+                {verifyBusy ? "Sending…" : "Resend verification email"}
+              </button>
             </p>
           ) : null}
 
@@ -836,8 +910,25 @@ export function ProductPage() {
                   I understand VRNA will verify authenticity, condition, size, box/accessories, and may fail or return the item if it does not match this listing.
                 </span>
               </label>
+              {!user ? (
+                <div className={styles.payoutGuard} role="status">
+                  <strong>Sign in required to publish</strong>
+                  <p>
+                    Choose your size, add photos, and fill in the details now. You only need to sign in (or create an
+                    account) when you are ready to publish the listing.
+                  </p>
+                  <div className={styles.guestAuthActions}>
+                    <Link to={`/login?${authNextQuery}`} className={styles.primary}>
+                      Sign in to list
+                    </Link>
+                    <Link to={`/signup?${authNextQuery}`} className={styles.ghostAuthLink}>
+                      Create account
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
               <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onListForSale()}>
-                {actionBusy ? "Submitting..." : "Submit listing"}
+                {actionBusy ? "Submitting..." : user ? "Submit listing" : "Review & continue"}
               </button>
               <p className={styles.hint}>
                 After a buyer pays, you will create a prepaid label, ship to VRNA, and payout is released only after

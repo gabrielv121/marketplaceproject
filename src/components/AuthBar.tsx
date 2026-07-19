@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { IconLogOut, IconUser } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
+import { fetchIsAdmin } from "@/lib/account-data";
 import { isP2pConfigured } from "@/lib/supabase";
 import styles from "./AuthBar.module.css";
 
@@ -15,8 +17,27 @@ type AuthBarProps = {
 export function AuthBar({ variant = "header", onDismiss }: AuthBarProps) {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const menu = variant === "menu";
+
+  useEffect(() => {
+    if (!user?.id || !isP2pConfigured()) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    void fetchIsAdmin()
+      .then((admin) => {
+        if (!cancelled) setIsAdmin(admin);
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const onSignOut = () => {
     void signOut().then(() => {
@@ -62,7 +83,12 @@ export function AuthBar({ variant = "header", onDismiss }: AuthBarProps) {
             <IconUser className={styles.leadIconMenu} width={20} height={20} aria-hidden />
             <span className={styles.emailMenu}>{user.email}</span>
           </div>
-          <Link to="/account" className={styles.menuAccountLink}>
+          {isAdmin ? (
+            <Link to="/admin" className={styles.menuAccountLink} onClick={onDismiss}>
+              Dashboard
+            </Link>
+          ) : null}
+          <Link to="/account" className={styles.menuAccountLink} onClick={onDismiss}>
             Account
           </Link>
           <button
@@ -79,6 +105,17 @@ export function AuthBar({ variant = "header", onDismiss }: AuthBarProps) {
 
     return (
       <div className={styles.wrap}>
+        {isAdmin ? (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              isActive ? `${styles.loginBtn} ${styles.accountIconBtnActive}` : styles.loginBtn
+            }
+            title="Admin dashboard"
+          >
+            Dashboard
+          </NavLink>
+        ) : null}
         <NavLink
           to="/account"
           className={({ isActive }) =>

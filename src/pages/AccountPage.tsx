@@ -21,6 +21,7 @@ import {
   startCheckoutForTrade,
   startSellerOnboarding,
 } from "@/lib/checkout";
+import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
 import { buyerTradeTotalCents } from "@/lib/buyer-pricing";
@@ -378,6 +379,9 @@ export function AccountPage() {
   const [bids, setBids] = useState<MyBidRow[]>([]);
   const [trades, setTrades] = useState<MyTradeRow[]>([]);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(true);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -423,6 +427,7 @@ export function AccountPage() {
       setDisplayName(p?.display_name ?? "");
       setPhone(p?.phone ?? "");
       setStripeAccountId(p?.stripe_account_id ?? null);
+      setEmailVerified(Boolean(p?.email_verified));
       setUsername((current) => current || p?.display_name?.toLowerCase().replace(/\s+/g, "") || user.email?.split("@")[0] || "");
       setAddresses(savedAddresses.map(addressFromRow));
       setListings(l);
@@ -978,6 +983,39 @@ export function AccountPage() {
         <p className={styles.checkoutBanner} role="status">
           {checkoutBanner}
         </p>
+      ) : null}
+
+      {!emailVerified ? (
+        <div className={styles.checkoutBanner} role="status">
+          <p style={{ margin: 0 }}>
+            Verify your email to buy, bid, or list items. You can browse anytime.
+          </p>
+          <p style={{ margin: "0.5rem 0 0", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+            <button
+              type="button"
+              className={styles.btn}
+              disabled={verifyBusy}
+              onClick={() => {
+                setVerifyBusy(true);
+                setVerifyMsg(null);
+                void requestWelcomeOrVerifyEmail({ reason: "reminder" })
+                  .then((result) => {
+                    if (result.alreadyVerified) {
+                      setEmailVerified(true);
+                      setVerifyMsg("Your email is already verified.");
+                      return;
+                    }
+                    setVerifyMsg(result.sent ? "Verification email sent. Check inbox and spam." : "Could not send email.");
+                  })
+                  .catch((e: unknown) => setVerifyMsg(e instanceof Error ? e.message : "Could not send email"))
+                  .finally(() => setVerifyBusy(false));
+              }}
+            >
+              {verifyBusy ? "Sending…" : "Send verification email"}
+            </button>
+            {verifyMsg ? <span className={styles.muted}>{verifyMsg}</span> : null}
+          </p>
+        </div>
       ) : null}
 
       {loadError ? (

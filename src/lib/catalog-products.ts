@@ -4,7 +4,14 @@ import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import { withoutBlockedCatalogProducts } from "@/lib/blocked-catalog-handles";
-import { enrichProductsForHome, isCatalogAccessoryCandidate } from "@/lib/home-feed";
+import {
+  enrichProductsForHome,
+  isCatalogAccessoryCandidate,
+  isCatalogApparel,
+  isCatalogFootwear,
+  isDesignerHomeProduct,
+  pickByRail,
+} from "@/lib/home-feed";
 import {
   fetchCatalogSummariesFromSupabase,
   listCatalogBrandsFromSupabase,
@@ -151,6 +158,23 @@ export async function loadCatalogBrands(): Promise<{
   return { brands: listBrandsFromProducts(demo), catalogSource: "local" };
 }
 
+function railSearchFilter(query: string): ((p: CatalogProductSummary) => boolean) | null {
+  const key = query.trim().toLowerCase().replace(/\s+/g, "-");
+  if (key === "designer" || key === "avant-garde" || key === "featured-designer") {
+    return (p) => isDesignerHomeProduct(p);
+  }
+  if (key === "sneakers" || key === "sneaker" || key === "footwear" || key === "trending-sneakers") {
+    return (p) => isCatalogFootwear(p);
+  }
+  if (key === "apparel" || key === "clothing" || key === "featured-apparel") {
+    return (p) => isCatalogApparel(p) && !isCatalogAccessoryCandidate(p);
+  }
+  if (key === "below-retail" || key === "deals" || key === "deal") {
+    return (p) => (p.homeRails ?? []).includes("below-retail");
+  }
+  return null;
+}
+
 export async function searchCatalogProducts(query: string): Promise<{
   products: CatalogProductSummary[];
   error: string | null;
@@ -159,6 +183,23 @@ export async function searchCatalogProducts(query: string): Promise<{
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) {
     return loadCatalogProducts({ limit: 500 });
+  }
+
+  const railFilter = railSearchFilter(query);
+  if (railFilter) {
+    const { products, error, catalogSource } = await loadCatalogProducts({ limit: 3000 });
+    const key = query.trim().toLowerCase().replace(/\s+/g, "-");
+    // Kicks import never tags below-retail; the home rail backfills. Match that here.
+    if (key === "below-retail" || key === "deals" || key === "deal") {
+      const tagged = products.filter((p) => (p.homeRails ?? []).includes("below-retail"));
+      const list = tagged.length ? tagged : pickByRail(products, "below-retail", 72);
+      return { products: sortCatalogByImageQuality(list), error, catalogSource };
+    }
+    return {
+      products: sortCatalogByImageQuality(products.filter(railFilter)),
+      error,
+      catalogSource,
+    };
   }
 
   try {

@@ -26,10 +26,20 @@ export async function startCheckoutForTrade(tradeId: string, siteUrl: string): P
   });
 
   if (error) {
-    throw new Error(parseInvokeError(error));
+    const msg = parseInvokeError(error);
+    throw new Error(
+      msg.includes("email_not_verified")
+        ? "Verify your email to buy, bid, or list. Check your inbox or resend from Account."
+        : msg,
+    );
   }
   if (data && typeof data === "object" && "error" in data && data.error) {
-    throw new Error(String(data.error));
+    const err = String(data.error);
+    throw new Error(
+      err.includes("email_not_verified")
+        ? "Verify your email to buy, bid, or list. Check your inbox or resend from Account."
+        : err,
+    );
   }
   if (!data?.url) {
     throw new Error("No checkout URL returned. Deploy create-checkout-session and set Stripe secrets.");

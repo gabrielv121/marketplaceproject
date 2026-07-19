@@ -50,14 +50,14 @@ function templateForAction(
   switch (action) {
     case "signup":
       return {
-        subject: "Confirm your VRNA account",
+        subject: "Welcome to VRNA",
         content: {
-          preheader: "Confirm your email to start buying and selling on VRNA",
-          headline: "Confirm your email",
+          preheader: "Your VRNA account is ready",
+          headline: "Welcome to VRNA",
           paragraphs: [
-            "Thanks for signing up. Confirm your email to access your account, place bids, and list items for sale.",
+            "Thanks for signing up. You can browse right away. Verify your email when you are ready to buy, bid, or list — use Account if you need a verification link.",
           ],
-          cta: { label: "Confirm email", href: verifyUrl },
+          cta: { label: "Open VRNA", href: siteUrl },
           otpCode: otp,
           siteUrl,
         },

@@ -109,6 +109,24 @@ Deno.serve(async (req) => {
 
   const admin = createClient(supabaseUrl, serviceRole);
 
+  const { data: profileGate, error: profileGateErr } = await admin
+    .from("profiles")
+    .select("email_verified")
+    .eq("id", user.id)
+    .maybeSingle<{ email_verified: boolean }>();
+  if (profileGateErr) {
+    return new Response(JSON.stringify({ error: profileGateErr.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!profileGate?.email_verified) {
+    return new Response(JSON.stringify({ error: "email_not_verified" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const { data: trade, error: tradeErr } = await admin
     .from("p2p_trades")
     .select("id, buyer_id, seller_id, product_handle, size_label, price_cents, currency, status, stripe_checkout_session_id")

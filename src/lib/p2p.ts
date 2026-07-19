@@ -65,6 +65,9 @@ function readableRpcError(error: { message?: string; details?: string; hint?: st
   if (raw.includes("not_authenticated")) {
     return new Error("Sign in to buy from a peer.");
   }
+  if (raw.includes("email_not_verified")) {
+    return new Error("Verify your email to buy, bid, or list. Check your inbox or resend from Account.");
+  }
   if (raw.includes("trade_not_releasable")) {
     return new Error("This checkout reservation is no longer active.");
   }
@@ -173,9 +176,16 @@ export async function insertListing(input: {
     seller_notes: input.seller_notes?.trim() || null,
     verification_requirements_accepted_at: input.verification_requirements_accepted_at ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    const raw = [error.message, error.details, error.hint].filter(Boolean).join(" ");
+    if (raw.includes("email_not_verified")) {
+      throw new Error("Verify your email to buy, bid, or list. Check your inbox or resend from Account.");
+    }
+    throw error;
+  }
   return listingId;
 }
+
 
 export type PlaceBidResult = {
   bidId: string;
