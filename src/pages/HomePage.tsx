@@ -198,7 +198,7 @@ export function HomePage() {
             variant="market"
             title="Trending sneakers"
             titleInfo="Popular footwear from leading brands and collaborations."
-            action={{ label: "See all →", to: "/catalog/men" }}
+            action={{ label: "See all →", to: "/search?q=sneakers" }}
           >
             <ProductGrid products={rails.trending} layout="homeSix" />
           </HomeSection>
@@ -207,7 +207,7 @@ export function HomePage() {
             variant="market"
             title="Featured apparel"
             titleInfo="Standout clothing across streetwear and contemporary labels."
-            action={{ label: "See all →", to: "/catalog/women" }}
+            action={{ label: "See all →", to: "/search?q=apparel" }}
           >
             <ProductGrid products={rails.apparel} layout="homeSix" />
           </HomeSection>
@@ -216,7 +216,7 @@ export function HomePage() {
             variant="market"
             title="Designer & avant-garde"
             titleInfo="Designer and avant-garde footwear and apparel."
-            action={{ label: "Browse brands →", to: "/brands" }}
+            action={{ label: "See all →", to: "/search?q=designer" }}
           >
             <ProductGrid products={rails.designer} layout="homeSix" emptyMessage="Designer picks loading soon." />
           </HomeSection>
@@ -226,7 +226,6 @@ export function HomePage() {
             variant="market"
             title="Shop by activity"
             titleInfo="Shop gear organized by sport and activity."
-            action={{ label: "See all →", to: "/catalog" }}
           >
             <ul className={styles.activityGridStockx}>
               {SHOP_ACTIVITIES.map((a) => (
@@ -253,7 +252,7 @@ export function HomePage() {
             variant="market"
             title="Most popular around you"
             titleInfo="Styles getting attention on VRNA right now."
-            action={{ label: "See all →", to: "/new" }}
+            action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.popular} layout="homeSix" />
           </HomeSection>
@@ -262,7 +261,7 @@ export function HomePage() {
             variant="market"
             title="Below retail price"
             titleInfo="Listings priced below typical market value."
-            action={{ label: "See all →", to: "/catalog" }}
+            action={{ label: "See all →", to: "/search?q=below-retail" }}
           >
             <ProductGrid products={rails.below} layout="homeSix" />
           </HomeSection>
