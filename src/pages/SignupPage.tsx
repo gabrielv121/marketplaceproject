@@ -42,9 +42,20 @@ export function SignupPage() {
         }
         if (session) {
           try {
-            await requestWelcomeOrVerifyEmail({ reason: "welcome" });
-          } catch {
-            /* welcome email is best-effort; user can resend from Account */
+            await requestWelcomeOrVerifyEmail({
+              reason: "welcome",
+              accessToken: session.access_token,
+            });
+          } catch (emailErr: unknown) {
+            const detail = emailErr instanceof Error ? emailErr.message : "unknown error";
+            navigate(next, {
+              replace: true,
+              state: {
+                welcomeEmailWarning:
+                  `Account created, but the welcome email could not be sent (${detail}). You can resend it from Account.`,
+              },
+            });
+            return;
           }
           navigate(next, { replace: true });
           return;

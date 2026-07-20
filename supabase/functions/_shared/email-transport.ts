@@ -110,13 +110,30 @@ async function sendViaTransport(
   }
 
   const result = await sendMailerSendEmail(apiKey, { from, ...input });
+  const detail =
+    result.ok
+      ? undefined
+      : (() => {
+          const body = result.body;
+          if (typeof body === "string" && body.trim()) return body.trim().slice(0, 500);
+          if (body && typeof body === "object") {
+            const o = body as Record<string, unknown>;
+            if (typeof o.message === "string" && o.message.trim()) return o.message.trim();
+            try {
+              return JSON.stringify(body).slice(0, 500);
+            } catch {
+              /* ignore */
+            }
+          }
+          return `MailerSend HTTP ${result.status}`;
+        })();
   return {
     ok: result.ok,
     transport: "mailersend_api",
     status: result.status,
     requestId: result.requestId,
     body: result.body,
-    error: result.ok ? undefined : (typeof result.body === "string" ? result.body : `MailerSend HTTP ${result.status}`),
+    error: detail,
   };
 }
 
@@ -141,15 +158,7 @@ export async function sendTransactionalEmailWithFallback(
   const primaryResult = await sendViaTransport(primary, from, input);
   if (primaryResult.ok) return primaryResult;
 
-  // Auth Send Email hook times out at ~5s; skip slow API retry when SMTP is explicit.
-  const explicitMode = Deno.env.get("EMAIL_TRANSPORT")?.trim().toLowerCase();
-  if (primary === "smtp" && (explicitMode === "smtp" || explicitMode === "mailersend_smtp")) {
-    return {
-      ...primaryResult,
-      error: primaryResult.error ?? "Email send failed",
-    };
-  }
-
+  // Prefer MailerSend HTTP API as fallback when SMTP fails (common in Edge runtimes / bad SMTP creds).
   const fallback: EmailTransport = primary === "smtp" ? "mailersend_api" : "smtp";
   const canFallback =
     fallback === "mailersend_api"

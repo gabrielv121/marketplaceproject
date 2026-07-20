@@ -41,18 +41,25 @@ export async function confirmEmailVerification(token: string): Promise<void> {
 export async function requestWelcomeOrVerifyEmail(opts?: {
   reason?: "welcome" | "reminder";
   siteUrl?: string;
+  /** Prefer the token from signup/sign-in when getSession may still be empty. */
+  accessToken?: string;
 }): Promise<{ sent: boolean; alreadyVerified: boolean }> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
-  const {
-    data: { session },
-  } = await sb.auth.getSession();
-  if (!session?.access_token) throw new Error("Sign in to verify your email");
+
+  let accessToken = opts?.accessToken?.trim() || "";
+  if (!accessToken) {
+    const {
+      data: { session },
+    } = await sb.auth.getSession();
+    accessToken = session?.access_token ?? "";
+  }
+  if (!accessToken) throw new Error("Sign in to verify your email");
 
   const response = await fetch(`${getSupabaseUrl()}/functions/v1/send-welcome-email`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
       apikey: getSupabaseAnonKey(),
       "Content-Type": "application/json",
     },
