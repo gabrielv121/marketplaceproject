@@ -15,8 +15,23 @@ export type CatalogLoadQuery = {
 
 const CATALOG_PAGE_SIZE = 1000;
 
+/** Normalize brand URL slugs: "Gallery Dept." → "gallery-dept". */
+export function normalizeBrandSlug(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Match brand column loosely so punctuation differences still hit
+ * (e.g. slug `gallery-dept` → brand `Gallery Dept.`).
+ */
 function brandSlugToIlikePattern(brandSlug: string): string {
-  return brandSlug.trim().replace(/-/g, " ");
+  const parts = normalizeBrandSlug(brandSlug).split("-").filter(Boolean);
+  if (!parts.length) return brandSlug.trim();
+  return `%${parts.join("%")}%`;
 }
 
 async function fetchPublishedCatalogRows(
@@ -201,14 +216,6 @@ export async function searchCatalogSummariesFromSupabase(query: string): Promise
 }
 
 export type CatalogBrandRow = { name: string; slug: string; count: number };
-
-function normalizeBrandSlug(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 /** Distinct brands with counts — paginates lightweight `brand` column reads. */
 export async function listCatalogBrandsFromSupabase(): Promise<CatalogBrandRow[] | null> {

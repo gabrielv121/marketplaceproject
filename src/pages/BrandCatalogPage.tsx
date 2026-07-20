@@ -5,11 +5,12 @@ import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
 import { loadCatalogBrands, loadCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { normalizeBrandSlug } from "@/lib/catalog-supabase";
 import styles from "./CategoryCatalogPage.module.css";
 
 export function BrandCatalogPage() {
   const { brandSlug = "" } = useParams();
-  const want = brandSlug.toLowerCase();
+  const want = normalizeBrandSlug(decodeURIComponent(brandSlug));
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [brandName, setBrandName] = useState<string>(brandSlug);
   const [loading, setLoading] = useState(true);

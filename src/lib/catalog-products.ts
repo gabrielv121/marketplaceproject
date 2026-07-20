@@ -46,7 +46,7 @@ function filterList(products: CatalogProductSummary[], opts: CatalogLoadOptions)
     list = list.filter((p) => p.departmentSlug === opts.departmentSlug);
   }
   if (opts.brandSlug) {
-    const want = opts.brandSlug.toLowerCase();
+    const want = normalizeBrand(opts.brandSlug);
     list = list.filter((p) => {
       const b = productBrand(p);
       return b && normalizeBrand(b) === want;

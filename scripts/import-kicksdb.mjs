@@ -227,20 +227,49 @@ function inferCatalogKind(product) {
     .map(cleanText)
     .join(" ")
     .toLowerCase();
-  if (/\b(hoodie|tee|t-shirt|shirt|jacket|fleece|crewneck|sweatshirt|sweatpant|shorts|pants|jersey|apparel|streetwear)\b/.test(haystack)) {
+
+  // Headwear / handbags / collectibles first — StockX often labels these product_type "streetwear" or "collectibles".
+  if (
+    product.product_type === "collectibles" ||
+    product.category === "Collectibles" ||
+    /\b(collectible|collectibles|funko|bearbrick|kaws|hot toys|lego|skateboard deck|action figure|hot wheels)\b/.test(
+      haystack,
+    )
+  ) {
+    return "accessory";
+  }
+  if (
+    /\b(hat|hats|beanie|beanies|skullcap|toque|bucket hat|trucker cap|camp cap|snapback|fitted cap|ball cap|visor|59fifty)\b/.test(
+      haystack,
+    ) ||
+    (/\bcap\b/.test(haystack) &&
+      !/\b(sneaker|shoe|dunk|yeezy|air max|jordan [0-9]|air jordan [0-9]|cap and gown)\b/.test(haystack))
+  ) {
+    return "accessory";
+  }
+  if (
+    /\b(handbag|handbags|neverfull|speedy|keepall|baguette|peekaboo|dionysus|jodie|cassette bag|book tote|crossbody|clutch|purse)\b/.test(
+      haystack,
+    ) ||
+    product.product_type === "handbags" ||
+    product.category === "Handbags"
+  ) {
+    return "accessory";
+  }
+  if (/\b(hoodie|tee|t-shirt|shirt|jacket|fleece|crewneck|sweatshirt|sweatpant|shorts|pants|jersey|apparel)\b/.test(haystack)) {
     return "apparel";
   }
   if (/\bcap and gown\b/.test(haystack) || /\b(sneaker|footwear)\b/.test(haystack)) {
     return "sneaker";
   }
-  if (/\b(hat|beanie|backpack|duffle|duffel|tote|watch|watches)\b/.test(haystack)) {
+  if (/\b(backpack|duffle|duffel|tote|watch|watches)\b/.test(haystack)) {
     return "accessory";
   }
   if (/\bbag\b/.test(haystack) && !/\bbaggy\b/.test(haystack)) {
     return "accessory";
   }
-  if (/\bcap\b/.test(haystack) && !/\b(jordan|nike|adidas|retro|sneaker|yeezy|dunk)\b/.test(haystack)) {
-    return "accessory";
+  if (product.product_type === "streetwear" && !/\b(sneaker|shoe|dunk|yeezy)\b/.test(haystack)) {
+    return "apparel";
   }
   return "sneaker";
 }
@@ -303,6 +332,7 @@ function productToCatalogRow(product) {
       colorSlug,
       categorySlug,
       cleanText(product.product_type) ? slugify(product.product_type) : null,
+      product.product_type === "collectibles" || product.category === "Collectibles" ? "collectibles" : null,
       product.sku ? `sku-${slugify(product.sku)}` : null,
       kind === "sneaker" ? "home-trending-sneakers" : kind === "apparel" ? "home-featured-apparel" : "home-featured-accessories",
       "kicksdb",
@@ -404,10 +434,14 @@ async function main() {
   const rowsByHandle = new Map();
   for (const query of args.queries) {
     console.log(`Searching KicksDB: ${query}`);
-    const products = await fetchProducts(query, apiKey, args.limitPerQuery);
-    for (const product of products) {
-      const row = productToCatalogRow(product);
-      if (row) rowsByHandle.set(row.handle, row);
+    try {
+      const products = await fetchProducts(query, apiKey, args.limitPerQuery);
+      for (const product of products) {
+        const row = productToCatalogRow(product);
+        if (row) rowsByHandle.set(row.handle, row);
+      }
+    } catch (error) {
+      console.warn(error instanceof Error ? error.message : error);
     }
   }
 

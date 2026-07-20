@@ -35,7 +35,7 @@ export function BrandsPage() {
         <ul className={styles.grid}>
           {brands.map((b) => (
             <li key={b.slug}>
-              <Link to={`/brands/${b.slug}`} className={styles.card}>
+              <Link to={`/brands/${encodeURIComponent(b.slug)}`} className={styles.card}>
                 <span className={styles.name}>{b.name}</span>
                 <span className={styles.count}>{b.count} items</span>
               </Link>
