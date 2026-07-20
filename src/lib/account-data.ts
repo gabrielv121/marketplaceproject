@@ -8,6 +8,8 @@ export type ProfileRow = {
   stripe_account_id: string | null;
   email_verified?: boolean;
   is_admin?: boolean;
+  preferred_shoe_size?: string | null;
+  preferred_apparel_size?: string | null;
 };
 
 export type ProfileAddressRow = {
@@ -90,7 +92,9 @@ export async function fetchMyProfile(): Promise<ProfileRow | null> {
   if (authErr || !auth.user) return null;
   const { data, error } = await sb
     .from("profiles")
-    .select("id, display_name, phone, created_at, stripe_account_id, email_verified, is_admin")
+    .select(
+      "id, display_name, phone, created_at, stripe_account_id, email_verified, is_admin, preferred_shoe_size, preferred_apparel_size",
+    )
     .eq("id", auth.user.id)
     .maybeSingle();
   if (error) throw error;
@@ -103,17 +107,28 @@ export async function fetchIsAdmin(): Promise<boolean> {
   return Boolean(profile?.is_admin);
 }
 
-export async function updateMyProfile(input: { displayName: string; phone: string }): Promise<void> {
+export async function updateMyProfile(input: {
+  displayName?: string;
+  phone?: string;
+  preferredShoeSize?: string;
+  preferredApparelSize?: string;
+}): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("Not configured");
   const { data: auth, error: authErr } = await sb.auth.getUser();
   if (authErr || !auth.user) throw new Error("Sign in required");
-  const name = input.displayName.trim();
-  const phone = input.phone.trim();
-  const { error } = await sb.from("profiles").upsert(
-    { id: auth.user.id, display_name: name || null, phone: phone || null },
-    { onConflict: "id" },
-  );
+
+  const patch: Record<string, unknown> = { id: auth.user.id };
+  if (input.displayName !== undefined) patch.display_name = input.displayName.trim() || null;
+  if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
+  if (input.preferredShoeSize !== undefined) {
+    patch.preferred_shoe_size = input.preferredShoeSize.trim() || null;
+  }
+  if (input.preferredApparelSize !== undefined) {
+    patch.preferred_apparel_size = input.preferredApparelSize.trim() || null;
+  }
+
+  const { error } = await sb.from("profiles").upsert(patch, { onConflict: "id" });
   if (error) throw error;
 }
 

@@ -1,5 +1,5 @@
 import type { CatalogProductDetail, CatalogProductSummary } from "./catalog-product";
-import { catalogProductMatchesSearch } from "./catalog-search";
+import { catalogProductMatchesSearch, tokenizeCatalogSearchQuery } from "./catalog-search";
 import { withResolvedFeaturedImage } from "./catalog-images";
 import { buildProductDetailFromSummary, getDemoProductByHandle } from "./demo-catalog";
 import { getSupabase } from "./supabase";
@@ -173,7 +173,7 @@ export async function searchCatalogSummariesFromSupabase(query: string): Promise
   if (!sb) return null;
   if (!(await catalogUsesSupabase())) return null;
 
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = tokenizeCatalogSearchQuery(query);
   if (!terms.length) return fetchCatalogSummariesFromSupabase({ limit: 500 });
 
   const primary = terms[0]!;

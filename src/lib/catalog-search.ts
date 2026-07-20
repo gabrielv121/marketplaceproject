@@ -1,5 +1,36 @@
 import type { CatalogProductSummary } from "./catalog-product";
 
+/** Words that shouldn't exclude near-matches (e.g. "brick by brick" vs "Brick After Brick"). */
+const SEARCH_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "by",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+  "x",
+]);
+
+/** Split a user query into meaningful search tokens. */
+export function tokenizeCatalogSearchQuery(query: string): string[] {
+  const raw = query
+    .trim()
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  const meaningful = raw.filter((t) => !SEARCH_STOP_WORDS.has(t) && t.length > 1);
+  // If the query was only stop words ("by", "the"), fall back to raw tokens.
+  return meaningful.length ? meaningful : raw;
+}
+
 /** Fields scanned for search (description omitted — substring match caused false hits like "rugged"). */
 export function catalogSearchFields(product: CatalogProductSummary): string[] {
   return [

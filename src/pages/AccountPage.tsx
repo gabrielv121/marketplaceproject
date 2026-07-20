@@ -392,6 +392,8 @@ export function AccountPage() {
   const [phone, setPhone] = useState("");
   const [shoeSize, setShoeSize] = useState("US 10");
   const [apparelSize, setApparelSize] = useState("M");
+  const [sizeSaving, setSizeSaving] = useState(false);
+  const [sizeSaveMsg, setSizeSaveMsg] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [productPreviews, setProductPreviews] = useState<Record<string, ProductPreview>>({});
   const [favoriteHandles, setFavoriteHandles] = useState<string[]>([]);
@@ -428,6 +430,8 @@ export function AccountPage() {
       setPhone(p?.phone ?? "");
       setStripeAccountId(p?.stripe_account_id ?? null);
       setEmailVerified(Boolean(p?.email_verified));
+      if (p?.preferred_shoe_size) setShoeSize(p.preferred_shoe_size);
+      if (p?.preferred_apparel_size) setApparelSize(p.preferred_apparel_size);
       setUsername((current) => current || p?.display_name?.toLowerCase().replace(/\s+/g, "") || user.email?.split("@")[0] || "");
       setAddresses(savedAddresses.map(addressFromRow));
       setListings(l);
@@ -527,6 +531,18 @@ export function AccountPage() {
       })
       .catch((e: unknown) => setSaveMsg(e instanceof Error ? e.message : "Save failed"))
       .finally(() => setSaving(false));
+  };
+
+  const onSaveSizePreferences = () => {
+    setSizeSaveMsg(null);
+    setSizeSaving(true);
+    void updateMyProfile({ preferredShoeSize: shoeSize, preferredApparelSize: apparelSize })
+      .then(() => {
+        setSizeSaveMsg("Size preferences saved.");
+        void refresh();
+      })
+      .catch((e: unknown) => setSizeSaveMsg(e instanceof Error ? e.message : "Could not save sizes"))
+      .finally(() => setSizeSaving(false));
   };
 
   const onCancelListing = (id: string) => {
@@ -1124,13 +1140,36 @@ export function AccountPage() {
             <p className={styles.kicker}>Fit</p>
             <h2 id="sizes-heading" className={styles.h2}>Size preference</h2>
           </div>
+          <button type="button" className={styles.btn} disabled={sizeSaving} onClick={() => onSaveSizePreferences()}>
+            {sizeSaving ? "Saving…" : "Save sizes"}
+          </button>
         </div>
         <div className={styles.formGrid}>
           <label className={styles.field}>
             <span className={styles.label}>Shoe size</span>
             <select className={styles.input} value={shoeSize} onChange={(e) => setShoeSize(e.target.value)}>
-              {["US 6", "US 7", "US 8", "US 9", "US 10", "US 11", "US 12", "US 13"].map((size) => (
-                <option key={size}>{size}</option>
+              {[
+                "US 6",
+                "US 6.5",
+                "US 7",
+                "US 7.5",
+                "US 8",
+                "US 8.5",
+                "US 9",
+                "US 9.5",
+                "US 10",
+                "US 10.5",
+                "US 11",
+                "US 11.5",
+                "US 12",
+                "US 12.5",
+                "US 13",
+                "US 14",
+                "US 15",
+              ].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
               ))}
             </select>
           </label>
@@ -1138,11 +1177,18 @@ export function AccountPage() {
             <span className={styles.label}>Apparel size</span>
             <select className={styles.input} value={apparelSize} onChange={(e) => setApparelSize(e.target.value)}>
               {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
-                <option key={size}>{size}</option>
+                <option key={size} value={size}>
+                  {size}
+                </option>
               ))}
             </select>
           </label>
         </div>
+        {sizeSaveMsg ? (
+          <p className={styles.muted} role="status">
+            {sizeSaveMsg}
+          </p>
+        ) : null}
       </section>
 
       <section className={styles.panel} id="buying" aria-labelledby="buying-heading">

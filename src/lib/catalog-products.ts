@@ -1,5 +1,5 @@
 import { DEMO_PRODUCTS } from "@/lib/demo-catalog";
-import { catalogProductMatchesSearch } from "@/lib/catalog-search";
+import { catalogProductMatchesSearch, tokenizeCatalogSearchQuery } from "@/lib/catalog-search";
 import { inferDepartmentSlugFromTags } from "@/lib/catalog-taxonomy";
 import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
@@ -180,7 +180,7 @@ export async function searchCatalogProducts(query: string): Promise<{
   error: string | null;
   catalogSource: "supabase" | "local";
 }> {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = tokenizeCatalogSearchQuery(query);
   if (!terms.length) {
     return loadCatalogProducts({ limit: 500 });
   }
