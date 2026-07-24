@@ -98,17 +98,28 @@ export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
   return false;
 }
 
+/** Designer / street-luxury brands eligible for the home designer rail (brand field). */
+const DESIGNER_BRAND_RE =
+  /rick owens|maison margiela|margiela|mm6|guidi|boris bidjan|ann demeulemeester|acronym|undercover|yohji|raf simons|haider ackermann|julius|visvim|comme des|cdg|balenciaga|stone island|dries van noten|jil sander|\braf\b|amiri|gallery dept|a bathing ape|\bbape\b|off[- ]?white|fear of god|fog essentials|sp5der|spider worldwide|\bdior\b|christian dior|\bprada\b|\bfendi\b|bottega|louis vuitton|\bgucci\b|moncler|chrome hearts|needles|kapital|sacai|neighborhood|wtaps|human made|cactus plant|cpfm|palace|kith|denim tears|corteiz|rhude/;
+
+/** Collab / house names in title when brand is Nike, Salomon, etc. */
+const DESIGNER_COLLAB_RE =
+  /rick owens|maison margiela|\bmm6\b|\bmargiela\b|comme des garcons|\bcdg\b|junya watanabe|balenciaga|stone island|off-white|\boff white x\b|\bx off[- ]?white\b|virgil abloh|amiri|gallery dept|a bathing ape|\bbape\b|fear of god|\bfog\b essentials|sp5der|spider worldwide|\bdior\b|sacai|acronym|undercover|yohji|raf simons|chrome hearts|cactus plant|denim tears|travis scott fragment/;
+
 export function isDesignerHomeProduct(p: CatalogProductSummary): boolean {
+  // Footwear & apparel rail — bags/hats belong on Accessories, not here.
+  if (isCatalogAccessoryCandidate(p)) return false;
+  const brand = (p.brand ?? "").toLowerCase();
+  // Keep ALD off this rail (busy patches / lifestyle merch).
+  if (/aime\s*leon|aim[eé]\s*leon/.test(brand)) return false;
+
   if (p.homeRails?.includes("featured-designer")) return true;
   const tags = (p.tags ?? []).join(" ").toLowerCase();
-  if (/\bdesigner\b|avant-garde/.test(tags)) return true;
-  const b = (p.brand ?? "").toLowerCase();
-  if (
-    /rick owens|maison margiela|margiela|guidi|boris bidjan|ann demeulemeester|acronym|undercover|yohji|raf simons|haider ackermann|julius|visvim|comme des|balenciaga|stone island|dries van noten|jil sander|raf\b/.test(
-      b,
-    )
-  )
-    return true;
+  if (/\bdesigner\b|avant-garde|featured-designer|home-featured-designer/.test(tags)) return true;
+  if (DESIGNER_BRAND_RE.test(brand)) return true;
+  const title = (p.title ?? "").toLowerCase();
+  // Title collabs (brand may be Nike / Salomon / Moncler / etc.)
+  if (DESIGNER_COLLAB_RE.test(`${brand} ${title}`)) return true;
   return false;
 }
 
@@ -327,7 +338,9 @@ function heuristicRails(p: CatalogProductSummary): string[] {
   if (/\bsneaker|shoe|runner|trainer|footwear|cleat|boot\b/.test(blob)) rails.push("trending-sneakers");
   if (isCatalogApparel(p) || /\bjacket|hoodie|tee|apparel|shorts|jersey|top|tank|singlet\b/.test(blob))
     rails.push("featured-apparel");
-  if (/\bdesigner|avant-garde|margiela|rick owens|guidi|bbs\b/.test(blob)) rails.push("featured-designer");
+  if (isDesignerHomeProduct(p) || /\bdesigner|avant-garde|featured-designer\b/.test(blob)) {
+    rails.push("featured-designer");
+  }
   if (/\bwatch|cap|hat|bag|tote|accessor/.test(blob)) rails.push("featured-accessories");
   if (/\bsale|deal|clearance|below|discount\b/.test(blob)) rails.push("below-retail");
   return [...new Set(rails)];
