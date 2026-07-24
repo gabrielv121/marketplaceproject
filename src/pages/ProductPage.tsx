@@ -49,6 +49,7 @@ import {
   conversionLineForSizeRow,
   defaultShoeGenderFromProduct,
   findShoeSizeById,
+  parsePreferredShoeUsSize,
   shoeSizeLabelForBook,
   shoeSizesForGender,
   type ShoeGender,
@@ -60,6 +61,8 @@ import type { BookEntry, SizeRow } from "@/types/marketplace";
 import styles from "./ProductPage.module.css";
 
 type Mode = "buy" | "sell" | "bid";
+
+const DEFAULT_SHOE_US = 10;
 
 export function ProductPage() {
   const { handle = "" } = useParams();
@@ -95,6 +98,7 @@ export function ProductPage() {
   const [myBids, setMyBids] = useState<MyBidRow[]>([]);
   const [shoeGender, setShoeGender] = useState<ShoeGender>("men");
   const [sizeSystem, setSizeSystem] = useState<ShoeSizeSystem>("us");
+  const [preferredShoeUs, setPreferredShoeUs] = useState<number | null>(null);
   const [emailVerified, setEmailVerified] = useState(true);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
@@ -165,14 +169,20 @@ export function ProductPage() {
     let cancelled = false;
     if (!user || !isP2pConfigured()) {
       setStripeAccountId(null);
+      setPreferredShoeUs(null);
       return;
     }
     void fetchMyProfile()
       .then((profile) => {
-        if (!cancelled) setStripeAccountId(profile?.stripe_account_id ?? null);
+        if (cancelled) return;
+        setStripeAccountId(profile?.stripe_account_id ?? null);
+        setPreferredShoeUs(parsePreferredShoeUsSize(profile?.preferred_shoe_size));
       })
       .catch(() => {
-        if (!cancelled) setStripeAccountId(null);
+        if (!cancelled) {
+          setStripeAccountId(null);
+          setPreferredShoeUs(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -227,30 +237,36 @@ export function ProductPage() {
 
   const shoeProduct = product ? isShoeProduct(product) : false;
 
+  const preferredUs = preferredShoeUs ?? DEFAULT_SHOE_US;
+
   useEffect(() => {
     if (!product) return;
     if (shoeProduct) {
       const gender = defaultShoeGenderFromProduct(product.gender, product.departmentSlug);
       setShoeGender(gender);
       const pool = shoeSizesForGender(gender);
-      const pick = pool.find((s) => s.us === 10) ?? pool[0];
+      const pick = pool.find((s) => s.us === preferredUs) ?? pool.find((s) => s.us === DEFAULT_SHOE_US) ?? pool[0];
       setSelectedVariantId(pick?.id ?? null);
       return;
     }
     const first = product.variants.find((v) => v.available) ?? product.variants[0];
     setSelectedVariantId(first?.id ?? null);
-  }, [product?.handle, shoeProduct]);
+  }, [product?.handle, shoeProduct, preferredUs]);
 
   useEffect(() => {
     if (!product || !shoeProduct) return;
     setSelectedVariantId((prev) => {
       const current = findShoeSizeById(prev ?? "");
       const pool = shoeSizesForGender(shoeGender);
-      const targetUs = current?.us ?? 10;
-      const match = pool.find((s) => s.us === targetUs) ?? pool.find((s) => s.us === 10) ?? pool[0];
+      const targetUs = current?.us ?? preferredUs;
+      const match =
+        pool.find((s) => s.us === targetUs) ??
+        pool.find((s) => s.us === preferredUs) ??
+        pool.find((s) => s.us === DEFAULT_SHOE_US) ??
+        pool[0];
       return match?.id ?? prev;
     });
-  }, [shoeGender, product?.handle, shoeProduct]);
+  }, [shoeGender, product?.handle, shoeProduct, preferredUs]);
 
   const sizeRows: SizeRow[] = useMemo(() => {
     if (!product) return [];
@@ -300,6 +316,9 @@ export function ProductPage() {
   }, [photoPreviews]);
 
   useEffect(() => {
+    // Buy mode: jump to a size that has an ask if preferred size has none.
+    // Sell/bid keep the preferred size so listing/bidding stays on the user's size.
+    if (mode !== "buy") return;
     if (!p2p || listings.length === 0 || sizeRows.length === 0) return;
     const selectedHasAsk = selectedRow
       ? listings.some((listing) => sizeLabelsMatch(listing.size_label, activeSizeLabel))
@@ -311,7 +330,7 @@ export function ProductPage() {
     if (firstSizeWithAsk && firstSizeWithAsk.id !== selectedVariantId) {
       setSelectedVariantId(firstSizeWithAsk.id);
     }
-  }, [p2p, listings, sizeRows, selectedRow, selectedVariantId, activeSizeLabel]);
+  }, [mode, p2p, listings, sizeRows, selectedRow, selectedVariantId, activeSizeLabel]);
 
   const book = useMemo(() => {
     if (!selectedRow || !p2p) return { asks: [] as BookEntry[], bids: [] as BookEntry[] };

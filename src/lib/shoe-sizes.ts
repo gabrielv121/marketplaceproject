@@ -132,6 +132,15 @@ export function findShoeSizeById(id: string): ShoeSizeSpec | null {
   return [...MEN_SHOE_SIZES, ...WOMEN_SHOE_SIZES].find((s) => s.id === id) ?? null;
 }
 
+/** Parse account prefs like `US 10` / `US 10.5` into a numeric US size. */
+export function parsePreferredShoeUsSize(raw: string | null | undefined): number | null {
+  if (!raw?.trim()) return null;
+  const match = raw.trim().match(/(?:us\s*[mw]?\s*)?(\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  const us = Number(match[1]);
+  return Number.isFinite(us) ? us : null;
+}
+
 type BuildShoeRowsInput = {
   gender: ShoeGender;
   system: ShoeSizeSystem;

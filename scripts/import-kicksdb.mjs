@@ -102,6 +102,83 @@ const DEFAULT_QUERIES = [
   "Amiri Hoodie",
 ];
 
+/** Brands under ~100 items — paginated fill toward TARGET_PER_BRAND. */
+const FILL_LOW_BRANDS = [
+  { brand: "Stussy", aliases: ["stussy"], queries: ["Stussy", "Stussy Hoodie", "Stussy T Shirt", "Stussy Cap"] },
+  { brand: "UGG", aliases: ["ugg"], queries: ["UGG", "UGG Tasman", "UGG Tazz", "UGG Ultra Mini", "UGG Classic"] },
+  { brand: "Crocs", aliases: ["crocs"], queries: ["Crocs", "Crocs Classic Clog", "Crocs Pollex", "Crocs Echo"] },
+  { brand: "Gucci", aliases: ["gucci"], queries: ["Gucci", "Gucci Sneaker", "Gucci Bag", "Gucci Belt"] },
+  { brand: "LEGO", aliases: ["lego"], queries: ["LEGO", "LEGO Set", "LEGO Technic", "LEGO Speed Champions"] },
+  { brand: "Salomon", aliases: ["salomon"], queries: ["Salomon", "Salomon XT-6", "Salomon ACS Pro", "Salomon XT-4"] },
+  {
+    brand: "The North Face",
+    aliases: ["thenorthface", "northface"],
+    queries: ["The North Face", "North Face Nuptse", "North Face Jacket", "North Face Hoodie"],
+  },
+  { brand: "Saucony", aliases: ["saucony"], queries: ["Saucony", "Saucony Shadow", "Saucony Grid", "Saucony Endorphin"] },
+  { brand: "Bearbrick", aliases: ["bearbrick", "medicom"], queries: ["Bearbrick", "BE@RBRICK"] },
+  { brand: "Moncler", aliases: ["moncler"], queries: ["Moncler", "Moncler Jacket", "Moncler Maya", "Moncler Genius"] },
+  {
+    brand: "Bottega Veneta",
+    aliases: ["bottegaveneta", "bottega"],
+    queries: ["Bottega Veneta", "Bottega Veneta Bag", "Bottega Sneaker"],
+  },
+  { brand: "Coach", aliases: ["coach"], queries: ["Coach", "Coach Bag", "Coach Tabby", "Coach Sneaker"] },
+  { brand: "KAWS", aliases: ["kaws"], queries: ["KAWS", "KAWS Figure", "KAWS Companion"] },
+  { brand: "Hot Wheels", aliases: ["hotwheels"], queries: ["Hot Wheels"] },
+  { brand: "On", aliases: ["on", "onrunning"], queries: ["On Cloudmonster", "On Cloudswift", "On Cloudnova", "On Cloud X"] },
+  { brand: "Puma", aliases: ["puma"], queries: ["Puma", "Puma Speedcat", "Puma Suede", "Puma Palermo", "Puma Clyde"] },
+  {
+    brand: "Canada Goose",
+    aliases: ["canadagoose"],
+    queries: ["Canada Goose", "Canada Goose Jacket", "Canada Goose Parka", "Canada Goose Chilliwack"],
+  },
+  {
+    brand: "Louis Vuitton",
+    aliases: ["louisvuitton"],
+    queries: ["Louis Vuitton", "Louis Vuitton Sneaker", "Louis Vuitton Bag", "Louis Vuitton Trainer"],
+  },
+  {
+    brand: "Hoka One One",
+    aliases: ["hokaoneone", "hoka"],
+    queries: ["Hoka", "Hoka Bondi", "Hoka Clifton", "Hoka Arahi", "Hoka One One"],
+  },
+  {
+    brand: "Converse",
+    aliases: ["converse"],
+    queries: ["Converse", "Converse Chuck Taylor", "Converse One Star", "Converse Run Star", "Converse Weapon"],
+  },
+  {
+    brand: "Carhartt",
+    aliases: ["carhartt", "carharttwip"],
+    queries: ["Carhartt WIP", "Carhartt Jacket", "Carhartt Hoodie", "Carhartt Beanie", "Carhartt Pants"],
+  },
+  { brand: "Sp5der", aliases: ["sp5der", "spiderworldwide"], queries: ["Sp5der", "Sp5der Hoodie", "Spider Worldwide"] },
+  { brand: "Vans", aliases: ["vans"], queries: ["Vans", "Vans Old Skool", "Vans Sk8-Hi", "Vans Authentic", "Vans Slip-On"] },
+  { brand: "Prada", aliases: ["prada"], queries: ["Prada", "Prada Sneaker", "Prada Bag", "Prada Nylon"] },
+  { brand: "Funko", aliases: ["funko"], queries: ["Funko", "Funko Pop"] },
+  { brand: "Hot Toys", aliases: ["hottoys"], queries: ["Hot Toys"] },
+  { brand: "AMIRI", aliases: ["amiri"], queries: ["Amiri", "Amiri Hoodie", "Amiri Jeans", "Amiri Sneaker"] },
+  {
+    brand: "Reebok",
+    aliases: ["reebok"],
+    queries: ["Reebok", "Reebok Club C", "Reebok Classic", "Reebok Pump", "Reebok Question"],
+  },
+  { brand: "BAPE", aliases: ["bape", "abathingape"], queries: ["BAPE", "A Bathing Ape", "Bape Shark", "Bape Hoodie"] },
+  { brand: "Bandai", aliases: ["bandai"], queries: ["Bandai", "Bandai Figure", "Gundam Bandai"] },
+  {
+    brand: "Gallery Dept.",
+    aliases: ["gallerydept", "gallerydepartment"],
+    queries: ["Gallery Dept", "Gallery Department"],
+  },
+  { brand: "Denim Tears", aliases: ["denimtears"], queries: ["Denim Tears"] },
+  { brand: "Dior", aliases: ["dior", "christiandior"], queries: ["Dior", "Dior Sneaker", "Dior Bag", "Christian Dior"] },
+  { brand: "Fendi", aliases: ["fendi"], queries: ["Fendi", "Fendi Bag", "Fendi Sneaker"] },
+];
+
+const TARGET_PER_BRAND = 100;
+const API_PAGE_SIZE = 20;
+
 function usage() {
   console.log(`Usage:
   npm run kicks:dry-run
@@ -109,6 +186,8 @@ function usage() {
   npm run kicks:import -- --query "Air Jordan 4 Retro" --limit-per-query 20
   npm run kicks:import -- --models 1,3,4,5,9,11
   npm run kicks:import -- --keep-existing
+  npm run kicks:import -- --fill-low-brands --keep-existing
+  npm run kicks:import -- --query "Vans" --limit-per-query 100 --pages 5 --require-brand "Vans"
 
 Environment:
   KICKSDB_API_KEY or KICKSDEV_API_KEY
@@ -116,10 +195,10 @@ Environment:
   SUPABASE_SERVICE_ROLE_KEY
 
 Notes:
-  - Uses KicksDB StockX Standard API search.
+  - Uses KicksDB StockX Standard API search (max ~20 results per page).
   - Imports exact product images from KicksDB's image/gallery fields.
   - Upserts by handle, using the KicksDB product slug.
-  - After import, all published rows without the kicksdb tag are unpublished (template/demo seeds are not kept).
+  - After import, all published rows without the kicksdb tag are unpublished (template/demo seeds are not kept), unless --keep-existing.
 `);
 }
 
@@ -147,7 +226,10 @@ function parseArgs(argv) {
     dryRun: argv.includes("--dry-run"),
     help: argv.includes("--help") || argv.includes("-h"),
     keepExisting: argv.includes("--keep-existing"),
+    fillLowBrands: argv.includes("--fill-low-brands"),
     limitPerQuery: 20,
+    pages: 1,
+    requireBrand: null,
     queries: [],
   };
 
@@ -169,15 +251,55 @@ function parseArgs(argv) {
     } else if (arg === "--limit-per-query" && next) {
       args.limitPerQuery = Number(next);
       i++;
+    } else if (arg === "--pages" && next) {
+      args.pages = Number(next);
+      i++;
+    } else if (arg === "--require-brand" && next) {
+      args.requireBrand = next;
+      i++;
     }
   }
 
-  if (!args.queries.length) args.queries = DEFAULT_QUERIES;
-  if (!Number.isFinite(args.limitPerQuery) || args.limitPerQuery < 1 || args.limitPerQuery > 100) {
-    throw new Error("--limit-per-query must be a number from 1 to 100");
+  if (!args.fillLowBrands && !args.queries.length) args.queries = DEFAULT_QUERIES;
+  if (!Number.isFinite(args.limitPerQuery) || args.limitPerQuery < 1 || args.limitPerQuery > 400) {
+    throw new Error("--limit-per-query must be a number from 1 to 400");
+  }
+  if (!Number.isFinite(args.pages) || args.pages < 1 || args.pages > 50) {
+    throw new Error("--pages must be a number from 1 to 50");
   }
 
   return args;
+}
+
+function cleanText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeBrandKey(value) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/@/g, "a")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function brandKeysMatch(productKey, aliasKey) {
+  if (!productKey || !aliasKey) return false;
+  if (productKey === aliasKey) return true;
+  // Short aliases (on, lv, …) must be exact — otherwise "on" matches inside "salomon"/"moncler".
+  if (aliasKey.length <= 3 || productKey.length <= 3) return productKey === aliasKey;
+  // "carharttwip" contains "carhartt"
+  if (productKey.includes(aliasKey)) return true;
+  // Alias contains product brand only when the product token is long enough
+  // e.g. alias "gallerydepartment" contains product "gallerydept"
+  if (productKey.length >= 6 && aliasKey.includes(productKey)) return true;
+  return false;
+}
+
+function brandMatches(productBrand, expectedBrand, aliases = []) {
+  const productKey = normalizeBrandKey(productBrand);
+  if (!productKey) return false;
+  const keys = [normalizeBrandKey(expectedBrand), ...aliases.map(normalizeBrandKey)].filter(Boolean);
+  return keys.some((key) => brandKeysMatch(productKey, key));
 }
 
 function slugify(input) {
@@ -187,10 +309,6 @@ function slugify(input) {
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function cleanText(value) {
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function uniq(values) {
@@ -391,27 +509,126 @@ async function hideNonKicksDbRows(supabase) {
   console.log(`Unpublished ${handles.length} non-KicksDB catalog row(s).`);
 }
 
-async function fetchProducts(query, apiKey, limit) {
-  const url = new URL(API_BASE);
-  url.searchParams.set("query", query);
-  url.searchParams.set("per_page", String(limit));
+async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1 } = {}) {
+  const pageCount = Math.max(pages, Math.ceil(limit / API_PAGE_SIZE));
+  const collected = [];
+  const seen = new Set();
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
-    },
-  });
+  for (let page = 1; page <= pageCount && collected.length < limit; page++) {
+    const url = new URL(API_BASE);
+    url.searchParams.set("query", query);
+    url.searchParams.set("per_page", String(API_PAGE_SIZE));
+    url.searchParams.set("page", String(page));
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`KicksDB request failed for "${query}" (${response.status}): ${body.slice(0, 300)}`);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`KicksDB request failed for "${query}" page ${page} (${response.status}): ${body.slice(0, 300)}`);
+    }
+
+    const json = await response.json();
+    const quota = response.headers.get("x-quota-current");
+    if (quota && page === 1) console.log(`KicksDB quota used: ${quota}`);
+
+    const batch = Array.isArray(json.data) ? json.data : [];
+    if (!batch.length) break;
+
+    for (const product of batch) {
+      const id = cleanText(product.uuid || product.id || product.slug || product.link) || `${product.brand}-${product.title}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      collected.push(product);
+      if (collected.length >= limit) break;
+    }
+
+    if (batch.length < API_PAGE_SIZE) break;
+    await new Promise((resolve) => setTimeout(resolve, 80));
   }
 
-  const json = await response.json();
-  const quota = response.headers.get("x-quota-current");
-  if (quota) console.log(`KicksDB quota used: ${quota}`);
-  return Array.isArray(json.data) ? json.data.slice(0, limit) : [];
+  return collected;
+}
+
+async function loadPublishedBrandCounts(supabase) {
+  const counts = new Map();
+  const pageSize = 1000;
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("catalog_products")
+      .select("brand")
+      .eq("published", true)
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    if (!data?.length) break;
+    for (const row of data) {
+      const brand = cleanText(row.brand) || "(none)";
+      counts.set(brand, (counts.get(brand) ?? 0) + 1);
+    }
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+  return counts;
+}
+
+function catalogCountForBrand(counts, brand, aliases = []) {
+  const keys = [normalizeBrandKey(brand), ...aliases.map(normalizeBrandKey)].filter(Boolean);
+  let total = 0;
+  for (const [name, n] of counts) {
+    const key = normalizeBrandKey(name);
+    if (keys.some((k) => brandKeysMatch(key, k))) total += n;
+  }
+  return total;
+}
+
+async function collectFillLowBrandRows(apiKey, supabase) {
+  const counts = await loadPublishedBrandCounts(supabase);
+  const rowsByHandle = new Map();
+
+  for (const entry of FILL_LOW_BRANDS) {
+    const have = catalogCountForBrand(counts, entry.brand, entry.aliases);
+    const need = Math.max(0, TARGET_PER_BRAND - have);
+    console.log(`\n${entry.brand}: catalog=${have}, need=${need} more to reach ${TARGET_PER_BRAND}`);
+    if (need === 0) {
+      console.log(`  skip — already at target`);
+      continue;
+    }
+
+    let addedForBrand = 0;
+    const pages = Math.min(10, Math.max(3, Math.ceil((need + 40) / API_PAGE_SIZE)));
+
+    for (const query of entry.queries) {
+      if (addedForBrand >= need * 2) break; // gather some headroom for filter drops
+      console.log(`  Searching: ${query} (up to ${pages} pages)`);
+      try {
+        const products = await fetchProducts(query, apiKey, {
+          limit: pages * API_PAGE_SIZE,
+          pages,
+        });
+        let matched = 0;
+        for (const product of products) {
+          if (!brandMatches(product.brand, entry.brand, entry.aliases)) continue;
+          const row = productToCatalogRow(product);
+          if (!row) continue;
+          if (!rowsByHandle.has(row.handle)) {
+            rowsByHandle.set(row.handle, row);
+            addedForBrand += 1;
+          }
+          matched += 1;
+        }
+        console.log(`    api=${products.length}, brand-matched importable≈${matched}, new handles this brand=${addedForBrand}`);
+      } catch (error) {
+        console.warn(`    ${error instanceof Error ? error.message : error}`);
+      }
+    }
+  }
+
+  return [...rowsByHandle.values()];
 }
 
 async function main() {
@@ -431,23 +648,56 @@ async function main() {
     return;
   }
 
-  const rowsByHandle = new Map();
-  for (const query of args.queries) {
-    console.log(`Searching KicksDB: ${query}`);
-    try {
-      const products = await fetchProducts(query, apiKey, args.limitPerQuery);
-      for (const product of products) {
-        const row = productToCatalogRow(product);
-        if (row) rowsByHandle.set(row.handle, row);
-      }
-    } catch (error) {
-      console.warn(error instanceof Error ? error.message : error);
-    }
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!args.dryRun && (!supabaseUrl || !serviceRole)) {
+    console.error("Missing VITE_SUPABASE_URL/SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+    process.exitCode = 1;
+    return;
   }
 
-  const rows = [...rowsByHandle.values()].sort((a, b) => b.trend_score - a.trend_score || a.title.localeCompare(b.title));
+  const supabase =
+    supabaseUrl && serviceRole
+      ? createClient(supabaseUrl, serviceRole, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+      : null;
+
+  let rows;
+  if (args.fillLowBrands) {
+    if (!supabase) {
+      console.error("--fill-low-brands needs Supabase credentials to read current brand counts.");
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`Filling low brands toward ${TARGET_PER_BRAND} published items each…`);
+    rows = await collectFillLowBrandRows(apiKey, supabase);
+    // Fill mode always keeps existing catalog rows.
+    args.keepExisting = true;
+  } else {
+    const rowsByHandle = new Map();
+    for (const query of args.queries) {
+      console.log(`Searching KicksDB: ${query}`);
+      try {
+        const products = await fetchProducts(query, apiKey, {
+          limit: args.limitPerQuery,
+          pages: args.pages,
+        });
+        for (const product of products) {
+          if (args.requireBrand && !brandMatches(product.brand, args.requireBrand)) continue;
+          const row = productToCatalogRow(product);
+          if (row) rowsByHandle.set(row.handle, row);
+        }
+      } catch (error) {
+        console.warn(error instanceof Error ? error.message : error);
+      }
+    }
+    rows = [...rowsByHandle.values()];
+  }
+
+  rows.sort((a, b) => b.trend_score - a.trend_score || a.title.localeCompare(b.title));
   console.log(`Prepared ${rows.length} KicksDB product(s).`);
-  console.table(rows.slice(0, 30).map((row) => ({ handle: row.handle, title: row.title, price_min: row.price_min, trend_score: row.trend_score })));
+  console.table(rows.slice(0, 30).map((row) => ({ handle: row.handle, title: row.title, brand: row.brand, price_min: row.price_min, trend_score: row.trend_score })));
   if (rows.length > 30) console.log(`...and ${rows.length - 30} more.`);
   if (!rows.length) {
     console.log("No importable KicksDB products found.");
@@ -459,27 +709,22 @@ async function main() {
     return;
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRole) {
-    console.error("Missing VITE_SUPABASE_URL/SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-    process.exitCode = 1;
-    return;
+  const chunkSize = 150;
+  let imported = 0;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const { error } = await supabase.from("catalog_products").upsert(chunk, { onConflict: "handle" });
+    if (error) {
+      console.error(`Import failed on chunk ${i / chunkSize + 1}:`);
+      console.error(error.message);
+      process.exitCode = 1;
+      return;
+    }
+    imported += chunk.length;
+    console.log(`Upserted ${imported}/${rows.length}…`);
   }
 
-  const supabase = createClient(supabaseUrl, serviceRole, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { error } = await supabase.from("catalog_products").upsert(rows, { onConflict: "handle" });
-  if (error) {
-    console.error("Import failed:");
-    console.error(error.message);
-    process.exitCode = 1;
-    return;
-  }
-
-  console.log(`Imported ${rows.length} KicksDB product(s) into catalog_products.`);
+  console.log(`Imported ${imported} KicksDB product(s) into catalog_products.`);
 
   const blocked = [...BLOCKED_CATALOG_HANDLES];
   const { error: delErr } = await supabase.from("catalog_products").delete().in("handle", blocked);
@@ -487,6 +732,16 @@ async function main() {
   else console.log(`Removed ${blocked.length} blocked catalog handle(s).`);
 
   if (!args.keepExisting) await hideNonKicksDbRows(supabase);
+
+  if (args.fillLowBrands) {
+    const after = await loadPublishedBrandCounts(supabase);
+    console.log("\n=== Brand counts after fill ===");
+    for (const entry of FILL_LOW_BRANDS) {
+      const n = catalogCountForBrand(after, entry.brand, entry.aliases);
+      const mark = n >= TARGET_PER_BRAND ? "OK" : "LOW";
+      console.log(`${mark.padEnd(3)} ${entry.brand.padEnd(18)} ${n}`);
+    }
+  }
 }
 
 main().catch((error) => {
