@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { renderAuthEmail } from "../_shared/email-template.ts";
+import { renderWelcomeEmail } from "../_shared/email-template.ts";
 import { sendTransactionalEmail } from "../_shared/email-transport.ts";
 
 const corsHeaders: Record<string, string> = {
@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
     }
 
     const subject = reason === "reminder" ? "Verify your email to buy and sell on VRNA" : "Welcome to VRNA";
-    const headline = reason === "reminder" ? "Verify your email" : "Welcome to VRNA";
+    const headline =
+      reason === "reminder" ? "Verify your email to buy and sell." : "Your account is ready.";
     const paragraphs =
       reason === "reminder"
         ? [
@@ -130,26 +131,28 @@ Deno.serve(async (req) => {
           ]
         : needsVerify
           ? [
-              `Hi ${name}, your VRNA account is ready. You're signed in and can browse the catalog right away.`,
+              `Hi ${name}, you're officially part of the next generation sneaker marketplace. Buy, sell, and bid on authentic sneakers with confidence. Every pair is verified for authenticity before it reaches you.`,
               "When you're ready to buy, bid, or list an item, verify your email with the button below (optional until then).",
             ]
           : [
               `Hi ${name}, welcome back to VRNA. You're signed in and ready to browse the catalog.`,
-              "Your email is already verified, so you can buy, bid, and list whenever you're ready.",
+              "Your email is already verified, so you can buy, bid, and list whenever you're ready. Every pair is verified for authenticity before it reaches the buyer.",
             ];
 
-    const { html, text } = renderAuthEmail({
+    const { html, text } = renderWelcomeEmail({
       preheader:
         reason === "reminder"
           ? "Verify your email to trade on VRNA"
           : needsVerify
             ? "Your VRNA account is ready"
             : "Welcome back to VRNA",
+      eyebrow: reason === "reminder" ? "VERIFY YOUR EMAIL" : "WELCOME TO VRNA",
       headline,
       paragraphs,
       cta: verifyUrl
         ? { label: "Verify email", href: verifyUrl }
-        : { label: "Browse VRNA", href: siteUrl },
+        : { label: "Explore VRNA →", href: siteUrl },
+      secondaryCta: verifyUrl ? { label: "Explore VRNA", href: siteUrl } : undefined,
       siteUrl,
     });
 

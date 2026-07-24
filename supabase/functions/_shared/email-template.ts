@@ -273,3 +273,191 @@ export function renderAuthEmail(content: AuthEmailContent): { html: string; text
 
   return { html, text: textParts.join("\n") };
 }
+
+function brandWordmarkHtml(homeUrl: string, fontSize = "28px"): string {
+  return `<a href="${escapeHtml(homeUrl)}" style="font-size:${fontSize};font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};text-decoration:none;line-height:1;">V<span style="color:${BRAND.accent};font-weight:800;">R</span>NA</a>`;
+}
+
+const WELCOME_FEATURES: { title: string; body: string; glyph: string }[] = [
+  { title: "BUY", body: "Shop the hottest sneakers at the best prices.", glyph: "B" },
+  { title: "SELL", body: "List your sneakers in minutes and reach more buyers.", glyph: "S" },
+  { title: "BID", body: "Place bids on rare pairs and win your grails.", glyph: "D" },
+  { title: "AUTHENTIC", body: "Every item is authenticated by our experts.", glyph: "A" },
+  { title: "TRACK", body: "Track every step of your order in real time.", glyph: "T" },
+];
+
+export type WelcomeEmailContent = {
+  preheader: string;
+  /** Small purple eyebrow above the hero headline */
+  eyebrow?: string;
+  headline: string;
+  paragraphs: string[];
+  cta: { label: string; href: string };
+  secondaryCta?: { label: string; href: string };
+  siteUrl: string;
+};
+
+/** Full welcome / onboarding email — mockup-inspired layout with official wordmark. */
+export function renderWelcomeEmail(content: WelcomeEmailContent): { html: string; text: string } {
+  const {
+    preheader,
+    eyebrow = "WELCOME TO VRNA",
+    headline,
+    paragraphs,
+    cta,
+    secondaryCta,
+    siteUrl,
+  } = content;
+  const homeUrl = siteUrl.replace(/\/$/, "");
+  const year = new Date().getFullYear();
+
+  const introHtml = paragraphs
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(p)}</p>`)
+    .join("");
+
+  const ctaHtml = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 12px;">
+      <tr>
+        <td style="border-radius:10px;background:${BRAND.accent};">
+          <a href="${escapeHtml(cta.href)}" style="display:inline-block;padding:14px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
+        </td>
+      </tr>
+    </table>`;
+
+  const secondaryHtml = secondaryCta
+    ? `<p style="margin:0 0 8px;font-size:13px;"><a href="${escapeHtml(secondaryCta.href)}" style="color:${BRAND.accent};text-decoration:underline;">${escapeHtml(secondaryCta.label)}</a></p>`
+    : "";
+
+  const featureRows = WELCOME_FEATURES.map(
+    (f) => `
+      <tr>
+        <td style="padding:10px 0;vertical-align:top;width:48px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:${BRAND.surface2};border:1px solid ${BRAND.border};text-align:center;line-height:40px;font-size:14px;font-weight:800;color:${BRAND.accent};">${f.glyph}</div>
+        </td>
+        <td style="padding:10px 0 10px 12px;vertical-align:top;">
+          <p style="margin:0 0 4px;font-size:13px;font-weight:700;letter-spacing:0.06em;color:${BRAND.text};">${f.title}</p>
+          <p style="margin:0;font-size:13px;line-height:1.45;color:${BRAND.muted};">${escapeHtml(f.body)}</p>
+        </td>
+      </tr>`,
+  ).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>${escapeHtml(headline)}</title>
+</head>
+<body style="margin:0;padding:0;background:#000000;font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#000000;padding:24px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">
+          <tr>
+            <td style="padding:0 4px 16px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="font-size:12px;color:#71717a;">Welcome to ${BRAND.name}</td>
+                  <td align="right" style="font-size:12px;">
+                    <a href="${escapeHtml(homeUrl)}" style="color:#71717a;text-decoration:underline;">View in browser</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:8px 0 28px;">
+              ${brandWordmarkHtml(homeUrl, "32px")}
+              <p style="margin:10px 0 0;font-size:11px;letter-spacing:0.14em;color:${BRAND.muted};text-transform:uppercase;">Sneakers · Marketplace · Community</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 0 28px;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.12em;color:${BRAND.accent};text-transform:uppercase;">${escapeHtml(eyebrow)}</p>
+              <h1 style="margin:0 0 16px;font-size:28px;line-height:1.25;font-weight:700;color:${BRAND.text};">${escapeHtml(headline)}</h1>
+              ${introHtml}
+              ${ctaHtml}
+              ${secondaryHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="border-top:1px solid ${BRAND.border};font-size:0;line-height:0;">&nbsp;</td>
+                  <td width="1%" style="padding:0 14px;white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:0.12em;color:${BRAND.accent};text-transform:uppercase;">What you can do</td>
+                  <td style="border-top:1px solid ${BRAND.border};font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                ${featureRows}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 0 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:14px;">
+                <tr>
+                  <td style="padding:28px 24px;">
+                    <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.12em;color:${BRAND.accent};text-transform:uppercase;">The VRNA experience</p>
+                    <h2 style="margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:700;color:${BRAND.text};">Built for the culture.</h2>
+                    <p style="margin:0;font-size:14px;line-height:1.6;color:${BRAND.muted};">
+                      VRNA connects sneakerheads worldwide through a secure, transparent, and premium marketplace.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:8px 0 20px;border-top:1px solid ${BRAND.border};">
+              <p style="margin:20px 0 6px;font-size:14px;font-weight:700;color:${BRAND.text};">Need help?</p>
+              <p style="margin:0 0 8px;font-size:13px;color:${BRAND.muted};">Our team is here for you.</p>
+              <p style="margin:0 0 24px;font-size:13px;">
+                <a href="mailto:support@vrna.io" style="color:${BRAND.accent};text-decoration:underline;">support@vrna.io</a>
+              </p>
+              ${brandWordmarkHtml(homeUrl, "20px")}
+              <p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#52525b;">
+                © ${year} ${BRAND.name}. All rights reserved.<br />
+                This email was sent to you because you created an account on ${BRAND.name}.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const textParts = [
+    BRAND.name,
+    "Sneakers · Marketplace · Community",
+    "—".repeat(28),
+    eyebrow,
+    headline,
+    "",
+    ...paragraphs,
+    "",
+    `${cta.label}: ${cta.href}`,
+  ];
+  if (secondaryCta) textParts.push(`${secondaryCta.label}: ${secondaryCta.href}`);
+  textParts.push(
+    "",
+    "What you can do",
+    ...WELCOME_FEATURES.map((f) => `${f.title}: ${f.body}`),
+    "",
+    "The VRNA experience — Built for the culture.",
+    "VRNA connects sneakerheads worldwide through a secure, transparent, and premium marketplace.",
+    "",
+    "Need help? support@vrna.io",
+    `© ${year} ${BRAND.name}. All rights reserved.`,
+  );
+
+  return { html, text: textParts.join("\n") };
+}
