@@ -196,6 +196,52 @@ export async function sendTradeStatusEmails(
     priceLabel: formatMoney(trade.price_cents, trade.currency),
   });
 
+  if (status === "received_by_exch") {
+    await Promise.all([
+      sendTemplated(buyerEmail, `Received for verification — ${product.title}`, {
+        preheader: "VRNA received your order and started verification",
+        headline: "Item received for verification",
+        paragraphs: [
+          "VRNA received your order from the seller and is verifying authenticity and condition.",
+          "You will get another email when verification is complete.",
+        ],
+        product,
+        orderRows: rows,
+        cta: { label: "Track your order", href: accountLink },
+      }),
+      sendTemplated(sellerEmail, `Received by VRNA — ${product.title}`, {
+        preheader: "VRNA received your shipment for verification",
+        headline: "Item received for verification",
+        paragraphs: [
+          "VRNA received your shipment and is verifying authenticity and condition.",
+          "You will get another email when verification is complete.",
+        ],
+        product,
+        orderRows: rows,
+        cta: { label: "View sale", href: accountLink },
+      }),
+    ]);
+    await insertUserNotifications(admin, [
+      {
+        user_id: trade.buyer_id,
+        kind: "received_by_exch",
+        title: "Received for verification",
+        body: `${product.title} arrived at VRNA and is being verified.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+      {
+        user_id: trade.seller_id,
+        kind: "received_by_exch",
+        title: "Received by VRNA",
+        body: `${product.title} arrived at VRNA and is being verified.`,
+        href: tradePath(trade.id),
+        trade_id: trade.id,
+      },
+    ]);
+    return;
+  }
+
   if (status === "verification_passed") {
     const { data: profile } = await admin
       .from("profiles")
