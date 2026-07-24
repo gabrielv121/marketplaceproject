@@ -17,6 +17,9 @@ type PaidTrade = {
   product_handle: string;
   size_label: string;
   currency: string;
+  price_cents: number;
+  buyer_shipping_cents: number | null;
+  buyer_processing_fee_cents: number | null;
   buyer_total_cents: number | null;
   seller_net_payout_cents: number | null;
   seller_ship_by: string | null;
@@ -126,7 +129,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", tradeId)
       .in("status", ["reserved", "pending_payment"])
-      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
+      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, price_cents, buyer_shipping_cents, buyer_processing_fee_cents, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
       .maybeSingle<PaidTrade>();
 
     if (updateErr) return json({ error: updateErr.message }, 500);

@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", tradeId)
       .in("status", ["reserved", "pending_payment"])
-      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
+      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, price_cents, buyer_shipping_cents, buyer_processing_fee_cents, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
       .maybeSingle();
 
     if (error) {

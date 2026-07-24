@@ -5,9 +5,11 @@ import { sendNotificationEmail, tryNotificationEmail } from "./send-notification
 import {
   appUrl,
   baseOrderRows,
+  buyerChargeRows,
   emailForUser,
   formatMoney,
   loadProductCard,
+  loadRelatedProducts,
   resolveSiteUrl,
 } from "./trade-email-data.ts";
 
@@ -27,6 +29,9 @@ export type PaymentTrade = {
   product_handle: string;
   size_label: string;
   currency: string;
+  price_cents: number;
+  buyer_shipping_cents?: number | null;
+  buyer_processing_fee_cents?: number | null;
   buyer_total_cents: number | null;
   seller_net_payout_cents: number | null;
   seller_ship_by: string | null;
@@ -34,21 +39,33 @@ export type PaymentTrade = {
 
 export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: PaymentTrade): Promise<void> {
   const siteUrl = resolveSiteUrl(null);
-  const [buyerEmail, sellerEmail, product] = await Promise.all([
+  const [buyerEmail, sellerEmail, product, relatedProducts] = await Promise.all([
     emailForUser(admin, trade.buyer_id),
     emailForUser(admin, trade.seller_id),
     loadProductCard(admin, trade.product_handle, trade.size_label, siteUrl),
+    loadRelatedProducts(admin, trade.product_handle, siteUrl, 3),
   ]);
   const accountLink = appUrl("/account", siteUrl);
   const shipBy = trade.seller_ship_by
     ? new Date(trade.seller_ship_by).toLocaleDateString("en-US")
     : "within 3 days";
   const total = formatMoney(trade.buyer_total_cents, trade.currency);
+  const itemPrice = formatMoney(trade.price_cents, trade.currency);
   const payout = formatMoney(trade.seller_net_payout_cents, trade.currency);
-  const rows = baseOrderRows({
+  const buyerRows = buyerChargeRows({
     tradeId: trade.id,
     sizeLabel: trade.size_label,
-    priceLabel: total,
+    currency: trade.currency,
+    priceCents: trade.price_cents,
+    processingFeeCents: trade.buyer_processing_fee_cents,
+    shippingCents: trade.buyer_shipping_cents,
+    totalCents: trade.buyer_total_cents,
+  });
+  const sellerRows = baseOrderRows({
+    tradeId: trade.id,
+    sizeLabel: trade.size_label,
+    priceLabel: itemPrice,
+    extra: [{ label: "Est. payout", value: payout }],
   });
 
   await Promise.all([
@@ -59,7 +76,8 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
         `Thanks for your purchase. VRNA is holding ${total} while the seller ships the item to us for verification.`,
       ],
       product,
-      orderRows: rows,
+      orderRows: buyerRows,
+      relatedProducts,
       cta: { label: "View your order", href: accountLink },
     }),
     sendTemplated(sellerEmail, `Ship to VRNA — ${product.title}`, {
@@ -70,7 +88,7 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
         `Estimated payout after verification and delivery: ${payout}.`,
       ],
       product,
-      orderRows: rows,
+      orderRows: sellerRows,
       cta: { label: "Open seller actions", href: accountLink },
     }),
   ]);

@@ -38,7 +38,15 @@ export type EmailProductCard = {
   siteUrl: string;
 };
 
-export type OrderDetailRow = { label: string; value: string };
+export type RelatedEmailProduct = {
+  title: string;
+  brand?: string | null;
+  handle: string;
+  imageUrl?: string | null;
+  productUrl: string;
+};
+
+export type OrderDetailRow = { label: string; value: string; emphasis?: boolean };
 
 export type OrderEmailContent = {
   preheader: string;
@@ -46,9 +54,30 @@ export type OrderEmailContent = {
   paragraphs: string[];
   product: EmailProductCard;
   orderRows?: OrderDetailRow[];
+  relatedProducts?: RelatedEmailProduct[];
   cta?: { label: string; href: string };
   secondaryCta?: { label: string; href: string };
 };
+
+function brandWordmarkHtml(homeUrl: string, fontSize = "28px"): string {
+  return `<a href="${escapeHtml(homeUrl)}" style="font-size:${fontSize};font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};text-decoration:none;line-height:1;">V<span style="color:${BRAND.accent};font-weight:800;">R</span>NA</a>`;
+}
+
+function emailSupportFooterHtml(homeUrl: string, note: string): string {
+  const year = new Date().getFullYear();
+  return `<td align="center" style="padding:24px 8px 8px;border-top:1px solid ${BRAND.border};">
+    <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:${BRAND.text};">Need help?</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.muted};">Our team is here for you.</p>
+    <p style="margin:0 0 24px;font-size:13px;">
+      <a href="mailto:support@vrna.io" style="color:${BRAND.accent};text-decoration:underline;">support@vrna.io</a>
+    </p>
+    ${brandWordmarkHtml(homeUrl, "20px")}
+    <p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#52525b;">
+      © ${year} ${BRAND.name}. All rights reserved.<br />
+      ${escapeHtml(note)}
+    </p>
+  </td>`;
+}
 
 function isSafeImageUrl(url: string | null | undefined): url is string {
   if (!url?.trim()) return false;
@@ -60,26 +89,32 @@ function isSafeImageUrl(url: string | null | undefined): url is string {
   }
 }
 
-function productImageHtml(product: EmailProductCard): string {
+function productImageHtml(product: Pick<EmailProductCard, "title" | "imageUrl">, size = 120): string {
   const alt = escapeHtml(product.title);
   if (isSafeImageUrl(product.imageUrl)) {
-    return `<img src="${escapeHtml(product.imageUrl)}" alt="${alt}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:contain;border-radius:8px;background:#1c1c1f;" />`;
+    return `<img src="${escapeHtml(product.imageUrl)}" alt="${alt}" width="${size}" height="${size}" style="display:block;width:${size}px;height:${size}px;object-fit:contain;border-radius:8px;background:${BRAND.surface2};" />`;
   }
-  return '<div style="display:block;width:120px;height:120px;border-radius:8px;background:#1c1c1f;border:1px solid #2a2a2e;line-height:120px;text-align:center;font-size:22px;font-weight:700;color:#9d00ff;">VRNA</div>';
+  return `<div style="display:block;width:${size}px;height:${size}px;border-radius:8px;background:${BRAND.surface2};border:1px solid ${BRAND.border};line-height:${size}px;text-align:center;font-size:18px;font-weight:700;color:${BRAND.accent};">VRNA</div>`;
 }
 
 function orderRowsHtml(rows: OrderDetailRow[]): string {
   if (!rows.length) return "";
   const cells = rows
-    .map(
-      (row) => `
+    .map((row) => {
+      const valueStyle = row.emphasis
+        ? `padding:10px 0 8px;font-size:15px;color:${BRAND.text};font-weight:700;vertical-align:top;border-top:1px solid ${BRAND.border};`
+        : `padding:8px 0;font-size:14px;color:${BRAND.text};font-weight:500;vertical-align:top;`;
+      const labelStyle = row.emphasis
+        ? `padding:10px 0 8px;font-size:13px;color:${BRAND.text};font-weight:700;width:140px;vertical-align:top;border-top:1px solid ${BRAND.border};`
+        : `padding:8px 0;font-size:13px;color:${BRAND.muted};width:140px;vertical-align:top;`;
+      return `
       <tr>
-        <td style="padding:8px 0;font-size:13px;color:#a1a1aa;width:120px;vertical-align:top;">${escapeHtml(row.label)}</td>
-        <td style="padding:8px 0;font-size:14px;color:#f4f4f5;font-weight:500;vertical-align:top;">${escapeHtml(row.value)}</td>
-      </tr>`,
-    )
+        <td style="${labelStyle}">${escapeHtml(row.label)}</td>
+        <td style="${valueStyle}">${escapeHtml(row.value)}</td>
+      </tr>`;
+    })
     .join("");
-  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:4px;border-top:1px solid #2a2a2e;padding-top:4px;">${cells}</table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;border-top:1px solid ${BRAND.border};">${cells}</table>`;
 }
 
 function orderRowsText(rows: OrderDetailRow[]): string {
@@ -87,31 +122,75 @@ function orderRowsText(rows: OrderDetailRow[]): string {
   return rows.map((r) => `${r.label}: ${r.value}`).join("\n");
 }
 
+function relatedProductsHtml(products: RelatedEmailProduct[]): string {
+  if (!products.length) return "";
+  const rows = products
+    .map(
+      (p) => `
+      <tr>
+        <td style="padding:12px 0;border-top:1px solid ${BRAND.border};width:72px;vertical-align:middle;">
+          <a href="${escapeHtml(p.productUrl)}" style="text-decoration:none;">${productImageHtml(p, 64)}</a>
+        </td>
+        <td style="padding:12px 0 12px 14px;border-top:1px solid ${BRAND.border};vertical-align:middle;">
+          ${p.brand?.trim() ? `<p style="margin:0 0 4px;font-size:11px;letter-spacing:0.06em;color:${BRAND.accent};text-transform:uppercase;">${escapeHtml(p.brand.trim())}</p>` : ""}
+          <p style="margin:0;font-size:14px;font-weight:600;line-height:1.35;">
+            <a href="${escapeHtml(p.productUrl)}" style="color:${BRAND.text};text-decoration:none;">${escapeHtml(p.title)}</a>
+          </p>
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;">
+      <tr>
+        <td style="padding:0 0 12px;">
+          <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.12em;color:${BRAND.accent};text-transform:uppercase;">You may also like</p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:4px 16px;">
+            ${rows}
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
 export function renderOrderEmail(content: OrderEmailContent): { html: string; text: string } {
-  const { preheader, headline, paragraphs, product, orderRows = [], cta, secondaryCta } = content;
+  const {
+    preheader,
+    headline,
+    paragraphs,
+    product,
+    orderRows = [],
+    relatedProducts = [],
+    cta,
+    secondaryCta,
+  } = content;
+  const homeUrl = product.siteUrl.replace(/\/$/, "");
   const brandLine = product.brand?.trim()
     ? `${escapeHtml(product.brand)} · Size ${escapeHtml(product.sizeLabel)}`
     : `Size ${escapeHtml(product.sizeLabel)}`;
 
   const introHtml = paragraphs
-    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#f4f4f5;">${escapeHtml(p)}</p>`)
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(p)}</p>`)
     .join("");
 
   const ctaHtml = cta
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 8px;">
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">
         <tr>
-          <td style="border-radius:8px;background:${BRAND.accent};">
-            <a href="${escapeHtml(cta.href)}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
+          <td style="border-radius:10px;background:${BRAND.accent};">
+            <a href="${escapeHtml(cta.href)}" style="display:inline-block;padding:14px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
           </td>
         </tr>
       </table>`
     : "";
 
   const secondaryHtml = secondaryCta
-    ? `<p style="margin:0 0 20px;font-size:13px;"><a href="${escapeHtml(secondaryCta.href)}" style="color:#9d00ff;text-decoration:underline;">${escapeHtml(secondaryCta.label)}</a></p>`
+    ? `<p style="margin:0 0 12px;font-size:13px;"><a href="${escapeHtml(secondaryCta.href)}" style="color:${BRAND.accent};text-decoration:underline;">${escapeHtml(secondaryCta.label)}</a></p>`
     : "";
-
-  const homeUrl = product.siteUrl.replace(/\/$/, "");
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -121,22 +200,34 @@ export function renderOrderEmail(content: OrderEmailContent): { html: string; te
   <meta name="color-scheme" content="dark" />
   <title>${escapeHtml(headline)}</title>
 </head>
-<body style="margin:0;padding:0;background:${BRAND.bg};font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#000000;font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND.bg};padding:32px 16px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#000000;padding:24px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;overflow:hidden;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">
           <tr>
-            <td style="padding:28px 28px 20px;border-bottom:1px solid ${BRAND.border};">
-              <a href="${escapeHtml(homeUrl)}" style="font-size:22px;font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};text-decoration:none;">${BRAND.name}</a>
+            <td style="padding:0 4px 16px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="font-size:12px;color:#71717a;">${BRAND.name} order update</td>
+                  <td align="right" style="font-size:12px;">
+                    <a href="${escapeHtml(homeUrl)}" style="color:#71717a;text-decoration:underline;">View in browser</a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:28px;">
-              <h1 style="margin:0 0 18px;font-size:22px;line-height:1.3;font-weight:700;color:${BRAND.text};">${escapeHtml(headline)}</h1>
+            <td align="center" style="padding:8px 0 24px;">
+              ${brandWordmarkHtml(homeUrl, "28px")}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 0 8px;">
+              <h1 style="margin:0 0 16px;font-size:24px;line-height:1.3;font-weight:700;color:${BRAND.text};">${escapeHtml(headline)}</h1>
               ${introHtml}
-              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;background:${BRAND.surface2};border:1px solid ${BRAND.border};border-radius:10px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;">
                 <tr>
                   <td style="padding:16px;width:120px;vertical-align:top;">
                     ${productImageHtml(product)}
@@ -152,19 +243,13 @@ export function renderOrderEmail(content: OrderEmailContent): { html: string; te
               </table>
               ${ctaHtml}
               ${secondaryHtml}
+              ${relatedProductsHtml(relatedProducts)}
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 28px;background:${BRAND.surface2};border-top:1px solid ${BRAND.border};">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:${BRAND.muted};">
-                Verified resale on ${BRAND.name} — payments held until authentication and delivery.
-              </p>
-            </td>
+            ${emailSupportFooterHtml(homeUrl, `You received this email about activity on your ${BRAND.name} account.`)}
           </tr>
         </table>
-        <p style="margin:20px 0 0;font-size:11px;color:#52525b;text-align:center;">
-          You received this email about activity on your ${BRAND.name} account.
-        </p>
       </td>
     </tr>
   </table>
@@ -186,6 +271,12 @@ export function renderOrderEmail(content: OrderEmailContent): { html: string; te
   ];
   if (cta) textParts.push("", `${cta.label}: ${cta.href}`);
   if (secondaryCta) textParts.push(`${secondaryCta.label}: ${secondaryCta.href}`);
+  if (relatedProducts.length) {
+    textParts.push("", "You may also like");
+    for (const related of relatedProducts) {
+      textParts.push(`${related.title}: ${related.productUrl}`);
+    }
+  }
 
   return { html, text: textParts.filter(Boolean).join("\n") };
 }
@@ -205,19 +296,19 @@ export function renderAuthEmail(content: AuthEmailContent): { html: string; text
   const homeUrl = siteUrl.replace(/\/$/, "");
 
   const introHtml = paragraphs
-    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#f4f4f5;">${escapeHtml(p)}</p>`)
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${BRAND.muted};">${escapeHtml(p)}</p>`)
     .join("");
 
   const otpHtml = otpCode
-    ? `<p style="margin:16px 0 0;font-size:13px;color:#a1a1aa;">Or enter this code:</p>
-       <p style="margin:8px 0 0;font-size:22px;font-weight:700;letter-spacing:0.2em;color:#f4f4f5;">${escapeHtml(otpCode)}</p>`
+    ? `<p style="margin:16px 0 0;font-size:13px;color:${BRAND.muted};">Or enter this code:</p>
+       <p style="margin:8px 0 0;font-size:22px;font-weight:700;letter-spacing:0.2em;color:${BRAND.text};">${escapeHtml(otpCode)}</p>`
     : "";
 
   const ctaHtml = cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">
         <tr>
-          <td style="border-radius:8px;background:${BRAND.accent};">
-            <a href="${escapeHtml(cta.href)}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
+          <td style="border-radius:10px;background:${BRAND.accent};">
+            <a href="${escapeHtml(cta.href)}" style="display:inline-block;padding:14px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
           </td>
         </tr>
       </table>`
@@ -231,36 +322,29 @@ export function renderAuthEmail(content: AuthEmailContent): { html: string; text
   <meta name="color-scheme" content="dark" />
   <title>${escapeHtml(headline)}</title>
 </head>
-<body style="margin:0;padding:0;background:${BRAND.bg};font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#000000;font-family:'DM Sans',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BRAND.bg};padding:32px 16px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#000000;padding:24px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;overflow:hidden;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;">
           <tr>
-            <td style="padding:28px 28px 20px;border-bottom:1px solid ${BRAND.border};">
-              <a href="${escapeHtml(homeUrl)}" style="font-size:22px;font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};text-decoration:none;">${BRAND.name}</a>
+            <td align="center" style="padding:8px 0 24px;">
+              ${brandWordmarkHtml(homeUrl, "28px")}
             </td>
           </tr>
           <tr>
-            <td style="padding:28px;">
-              <h1 style="margin:0 0 18px;font-size:22px;line-height:1.3;font-weight:700;color:${BRAND.text};">${escapeHtml(headline)}</h1>
+            <td style="padding:0 0 8px;">
+              <h1 style="margin:0 0 16px;font-size:24px;line-height:1.3;font-weight:700;color:${BRAND.text};">${escapeHtml(headline)}</h1>
               ${introHtml}
               ${ctaHtml}
               ${otpHtml}
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 28px;background:${BRAND.surface2};border-top:1px solid ${BRAND.border};">
-              <p style="margin:0;font-size:12px;line-height:1.5;color:${BRAND.muted};">
-                If you did not request this, you can ignore this email.
-              </p>
-            </td>
+            ${emailSupportFooterHtml(homeUrl, "If you did not request this, you can ignore this email.")}
           </tr>
         </table>
-        <p style="margin:20px 0 0;font-size:11px;color:#52525b;text-align:center;">
-          Account email from ${BRAND.name}
-        </p>
       </td>
     </tr>
   </table>
@@ -272,10 +356,6 @@ export function renderAuthEmail(content: AuthEmailContent): { html: string; text
   if (otpCode) textParts.push("", `Code: ${otpCode}`);
 
   return { html, text: textParts.join("\n") };
-}
-
-function brandWordmarkHtml(homeUrl: string, fontSize = "28px"): string {
-  return `<a href="${escapeHtml(homeUrl)}" style="font-size:${fontSize};font-weight:700;letter-spacing:-0.02em;color:${BRAND.text};text-decoration:none;line-height:1;">V<span style="color:${BRAND.accent};font-weight:800;">R</span>NA</a>`;
 }
 
 const WELCOME_FEATURES: { title: string; body: string; glyph: string }[] = [
