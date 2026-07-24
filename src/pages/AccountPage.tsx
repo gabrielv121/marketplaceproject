@@ -22,7 +22,7 @@ import {
   startSellerOnboarding,
 } from "@/lib/checkout";
 import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
-import { loadCatalogProducts } from "@/lib/catalog-products";
+import { fetchCatalogSummariesByHandles } from "@/lib/catalog-supabase";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
 import { buyerTradeTotalCents } from "@/lib/buyer-pricing";
 import { formatMoney } from "@/lib/money-format";
@@ -447,22 +447,33 @@ export function AccountPage() {
     void refresh();
   }, [refresh]);
 
+  const previewHandles = useMemo(() => {
+    const handles = new Set<string>();
+    for (const row of listings) handles.add(row.product_handle);
+    for (const row of bids) handles.add(row.product_handle);
+    for (const row of trades) handles.add(row.product_handle);
+    for (const handle of favoriteHandles) handles.add(handle);
+    return [...handles].filter(Boolean).sort();
+  }, [bids, favoriteHandles, listings, trades]);
+
   useEffect(() => {
+    if (!previewHandles.length) {
+      setProductPreviews({});
+      return;
+    }
     let cancelled = false;
-    void loadCatalogProducts({ limit: 2000 })
-      .then(({ products }) => {
+    void fetchCatalogSummariesByHandles(previewHandles)
+      .then((products) => {
         if (cancelled) return;
-        setProductPreviews(
-          Object.fromEntries(
-            products.map((product) => [
-              product.handle,
-              {
-                title: product.title,
-                imageUrl: product.featuredImageUrl,
-              },
-            ]),
-          ),
-        );
+        const next: Record<string, ProductPreview> = {};
+        for (const handle of previewHandles) {
+          const product = products.get(handle);
+          next[handle] = {
+            title: product?.title ?? handle,
+            imageUrl: product?.featuredImageUrl ?? null,
+          };
+        }
+        setProductPreviews(next);
       })
       .catch(() => {
         if (!cancelled) setProductPreviews({});
@@ -471,7 +482,7 @@ export function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [previewHandles]);
 
   useEffect(() => {
     const q = new URLSearchParams(location.search);

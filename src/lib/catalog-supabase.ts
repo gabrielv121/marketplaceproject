@@ -265,6 +265,36 @@ export async function fetchCatalogSummaryByHandle(handle: string): Promise<Catal
   return getDemoProductByHandle(handle);
 }
 
+const HANDLE_IN_CHUNK = 80;
+
+/** Batch lookup for account/order lists — includes unpublished rows so past trades still resolve. */
+export async function fetchCatalogSummariesByHandles(
+  handles: string[],
+): Promise<Map<string, CatalogProductSummary>> {
+  const unique = [...new Set(handles.map((h) => h.trim()).filter(Boolean))];
+  const out = new Map<string, CatalogProductSummary>();
+  if (!unique.length) return out;
+
+  const sb = getSupabase();
+  if (sb && (await catalogUsesSupabase())) {
+    for (let i = 0; i < unique.length; i += HANDLE_IN_CHUNK) {
+      const chunk = unique.slice(i, i + HANDLE_IN_CHUNK);
+      const { data, error } = await sb.from("catalog_products").select("*").in("handle", chunk);
+      if (error) throw error;
+      for (const row of (data ?? []) as CatalogProductRow[]) {
+        out.set(row.handle, withResolvedFeaturedImage(rowToSummary(row)));
+      }
+    }
+    return out;
+  }
+
+  for (const handle of unique) {
+    const demo = getDemoProductByHandle(handle);
+    if (demo) out.set(handle, demo);
+  }
+  return out;
+}
+
 export async function resolveProductDetailByHandle(handle: string): Promise<CatalogProductDetail | null> {
   const sb = getSupabase();
   if (sb && (await catalogUsesSupabase())) {
