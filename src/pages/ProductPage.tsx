@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { CatalogProductImage } from "@/components/CatalogProductImage";
@@ -99,6 +99,9 @@ export function ProductPage() {
   const [shoeGender, setShoeGender] = useState<ShoeGender>("men");
   const [sizeSystem, setSizeSystem] = useState<ShoeSizeSystem>("us");
   const [preferredShoeUs, setPreferredShoeUs] = useState<number | null>(null);
+  const [preferredShoeLoaded, setPreferredShoeLoaded] = useState(false);
+  /** Set once the shopper taps a size, so auto-selection never moves it under them. */
+  const sizePickedByUserRef = useRef(false);
   const [emailVerified, setEmailVerified] = useState(true);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
@@ -170,18 +173,22 @@ export function ProductPage() {
     if (!user || !isP2pConfigured()) {
       setStripeAccountId(null);
       setPreferredShoeUs(null);
+      setPreferredShoeLoaded(true);
       return;
     }
+    setPreferredShoeLoaded(false);
     void fetchMyProfile()
       .then((profile) => {
         if (cancelled) return;
         setStripeAccountId(profile?.stripe_account_id ?? null);
         setPreferredShoeUs(parsePreferredShoeUsSize(profile?.preferred_shoe_size));
+        setPreferredShoeLoaded(true);
       })
       .catch(() => {
         if (!cancelled) {
           setStripeAccountId(null);
           setPreferredShoeUs(null);
+          setPreferredShoeLoaded(true);
         }
       });
     return () => {
@@ -240,8 +247,15 @@ export function ProductPage() {
   const preferredUs = preferredShoeUs ?? DEFAULT_SHOE_US;
 
   useEffect(() => {
+    sizePickedByUserRef.current = false;
+  }, [product?.handle]);
+
+  useEffect(() => {
     if (!product) return;
     if (shoeProduct) {
+      // Wait for the saved preference so the grid never lands on US 10 first and then jumps.
+      if (!preferredShoeLoaded) return;
+      if (sizePickedByUserRef.current) return;
       const gender = defaultShoeGenderFromProduct(product.gender, product.departmentSlug);
       setShoeGender(gender);
       const pool = shoeSizesForGender(gender);
@@ -251,10 +265,10 @@ export function ProductPage() {
     }
     const first = product.variants.find((v) => v.available) ?? product.variants[0];
     setSelectedVariantId(first?.id ?? null);
-  }, [product?.handle, shoeProduct, preferredUs]);
+  }, [product?.handle, shoeProduct, preferredUs, preferredShoeLoaded]);
 
   useEffect(() => {
-    if (!product || !shoeProduct) return;
+    if (!product || !shoeProduct || !preferredShoeLoaded) return;
     setSelectedVariantId((prev) => {
       const current = findShoeSizeById(prev ?? "");
       const pool = shoeSizesForGender(shoeGender);
@@ -266,7 +280,7 @@ export function ProductPage() {
         pool[0];
       return match?.id ?? prev;
     });
-  }, [shoeGender, product?.handle, shoeProduct, preferredUs]);
+  }, [shoeGender, product?.handle, shoeProduct, preferredUs, preferredShoeLoaded]);
 
   const sizeRows: SizeRow[] = useMemo(() => {
     if (!product) return [];
@@ -319,6 +333,7 @@ export function ProductPage() {
     // Buy mode: jump to a size that has an ask if preferred size has none.
     // Sell/bid keep the preferred size so listing/bidding stays on the user's size.
     if (mode !== "buy") return;
+    if (sizePickedByUserRef.current) return;
     if (!p2p || listings.length === 0 || sizeRows.length === 0) return;
     const selectedHasAsk = selectedRow
       ? listings.some((listing) => sizeLabelsMatch(listing.size_label, activeSizeLabel))
@@ -431,7 +446,7 @@ export function ProductPage() {
           id: listingId,
           product_handle: product.handle,
           size_label: activeSizeLabel,
-          catalog_variant_id: selectedVariantId ?? null,
+          catalog_variant_id: selectedRow?.id ?? null,
           price_cents: cents,
           currency,
           condition: listingCondition,
@@ -721,8 +736,12 @@ export function ProductPage() {
               <button
                 key={row.id}
                 type="button"
-                className={row.id === selectedVariantId ? styles.sizeOn : styles.size}
-                onClick={() => setSelectedVariantId(row.id)}
+                className={row.id === selectedRow?.id ? styles.sizeOn : styles.size}
+                aria-pressed={row.id === selectedRow?.id}
+                onClick={() => {
+                  sizePickedByUserRef.current = true;
+                  setSelectedVariantId(row.id);
+                }}
               >
                 <span className={styles.sizeLabel}>{row.label}</span>
                 {row.lowestAsk ? (

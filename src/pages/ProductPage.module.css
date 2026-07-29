@@ -232,11 +232,25 @@
   background: var(--surface);
   color: var(--text);
   font-size: 0.75rem;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sizeOn {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-dim) 55%, var(--surface));
   box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+/* Keyboard ring only, and deliberately not purple so it can't read as "selected". */
+.size:focus,
+.sizeOn:focus {
+  outline: none;
+}
+
+.size:focus-visible,
+.sizeOn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--text) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .sizeLabel {
