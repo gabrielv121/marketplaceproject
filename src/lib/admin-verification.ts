@@ -127,13 +127,10 @@ export async function fetchAdminRecentListings(limit = 100): Promise<AdminRecent
   if (!sb) throw new Error("Supabase not configured");
   const { data, error } = await sb.rpc("admin_list_recent_listings", { p_limit: limit });
   if (error) throw readableAdminError(error);
-  return (data ?? []).map((row) => {
-    const r = row as AdminRecentListing;
-    return {
-      ...r,
-      photo_urls: Array.isArray(r.photo_urls) ? r.photo_urls : [],
-    };
-  });
+  return ((data ?? []) as AdminRecentListing[]).map((row) => ({
+    ...row,
+    photo_urls: Array.isArray(row.photo_urls) ? row.photo_urls : [],
+  }));
 }
 
 export async function updateAdminTradeStatus(tradeId: string, update: AdminTradeUpdate): Promise<void> {
