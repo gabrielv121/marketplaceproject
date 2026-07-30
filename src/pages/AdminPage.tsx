@@ -4,10 +4,13 @@ import { ReturnLink } from "@/components/ReturnLink";
 import { useAuth } from "@/context/AuthContext";
 import {
   createBuyerOutboundLabel,
+  fetchAdminRecentListings,
   fetchAdminVerificationTrades,
   releaseSellerPayout,
   sendAdminTestEmail,
   updateAdminTradeStatus,
+  type AdminListingStatus,
+  type AdminRecentListing,
   type AdminTradeStatus,
   type AdminVerificationTrade,
 } from "@/lib/admin-verification";
@@ -38,6 +41,14 @@ const STATUS_OPTIONS: Array<"all" | AdminTradeStatus> = [
   "payout_paid",
   "cancelled",
   "refunded",
+];
+
+const LISTING_STATUS_OPTIONS: Array<"all" | AdminListingStatus> = [
+  "all",
+  "active",
+  "reserved",
+  "cancelled",
+  "sold",
 ];
 
 const NEXT_ACTIONS: Partial<Record<AdminTradeStatus, { label: string; status: AdminTradeStatus; danger?: boolean }[]>> = {
@@ -110,11 +121,14 @@ function visibleActions(row: AdminVerificationTrade): Array<{ label: string; sta
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const [trades, setTrades] = useState<AdminVerificationTrade[]>([]);
+  const [listings, setListings] = useState<AdminRecentListing[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | AdminTradeStatus>("all");
+  const [listingQuery, setListingQuery] = useState("");
+  const [listingStatus, setListingStatus] = useState<"all" | AdminListingStatus>("all");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [testRecipient, setTestRecipient] = useState("");
@@ -126,11 +140,15 @@ export function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const rows = await fetchAdminVerificationTrades();
-      setTrades(rows);
+      const [tradeRows, listingRows] = await Promise.all([
+        fetchAdminVerificationTrades(),
+        fetchAdminRecentListings(150),
+      ]);
+      setTrades(tradeRows);
+      setListings(listingRows);
       setDrafts((current) => {
         const next = { ...current };
-        for (const row of rows) {
+        for (const row of tradeRows) {
           next[row.id] ??= {
             notes: row.verification_notes ?? "",
             sellerTracking: row.seller_tracking_number ?? "",
@@ -140,7 +158,7 @@ export function AdminPage() {
         return next;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load admin trades");
+      setError(e instanceof Error ? e.message : "Could not load admin data");
     } finally {
       setLoading(false);
     }
@@ -161,16 +179,31 @@ export function AdminPage() {
     });
   }, [query, status, trades]);
 
+  const filteredListings = useMemo(() => {
+    const q = listingQuery.trim().toLowerCase();
+    return listings.filter((row) => {
+      if (listingStatus !== "all" && row.status !== listingStatus) return false;
+      if (!q) return true;
+      return `${row.product_title ?? ""} ${row.product_handle} ${row.size_label} ${row.seller_email ?? ""} ${row.status} ${row.condition ?? ""}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [listingQuery, listingStatus, listings]);
+
   const counts = useMemo(() => {
     const active = trades.filter(
       (row) => !["reserved", "pending_payment", "cancelled", "payout_paid", "completed", "refunded", "verification_failed"].includes(row.status),
     );
+    const recentCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return {
       total: trades.length,
       active: active.length,
       payout: trades.filter((row) => row.status === "payout_available").length,
+      newListings: listings.filter(
+        (row) => row.status === "active" && new Date(row.created_at).getTime() >= recentCutoff,
+      ).length,
     };
-  }, [trades]);
+  }, [listings, trades]);
 
   const setDraft = (id: string, patch: Partial<Draft>) => {
     setDrafts((current) => {
@@ -302,6 +335,10 @@ export function AdminPage() {
             <strong>{counts.payout}</strong>
             <span>Payout ready</span>
           </div>
+          <div className={styles.metric}>
+            <strong>{counts.newListings}</strong>
+            <span>Active listings (7d)</span>
+          </div>
         </div>
       </section>
 
@@ -340,7 +377,132 @@ export function AdminPage() {
 
       {error ? <p className={styles.warn}>{error}</p> : null}
 
+      <section className={styles.panel} aria-label="Recent listings">
+        <div className={styles.sectionHead}>
+          <div>
+            <p className={styles.eyebrow}>Marketplace</p>
+            <h2 className={styles.sectionTitle}>Recent listings</h2>
+            <p className={styles.lead}>Newest asks from sellers — product, size, price, photos, and who listed them.</p>
+          </div>
+        </div>
+        <div className={styles.toolbar}>
+          <input
+            className={styles.search}
+            placeholder="Search product, seller, size, status"
+            value={listingQuery}
+            onChange={(e) => setListingQuery(e.target.value)}
+          />
+          <select
+            className={styles.select}
+            value={listingStatus}
+            onChange={(e) => setListingStatus(e.target.value as "all" | AdminListingStatus)}
+          >
+            {LISTING_STATUS_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option === "all" ? "All listing statuses" : prettyStatus(option)}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={styles.ghostBtn} onClick={() => void refresh()} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+
+        <div className={styles.stack}>
+          {filteredListings.length === 0 ? <p className={styles.empty}>No listings match those filters.</p> : null}
+          {filteredListings.map((row) => {
+            const title = row.product_title?.trim() || row.product_handle;
+            const thumb = row.photo_urls[0] || row.product_image_url;
+            return (
+              <article key={row.id} className={styles.tradeCard}>
+                <div className={styles.listingTop}>
+                  {thumb ? (
+                    <a href={thumb} target="_blank" rel="noreferrer" className={styles.listingThumb}>
+                      <img src={thumb} alt="" loading="lazy" />
+                    </a>
+                  ) : (
+                    <div className={styles.listingThumbEmpty} aria-hidden>
+                      —
+                    </div>
+                  )}
+                  <div className={styles.listingBody}>
+                    <div className={styles.tradeTop}>
+                      <div>
+                        <h3 className={styles.title}>
+                          <Link to={`/product/${encodeURIComponent(row.product_handle)}`}>{title}</Link>
+                          <span className={styles.pill}>{row.size_label}</span>
+                        </h3>
+                        <p className={styles.small}>
+                          Seller {row.seller_email ?? row.seller_id} • Listed {shortDate(row.created_at)}
+                        </p>
+                      </div>
+                      <span className={styles.status}>{prettyStatus(row.status)}</span>
+                    </div>
+                    <div className={styles.details}>
+                      <span>
+                        Ask
+                        <strong>{formatMoney(moneyFromCents(row.price_cents, row.currency))}</strong>
+                      </span>
+                      <span>
+                        Condition
+                        <strong>{prettyCondition(row.condition)}</strong>
+                      </span>
+                      <span>
+                        Box included
+                        <strong>{row.box_included == null ? "Not set" : row.box_included ? "Yes" : "No"}</strong>
+                      </span>
+                      <span>
+                        SKU
+                        <strong>{row.sku ?? "Not provided"}</strong>
+                      </span>
+                      <span>
+                        Photos
+                        <strong>{row.photo_urls.length}</strong>
+                      </span>
+                    </div>
+                    {row.photo_urls.length > 1 ? (
+                      <div className={styles.photoGrid}>
+                        {row.photo_urls.slice(0, 6).map((url, index) => (
+                          <a
+                            key={`${row.id}-photo-${index}`}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.photoLink}
+                          >
+                            <img src={url} alt={`Listing photo ${index + 1}`} loading="lazy" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+                    {row.defects ? (
+                      <p className={styles.reviewNote}>
+                        <strong>Defects / wear</strong>
+                        {row.defects}
+                      </p>
+                    ) : null}
+                    {row.seller_notes ? (
+                      <p className={styles.reviewNote}>
+                        <strong>Seller notes</strong>
+                        {row.seller_notes}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
       <section className={styles.panel}>
+        <div className={styles.sectionHead}>
+          <div>
+            <p className={styles.eyebrow}>Orders</p>
+            <h2 className={styles.sectionTitle}>Verification queue</h2>
+            <p className={styles.lead}>Paid trades moving through shipment, verification, delivery, and payout.</p>
+          </div>
+        </div>
         <div className={styles.toolbar}>
           <input
             className={styles.search}

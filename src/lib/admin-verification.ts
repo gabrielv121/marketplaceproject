@@ -99,6 +99,43 @@ export async function fetchAdminVerificationTrades(): Promise<AdminVerificationT
   return (data ?? []) as AdminVerificationTrade[];
 }
 
+export type AdminListingStatus = "active" | "reserved" | "cancelled" | "sold";
+
+export type AdminRecentListing = {
+  id: string;
+  created_at: string;
+  seller_id: string;
+  seller_email: string | null;
+  product_handle: string;
+  product_title: string | null;
+  product_image_url: string | null;
+  size_label: string;
+  price_cents: number;
+  currency: string;
+  status: AdminListingStatus;
+  condition: string | null;
+  photo_urls: string[];
+  defects: string | null;
+  box_included: boolean | null;
+  sku: string | null;
+  seller_notes: string | null;
+  verification_requirements_accepted_at: string | null;
+};
+
+export async function fetchAdminRecentListings(limit = 100): Promise<AdminRecentListing[]> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const { data, error } = await sb.rpc("admin_list_recent_listings", { p_limit: limit });
+  if (error) throw readableAdminError(error);
+  return (data ?? []).map((row) => {
+    const r = row as AdminRecentListing;
+    return {
+      ...r,
+      photo_urls: Array.isArray(r.photo_urls) ? r.photo_urls : [],
+    };
+  });
+}
+
 export async function updateAdminTradeStatus(tradeId: string, update: AdminTradeUpdate): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");
