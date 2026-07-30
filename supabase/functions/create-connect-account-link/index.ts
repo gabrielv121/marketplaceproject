@@ -97,13 +97,38 @@ Deno.serve(async (req) => {
 
     const { error: upsertErr } = await admin
       .from("profiles")
-      .upsert({ id: user.id, stripe_account_id: accountId }, { onConflict: "id" });
+      .upsert(
+        {
+          id: user.id,
+          stripe_account_id: accountId,
+          stripe_charges_enabled: account.charges_enabled ?? false,
+          stripe_payouts_enabled: account.payouts_enabled ?? false,
+          stripe_details_submitted: account.details_submitted ?? false,
+          stripe_connect_updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" },
+      );
 
     if (upsertErr) {
       return new Response(JSON.stringify({ error: upsertErr.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+  } else {
+    try {
+      const account = await stripe.accounts.retrieve(accountId);
+      await admin
+        .from("profiles")
+        .update({
+          stripe_charges_enabled: account.charges_enabled ?? false,
+          stripe_payouts_enabled: account.payouts_enabled ?? false,
+          stripe_details_submitted: account.details_submitted ?? false,
+          stripe_connect_updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+    } catch {
+      // Non-fatal — auth queue still works off stripe_account_id presence.
     }
   }
 

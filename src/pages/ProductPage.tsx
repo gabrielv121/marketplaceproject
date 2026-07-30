@@ -35,6 +35,7 @@ import {
 import { resolveProductDetailByHandle } from "@/lib/catalog-supabase";
 import type { CatalogProductDetail } from "@/lib/catalog-product";
 import { recordProductView } from "@/lib/recently-viewed";
+import { logProductView } from "@/lib/analytics-events";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
@@ -148,6 +149,7 @@ export function ProductPage() {
       title: product.title,
       featuredImageUrl: product.featuredImageUrl,
     });
+    logProductView({ productHandle: product.handle, path: `/product/${product.handle}` });
   }, [product, loading, user?.id]);
 
   useEffect(() => {

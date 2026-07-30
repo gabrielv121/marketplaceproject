@@ -16,6 +16,7 @@ type Props = {
   favorite?: boolean;
   favoriteBusy?: boolean;
   onToggleFavorite?: (productHandle: string, next: boolean) => void;
+  onNavigate?: (handle: string) => void;
 };
 
 function hashString(s: string): number {
@@ -63,6 +64,7 @@ export function ProductCard({
   favorite = false,
   favoriteBusy = false,
   onToggleFavorite,
+  onNavigate,
 }: Props) {
   const hasImage = Boolean(resolveFeaturedImageUrl(product));
   const low = {
@@ -71,11 +73,12 @@ export function ProductCard({
   };
   const dept = product.departmentSlug ? getDepartmentBySlug(product.departmentSlug) : undefined;
   const showXpress = hashString(product.id + product.handle) % 3 !== 0;
+  const onClickNavigate = () => onNavigate?.(product.handle);
 
   if (visual === "stockx") {
     return (
       <div className={styles.cardStockx}>
-        <ReturnLink to={`/product/${product.handle}`} className={styles.cardStockxLink}>
+        <ReturnLink to={`/product/${product.handle}`} className={styles.cardStockxLink} onClick={onClickNavigate}>
           <div className={styles.imageWell}>
             {hasImage ? (
               <CatalogProductImage product={product} className={styles.imageStockx} />
@@ -116,7 +119,7 @@ export function ProductCard({
   }
 
   return (
-    <ReturnLink to={`/product/${product.handle}`} className={styles.card}>
+    <ReturnLink to={`/product/${product.handle}`} className={styles.card} onClick={onClickNavigate}>
       <div className={styles.imageWrap}>
         {dept ? <span className={styles.badge}>{dept.title}</span> : null}
         {hasImage ? (

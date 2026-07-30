@@ -9,9 +9,15 @@ type Props = {
   emptyMessage?: string;
   /** Home feed: 6 columns on desktop, equal card widths */
   layout?: "default" | "homeSix";
+  onProductNavigate?: (handle: string) => void;
 };
 
-export function ProductGrid({ products, emptyMessage = "Nothing here yet.", layout = "default" }: Props) {
+export function ProductGrid({
+  products,
+  emptyMessage = "Nothing here yet.",
+  layout = "default",
+  onProductNavigate,
+}: Props) {
   const { favoriteHandles, favoriteBusyHandle, onToggleFavorite } = useProductFavorites();
   const lastSalesByHandle = useProductLastSales(products.map((p) => p.handle));
 
@@ -30,6 +36,7 @@ export function ProductGrid({ products, emptyMessage = "Nothing here yet.", layo
             favorite={favoriteHandles.has(p.handle)}
             favoriteBusy={favoriteBusyHandle === p.handle}
             onToggleFavorite={onToggleFavorite}
+            onNavigate={onProductNavigate}
           />
         </li>
       ))}

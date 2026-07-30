@@ -537,3 +537,156 @@
 .actions .warn {
   margin: 0;
 }
+
+.heroControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.rangeLabel {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.tab,
+.tabOn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tabOn {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.kpiGrid {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+}
+
+.split {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 900px) {
+  .split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.subTitle {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.barChart {
+  display: flex;
+  align-items: end;
+  gap: 0.28rem;
+  min-height: 7.5rem;
+  padding: 0.5rem 0.15rem 0;
+  overflow-x: auto;
+}
+
+.barCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 0.25rem;
+  min-width: 1.1rem;
+  flex: 1 0 auto;
+  height: 7rem;
+}
+
+.barFill {
+  width: 100%;
+  max-width: 1.15rem;
+  border-radius: 6px 6px 2px 2px;
+  background: color-mix(in srgb, var(--accent) 75%, white);
+}
+
+.barLabel {
+  font-size: 0.58rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin-top: 0.75rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.table a {
+  color: var(--text);
+}
+
+.activityList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.activityItem {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.activityTime {
+  font-size: 0.72rem;
+  color: var(--muted);
+}

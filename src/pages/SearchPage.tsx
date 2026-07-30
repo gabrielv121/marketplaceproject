@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
+import { logSearchEvent } from "@/lib/analytics-events";
 import { searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./SearchPage.module.css";
@@ -30,6 +31,9 @@ export function SearchPage() {
         setProducts(list);
         setError(err);
         setLoading(false);
+        if (q) {
+          logSearchEvent({ query: q, resultCount: list.length, path: "/search" });
+        }
       }
     })();
     return () => {
@@ -50,6 +54,17 @@ export function SearchPage() {
   const clearSearch = () => {
     setInput("");
     setParams({});
+  };
+
+  const onProductNavigate = (handle: string) => {
+    if (q) {
+      logSearchEvent({
+        query: q,
+        resultCount: results.length,
+        clickedHandle: handle,
+        path: "/search",
+      });
+    }
   };
 
   return (
@@ -106,6 +121,7 @@ export function SearchPage() {
             <ProductGrid
               products={filtered}
               emptyMessage={q ? "No products match that search yet." : "No products available."}
+              onProductNavigate={onProductNavigate}
             />
           )}
         </CatalogFilters>

@@ -1,46 +1,62 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ReturnLink } from "@/components/ReturnLink";
-import { useAuth } from "@/context/AuthContext";
 import {
-  createBuyerOutboundLabel,
+  fetchAdminActivity,
+  fetchAdminAuthQueue,
+  fetchAdminListingsAnalytics,
+  fetchAdminOrdersAnalytics,
+  fetchAdminOverview,
+  fetchAdminRevenueAnalytics,
+  fetchAdminSearchAnalytics,
+  fetchAdminSellers,
+  fetchAdminUserGrowth,
+  type AdminActivityRow,
+  type AdminAuthQueue,
+  type AdminDateRange,
+  type AdminListingsAnalytics,
+  type AdminOrdersAnalytics,
+  type AdminOverview,
+  type AdminRevenueAnalytics,
+  type AdminSearchAnalytics,
+  type AdminSellerRow,
+  type AdminUserGrowth,
+} from "@/lib/admin-analytics";
+import {
   fetchAdminRecentListings,
   fetchAdminVerificationTrades,
-  releaseSellerPayout,
   sendAdminTestEmail,
-  updateAdminTradeStatus,
   type AdminListingStatus,
   type AdminRecentListing,
-  type AdminTradeStatus,
   type AdminVerificationTrade,
 } from "@/lib/admin-verification";
+import { useAuth } from "@/context/AuthContext";
 import { formatMoney } from "@/lib/money-format";
 import { moneyFromCents } from "@/lib/p2p";
 import { isP2pConfigured } from "@/lib/supabase";
+import { AdminVerificationPanel } from "@/pages/admin/AdminVerificationPanel";
 import styles from "./AdminPage.module.css";
 
-type Draft = {
-  notes: string;
-  sellerTracking: string;
-  buyerTracking: string;
-};
+type TabId =
+  | "home"
+  | "growth"
+  | "listings"
+  | "orders"
+  | "revenue"
+  | "sellers"
+  | "search"
+  | "auth"
+  | "activity";
 
-const STATUS_OPTIONS: Array<"all" | AdminTradeStatus> = [
-  "all",
-  "reserved",
-  "pending_payment",
-  "paid",
-  "seller_notified",
-  "seller_shipped_to_exch",
-  "received_by_exch",
-  "verification_passed",
-  "verification_failed",
-  "shipped_to_buyer",
-  "delivered_to_buyer",
-  "payout_available",
-  "payout_paid",
-  "cancelled",
-  "refunded",
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: "home", label: "Home" },
+  { id: "growth", label: "User Growth" },
+  { id: "listings", label: "Listings" },
+  { id: "orders", label: "Orders" },
+  { id: "revenue", label: "Revenue" },
+  { id: "sellers", label: "Sellers" },
+  { id: "search", label: "Search" },
+  { id: "auth", label: "Auth Queue" },
+  { id: "activity", label: "Live Activity" },
 ];
 
 const LISTING_STATUS_OPTIONS: Array<"all" | AdminListingStatus> = [
@@ -50,19 +66,6 @@ const LISTING_STATUS_OPTIONS: Array<"all" | AdminListingStatus> = [
   "cancelled",
   "sold",
 ];
-
-const NEXT_ACTIONS: Partial<Record<AdminTradeStatus, { label: string; status: AdminTradeStatus; danger?: boolean }[]>> = {
-  paid: [{ label: "Notify seller", status: "seller_notified" }],
-  seller_notified: [{ label: "Mark seller shipped", status: "seller_shipped_to_exch" }],
-  seller_shipped_to_exch: [{ label: "Mark received", status: "received_by_exch" }],
-  received_by_exch: [
-    { label: "Pass verification", status: "verification_passed" },
-    { label: "Fail verification", status: "verification_failed", danger: true },
-  ],
-  shipped_to_buyer: [{ label: "Mark delivered", status: "delivered_to_buyer" }],
-  delivered_to_buyer: [{ label: "Make payout available", status: "payout_available" }],
-  payout_available: [{ label: "Release payout", status: "payout_paid" }],
-};
 
 function prettyStatus(status: string): string {
   return status.replaceAll("_", " ");
@@ -80,104 +83,141 @@ function shortDate(value: string | null): string {
   );
 }
 
-function tradeTotal(row: AdminVerificationTrade): string {
-  const total =
-    row.buyer_total_cents ||
-    row.price_cents + row.buyer_shipping_cents + (row.buyer_processing_fee_cents ?? 0);
-  return formatMoney(moneyFromCents(total, row.currency));
+function usd(cents: number): string {
+  return formatMoney(moneyFromCents(cents, "USD"));
 }
 
-function payout(row: AdminVerificationTrade): string {
-  return formatMoney(moneyFromCents(row.seller_net_payout_cents || row.price_cents, row.currency));
+function MiniBars({
+  values,
+  labels,
+}: {
+  values: number[];
+  labels?: string[];
+}) {
+  const max = Math.max(1, ...values);
+  if (!values.length) return <p className={styles.empty}>No data in this range yet.</p>;
+  return (
+    <div className={styles.barChart} role="img" aria-label="Trend chart">
+      {values.map((value, index) => (
+        <div key={`${labels?.[index] ?? index}-${value}`} className={styles.barCol} title={`${labels?.[index] ?? ""}: ${value}`}>
+          <div className={styles.barFill} style={{ height: `${Math.max(4, (value / max) * 100)}%` }} />
+          {labels?.[index] ? <span className={styles.barLabel}>{labels[index]}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function actionBlocker(row: AdminVerificationTrade, nextStatus: AdminTradeStatus): string | null {
-  if (nextStatus === "seller_shipped_to_exch" && !row.seller_tracking_number && !row.seller_label_url) {
-    return "Seller shipment needs a label or tracking number first.";
-  }
-  if (nextStatus === "received_by_exch" && !row.seller_shipped_at && !row.seller_tracking_number) {
-    return "Mark seller shipped before receiving the item.";
-  }
-  if ((nextStatus === "verification_passed" || nextStatus === "verification_failed") && !row.received_by_exch_at) {
-    return "Receive the item before verification.";
-  }
-  if (nextStatus === "shipped_to_buyer" && (!row.buyer_label_url || !row.buyer_tracking_number)) {
-    return "Create the buyer label before marking shipped.";
-  }
-  if (nextStatus === "delivered_to_buyer" && !row.buyer_tracking_number) {
-    return "Buyer tracking is required before delivery.";
-  }
-  if (nextStatus === "payout_available" && !row.delivered_to_buyer_at) {
-    return "Confirm buyer delivery before making payout available.";
-  }
-  return null;
-}
-
-function visibleActions(row: AdminVerificationTrade): Array<{ label: string; status: AdminTradeStatus; danger?: boolean }> {
-  if (row.status === "verification_passed") return [];
-  return NEXT_ACTIONS[row.status] ?? [];
+function StatusTable({ data }: { data: Record<string, number> }) {
+  const rows = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return <p className={styles.empty}>No rows yet.</p>;
+  return (
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([status, count]) => (
+          <tr key={status}>
+            <td>{prettyStatus(status)}</td>
+            <td>{count}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth();
+  const [tab, setTab] = useState<TabId>("home");
+  const [range, setRange] = useState<AdminDateRange>("30d");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [growth, setGrowth] = useState<AdminUserGrowth | null>(null);
+  const [listingsAnalytics, setListingsAnalytics] = useState<AdminListingsAnalytics | null>(null);
+  const [ordersAnalytics, setOrdersAnalytics] = useState<AdminOrdersAnalytics | null>(null);
+  const [revenue, setRevenue] = useState<AdminRevenueAnalytics | null>(null);
+  const [sellers, setSellers] = useState<AdminSellerRow[]>([]);
+  const [searchAnalytics, setSearchAnalytics] = useState<AdminSearchAnalytics | null>(null);
+  const [authQueue, setAuthQueue] = useState<AdminAuthQueue | null>(null);
+  const [activity, setActivity] = useState<AdminActivityRow[]>([]);
   const [trades, setTrades] = useState<AdminVerificationTrade[]>([]);
   const [listings, setListings] = useState<AdminRecentListing[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"all" | AdminTradeStatus>("all");
   const [listingQuery, setListingQuery] = useState("");
   const [listingStatus, setListingStatus] = useState<"all" | AdminListingStatus>("all");
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+
   const [testRecipient, setTestRecipient] = useState("");
   const [testBusy, setTestBusy] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
   const [testDetail, setTestDetail] = useState<unknown>(null);
+
   const refresh = useCallback(async () => {
     if (!isP2pConfigured() || !user) return;
     setLoading(true);
     setError(null);
     try {
-      const [tradeRows, listingRows] = await Promise.all([
+      const [
+        overviewRow,
+        growthRow,
+        listingsRow,
+        ordersRow,
+        revenueRow,
+        sellersRow,
+        searchRow,
+        authRow,
+        activityRow,
+        tradeRows,
+        listingRows,
+      ] = await Promise.all([
+        fetchAdminOverview(range),
+        fetchAdminUserGrowth(range),
+        fetchAdminListingsAnalytics(range),
+        fetchAdminOrdersAnalytics(range),
+        fetchAdminRevenueAnalytics(range),
+        fetchAdminSellers(range),
+        fetchAdminSearchAnalytics(range),
+        fetchAdminAuthQueue(),
+        fetchAdminActivity(80),
         fetchAdminVerificationTrades(),
         fetchAdminRecentListings(150),
       ]);
+      setOverview(overviewRow);
+      setGrowth(growthRow);
+      setListingsAnalytics(listingsRow);
+      setOrdersAnalytics(ordersRow);
+      setRevenue(revenueRow);
+      setSellers(sellersRow);
+      setSearchAnalytics(searchRow);
+      setAuthQueue(authRow);
+      setActivity(activityRow);
       setTrades(tradeRows);
       setListings(listingRows);
-      setDrafts((current) => {
-        const next = { ...current };
-        for (const row of tradeRows) {
-          next[row.id] ??= {
-            notes: row.verification_notes ?? "",
-            sellerTracking: row.seller_tracking_number ?? "",
-            buyerTracking: row.buyer_tracking_number ?? "",
-          };
-        }
-        return next;
-      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load admin data");
+      setError(e instanceof Error ? e.message : "Could not load admin analytics");
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [range, user]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return trades.filter((row) => {
-      if (status !== "all" && row.status !== status) return false;
-      if (!q) return true;
-      return `${row.product_handle} ${row.size_label} ${row.buyer_email ?? ""} ${row.seller_email ?? ""} ${row.status}`
-        .toLowerCase()
-        .includes(q);
-    });
-  }, [query, status, trades]);
+  useEffect(() => {
+    if (tab !== "activity") return;
+    const id = window.setInterval(() => {
+      void fetchAdminActivity(80)
+        .then(setActivity)
+        .catch(() => undefined);
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, [tab]);
 
   const filteredListings = useMemo(() => {
     const q = listingQuery.trim().toLowerCase();
@@ -189,52 +229,6 @@ export function AdminPage() {
         .includes(q);
     });
   }, [listingQuery, listingStatus, listings]);
-
-  const counts = useMemo(() => {
-    const active = trades.filter(
-      (row) => !["reserved", "pending_payment", "cancelled", "payout_paid", "completed", "refunded", "verification_failed"].includes(row.status),
-    );
-    const recentCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return {
-      total: trades.length,
-      active: active.length,
-      payout: trades.filter((row) => row.status === "payout_available").length,
-      newListings: listings.filter(
-        (row) => row.status === "active" && new Date(row.created_at).getTime() >= recentCutoff,
-      ).length,
-    };
-  }, [listings, trades]);
-
-  const setDraft = (id: string, patch: Partial<Draft>) => {
-    setDrafts((current) => {
-      const previous = current[id] ?? { notes: "", sellerTracking: "", buyerTracking: "" };
-      return { ...current, [id]: { ...previous, ...patch } };
-    });
-  };
-
-  const onMove = (row: AdminVerificationTrade, nextStatus: AdminTradeStatus) => {
-    const draft = drafts[row.id] ?? { notes: "", sellerTracking: "", buyerTracking: "" };
-    setBusyId(`${row.id}-${nextStatus}`);
-    setError(null);
-    void updateAdminTradeStatus(row.id, {
-      status: nextStatus,
-      verificationNotes: draft.notes,
-      sellerTrackingNumber: draft.sellerTracking,
-      buyerTrackingNumber: draft.buyerTracking,
-    })
-      .then(() => void refresh())
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not update trade"))
-      .finally(() => setBusyId(null));
-  };
-
-  const onReleasePayout = (row: AdminVerificationTrade) => {
-    setBusyId(`${row.id}-payout_paid`);
-    setError(null);
-    void releaseSellerPayout(row.id)
-      .then(() => void refresh())
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Could not release payout"))
-      .finally(() => setBusyId(null));
-  };
 
   const onSendTestEmail = () => {
     setTestBusy(true);
@@ -272,23 +266,6 @@ export function AdminPage() {
       .finally(() => setTestBusy(false));
   };
 
-  const onCreateBuyerLabel = (row: AdminVerificationTrade) => {
-    const busyKey = `${row.id}-buyer-label`;
-    setBusyId(busyKey);
-    setError(null);
-    setRowErrors((current) => ({ ...current, [row.id]: "" }));
-    void createBuyerOutboundLabel(row.id)
-      .then(() => {
-        void refresh();
-      })
-      .catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : "Could not create buyer label";
-        setError(message);
-        setRowErrors((current) => ({ ...current, [row.id]: message }));
-      })
-      .finally(() => setBusyId(null));
-  };
-
   if (!isP2pConfigured()) {
     return (
       <div className={styles.page}>
@@ -304,7 +281,7 @@ export function AdminPage() {
     return (
       <div className={styles.page}>
         <h1 className={styles.h1}>Admin</h1>
-        <p className={styles.lead}>Sign in with an admin account to manage verification.</p>
+        <p className={styles.lead}>Sign in with an admin account to open the analytics dashboard.</p>
         <Link to="/login" className={styles.btn}>
           Sign in
         </Link>
@@ -317,409 +294,567 @@ export function AdminPage() {
       <section className={styles.hero}>
         <div>
           <p className={styles.eyebrow}>Admin</p>
-          <h1 className={styles.h1}>Verification dashboard</h1>
+          <h1 className={styles.h1}>Analytics dashboard</h1>
           <p className={styles.lead}>
-            Move paid trades through seller shipment, VRNA verification, buyer delivery, and payout readiness.
+            User growth, listings, orders, revenue, sellers, search, auth queues, and live marketplace activity.
           </p>
         </div>
-        <div className={styles.metrics}>
-          <div className={styles.metric}>
-            <strong>{counts.total}</strong>
-            <span>Total trades</span>
-          </div>
-          <div className={styles.metric}>
-            <strong>{counts.active}</strong>
-            <span>In workflow</span>
-          </div>
-          <div className={styles.metric}>
-            <strong>{counts.payout}</strong>
-            <span>Payout ready</span>
-          </div>
-          <div className={styles.metric}>
-            <strong>{counts.newListings}</strong>
-            <span>Active listings (7d)</span>
-          </div>
+        <div className={styles.heroControls}>
+          <label className={styles.rangeLabel}>
+            Range
+            <select className={styles.select} value={range} onChange={(e) => setRange(e.target.value as AdminDateRange)}>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="all">All time</option>
+            </select>
+          </label>
+          <button type="button" className={styles.ghostBtn} onClick={() => void refresh()} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
       </section>
 
-      <section className={`${styles.panel} ${styles.emailTestPanel}`} aria-label="MailerSend test">
-        <div className={styles.emailTestHead}>
-          <p className={styles.eyebrow}>Diagnostics</p>
-          <h2>Send test email</h2>
-          <p className={styles.lead}>
-            Uses <code className={styles.inlineCode}>send-test-email</code>. Set Supabase Edge secrets (not{" "}
-            <code className={styles.inlineCode}>.env.local</code>): <code className={styles.inlineCode}>NOTIFICATION_FROM_EMAIL</code>{" "}
-            plus SMTP (<code className={styles.inlineCode}>SMTP_USER</code>,{" "}
-            <code className={styles.inlineCode}>SMTP_PASSWORD</code>) or API (
-            <code className={styles.inlineCode}>MAILERSEND_API_KEY</code>). Response shows{" "}
-            <code className={styles.inlineCode}>transport</code>: <code className={styles.inlineCode}>smtp</code> or{" "}
-            <code className={styles.inlineCode}>mailersend_api</code>.
-          </p>
-        </div>
-        <div className={styles.emailTestRow}>
-          <input
-            className={styles.input}
-            type="email"
-            placeholder={`Optional override (defaults to ${user.email ?? "your email"})`}
-            value={testRecipient}
-            onChange={(e) => setTestRecipient(e.target.value)}
-            autoComplete="email"
-          />
-          <button type="button" className={styles.btn} disabled={testBusy} onClick={() => void onSendTestEmail()}>
-            {testBusy ? "Sending…" : "Send test email"}
+      <nav className={styles.tabs} aria-label="Admin sections">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={tab === item.id ? styles.tabOn : styles.tab}
+            aria-pressed={tab === item.id}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
           </button>
-        </div>
-        {testMessage ? <p className={testMessage.includes("accepted") ? styles.okNote : styles.warn}>{testMessage}</p> : null}
-        {testDetail !== null ? (
-          <pre className={styles.monoBlock}>{JSON.stringify(testDetail, null, 2)}</pre>
-        ) : null}
-      </section>
+        ))}
+      </nav>
 
       {error ? <p className={styles.warn}>{error}</p> : null}
 
-      <section className={styles.panel} aria-label="Recent listings">
-        <div className={styles.sectionHead}>
-          <div>
-            <p className={styles.eyebrow}>Marketplace</p>
-            <h2 className={styles.sectionTitle}>Recent listings</h2>
-            <p className={styles.lead}>Newest asks from sellers — product, size, price, photos, and who listed them.</p>
+      {tab === "home" ? (
+        <>
+          <section className={styles.kpiGrid}>
+            <div className={styles.metric}>
+              <strong>{overview?.users_total ?? "—"}</strong>
+              <span>Total users</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview?.users_since ?? "—"}</strong>
+              <span>New users (range)</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview?.listings_active ?? "—"}</strong>
+              <span>Active listings</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview?.orders_paid_since ?? "—"}</strong>
+              <span>Paid orders</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview ? usd(overview.gmv_cents_since) : "—"}</strong>
+              <span>GMV</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview ? usd(overview.revenue_cents_since) : "—"}</strong>
+              <span>Platform revenue</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview?.users_unverified ?? "—"}</strong>
+              <span>Unverified emails</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{overview?.connect_incomplete ?? "—"}</strong>
+              <span>Connect incomplete</span>
+            </div>
+          </section>
+
+          <div className={styles.split}>
+            <section className={styles.panel}>
+              <div className={styles.sectionHead}>
+                <p className={styles.eyebrow}>Growth</p>
+                <h2 className={styles.sectionTitle}>Signups</h2>
+              </div>
+              <MiniBars
+                values={(growth?.daily ?? []).map((d) => d.signups)}
+                labels={(growth?.daily ?? []).map((d) => d.day.slice(5))}
+              />
+            </section>
+            <section className={styles.panel}>
+              <div className={styles.sectionHead}>
+                <p className={styles.eyebrow}>Commerce</p>
+                <h2 className={styles.sectionTitle}>Paid orders</h2>
+              </div>
+              <MiniBars
+                values={(ordersAnalytics?.daily ?? []).map((d) => d.orders)}
+                labels={(ordersAnalytics?.daily ?? []).map((d) => d.day.slice(5))}
+              />
+            </section>
+            <section className={styles.panel}>
+              <div className={styles.sectionHead}>
+                <p className={styles.eyebrow}>Revenue</p>
+                <h2 className={styles.sectionTitle}>Fees collected</h2>
+              </div>
+              <MiniBars
+                values={(revenue?.daily ?? []).map((d) => d.total_cents / 100)}
+                labels={(revenue?.daily ?? []).map((d) => d.day.slice(5))}
+              />
+            </section>
           </div>
-        </div>
-        <div className={styles.toolbar}>
-          <input
-            className={styles.search}
-            placeholder="Search product, seller, size, status"
-            value={listingQuery}
-            onChange={(e) => setListingQuery(e.target.value)}
-          />
-          <select
-            className={styles.select}
-            value={listingStatus}
-            onChange={(e) => setListingStatus(e.target.value as "all" | AdminListingStatus)}
-          >
-            {LISTING_STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === "all" ? "All listing statuses" : prettyStatus(option)}
-              </option>
-            ))}
-          </select>
-          <button type="button" className={styles.ghostBtn} onClick={() => void refresh()} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
 
-        <div className={styles.stack}>
-          {filteredListings.length === 0 ? <p className={styles.empty}>No listings match those filters.</p> : null}
-          {filteredListings.map((row) => {
-            const title = row.product_title?.trim() || row.product_handle;
-            const thumb = row.photo_urls[0] || row.product_image_url;
-            return (
-              <article key={row.id} className={styles.tradeCard}>
-                <div className={styles.listingTop}>
-                  {thumb ? (
-                    <a href={thumb} target="_blank" rel="noreferrer" className={styles.listingThumb}>
-                      <img src={thumb} alt="" loading="lazy" />
-                    </a>
-                  ) : (
-                    <div className={styles.listingThumbEmpty} aria-hidden>
-                      —
-                    </div>
-                  )}
-                  <div className={styles.listingBody}>
-                    <div className={styles.tradeTop}>
-                      <div>
-                        <h3 className={styles.title}>
-                          <Link to={`/product/${encodeURIComponent(row.product_handle)}`}>{title}</Link>
-                          <span className={styles.pill}>{row.size_label}</span>
-                        </h3>
-                        <p className={styles.small}>
-                          Seller {row.seller_email ?? row.seller_id} • Listed {shortDate(row.created_at)}
-                        </p>
-                      </div>
-                      <span className={styles.status}>{prettyStatus(row.status)}</span>
-                    </div>
-                    <div className={styles.details}>
-                      <span>
-                        Ask
-                        <strong>{formatMoney(moneyFromCents(row.price_cents, row.currency))}</strong>
-                      </span>
-                      <span>
-                        Condition
-                        <strong>{prettyCondition(row.condition)}</strong>
-                      </span>
-                      <span>
-                        Box included
-                        <strong>{row.box_included == null ? "Not set" : row.box_included ? "Yes" : "No"}</strong>
-                      </span>
-                      <span>
-                        SKU
-                        <strong>{row.sku ?? "Not provided"}</strong>
-                      </span>
-                      <span>
-                        Photos
-                        <strong>{row.photo_urls.length}</strong>
-                      </span>
-                    </div>
-                    {row.photo_urls.length > 1 ? (
-                      <div className={styles.photoGrid}>
-                        {row.photo_urls.slice(0, 6).map((url, index) => (
-                          <a
-                            key={`${row.id}-photo-${index}`}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={styles.photoLink}
-                          >
-                            <img src={url} alt={`Listing photo ${index + 1}`} loading="lazy" />
-                          </a>
-                        ))}
-                      </div>
-                    ) : null}
-                    {row.defects ? (
-                      <p className={styles.reviewNote}>
-                        <strong>Defects / wear</strong>
-                        {row.defects}
-                      </p>
-                    ) : null}
-                    {row.seller_notes ? (
-                      <p className={styles.reviewNote}>
-                        <strong>Seller notes</strong>
-                        {row.seller_notes}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+          <section className={`${styles.panel} ${styles.emailTestPanel}`} aria-label="MailerSend test">
+            <div className={styles.emailTestHead}>
+              <p className={styles.eyebrow}>Diagnostics</p>
+              <h2 className={styles.sectionTitle}>Send test email</h2>
+            </div>
+            <div className={styles.emailTestRow}>
+              <input
+                className={styles.input}
+                type="email"
+                placeholder={`Optional override (defaults to ${user.email ?? "your email"})`}
+                value={testRecipient}
+                onChange={(e) => setTestRecipient(e.target.value)}
+                autoComplete="email"
+              />
+              <button type="button" className={styles.btn} disabled={testBusy} onClick={() => void onSendTestEmail()}>
+                {testBusy ? "Sending…" : "Send test email"}
+              </button>
+            </div>
+            {testMessage ? <p className={testMessage.includes("accepted") ? styles.okNote : styles.warn}>{testMessage}</p> : null}
+            {testDetail !== null ? <pre className={styles.monoBlock}>{JSON.stringify(testDetail, null, 2)}</pre> : null}
+          </section>
+        </>
+      ) : null}
 
-      <section className={styles.panel}>
-        <div className={styles.sectionHead}>
-          <div>
-            <p className={styles.eyebrow}>Orders</p>
-            <h2 className={styles.sectionTitle}>Verification queue</h2>
-            <p className={styles.lead}>Paid trades moving through shipment, verification, delivery, and payout.</p>
+      {tab === "growth" ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>Users</p>
+            <h2 className={styles.sectionTitle}>User growth</h2>
+            <p className={styles.lead}>
+              Verified {growth?.verified_total ?? 0} · Unverified {growth?.unverified_total ?? 0}
+            </p>
           </div>
-        </div>
-        <div className={styles.toolbar}>
-          <input
-            className={styles.search}
-            placeholder="Search product, buyer, seller, status"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+          <MiniBars
+            values={(growth?.daily ?? []).map((d) => d.signups)}
+            labels={(growth?.daily ?? []).map((d) => d.day.slice(5))}
           />
-          <select className={styles.select} value={status} onChange={(e) => setStatus(e.target.value as "all" | AdminTradeStatus)}>
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === "all" ? "All statuses" : prettyStatus(option)}
-              </option>
-            ))}
-          </select>
-          <button type="button" className={styles.ghostBtn} onClick={() => void refresh()} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Joined</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Verified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(growth?.recent ?? []).map((row) => (
+                <tr key={row.id}>
+                  <td>{shortDate(row.created_at)}</td>
+                  <td>{row.email ?? row.id}</td>
+                  <td>{row.display_name ?? "—"}</td>
+                  <td>{row.email_verified ? "Yes" : "No"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
-        <div className={styles.stack}>
-          {filtered.length === 0 ? <p className={styles.empty}>No trades match those filters.</p> : null}
-          {filtered.map((row) => {
-            const draft = drafts[row.id] ?? { notes: "", sellerTracking: "", buyerTracking: "" };
-            const actions = visibleActions(row);
-            return (
-              <article key={row.id} className={styles.tradeCard}>
-                <div className={styles.tradeTop}>
-                  <div>
-                    <h2 className={styles.title}>
-                      {row.product_handle}
-                      <span className={styles.pill}>{row.size_label}</span>
-                    </h2>
-                    <p className={styles.small}>
-                      Buyer {row.buyer_email ?? row.buyer_id} • Seller {row.seller_email ?? row.seller_id}
-                    </p>
-                  </div>
-                  <span className={styles.status}>{prettyStatus(row.status)}</span>
-                </div>
+      {tab === "listings" ? (
+        <>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Marketplace</p>
+              <h2 className={styles.sectionTitle}>Listings analytics</h2>
+            </div>
+            <div className={styles.split}>
+              <div>
+                <h3 className={styles.subTitle}>By status</h3>
+                <StatusTable data={listingsAnalytics?.by_status ?? {}} />
+              </div>
+              <div>
+                <h3 className={styles.subTitle}>Creates over time</h3>
+                <MiniBars
+                  values={(listingsAnalytics?.daily ?? []).map((d) => d.created)}
+                  labels={(listingsAnalytics?.daily ?? []).map((d) => d.day.slice(5))}
+                />
+              </div>
+            </div>
+            <h3 className={styles.subTitle}>Top products</h3>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Brand</th>
+                  <th>Listings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(listingsAnalytics?.top_products ?? []).map((row) => (
+                  <tr key={row.product_handle}>
+                    <td>
+                      <Link to={`/product/${encodeURIComponent(row.product_handle)}`}>
+                        {row.product_title ?? row.product_handle}
+                      </Link>
+                    </td>
+                    <td>{row.brand ?? "—"}</td>
+                    <td>{row.listings}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
-                <div className={styles.details}>
-                  <span>
-                    Buyer total
-                    <strong>{tradeTotal(row)}</strong>
-                  </span>
-                  <span>
-                    Seller payout estimate
-                    <strong>{payout(row)}</strong>
-                  </span>
-                  <span>
-                    Stripe transfer
-                    <strong>{row.stripe_transfer_id ?? row.stripe_transfer_error ?? "Not released"}</strong>
-                  </span>
-                  <span>
-                    Paid
-                    <strong>{shortDate(row.paid_at)}</strong>
-                  </span>
-                  <span>
-                    Seller label
-                    <strong>
-                      {row.seller_label_url ? (
-                        <a href={row.seller_label_url} target="_blank" rel="noreferrer">
-                          {row.seller_label_carrier ?? "Open label"}
+          <section className={styles.panel} aria-label="Recent listings">
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Feed</p>
+              <h2 className={styles.sectionTitle}>Recent listings</h2>
+            </div>
+            <div className={styles.toolbar}>
+              <input
+                className={styles.search}
+                placeholder="Search product, seller, size, status"
+                value={listingQuery}
+                onChange={(e) => setListingQuery(e.target.value)}
+              />
+              <select
+                className={styles.select}
+                value={listingStatus}
+                onChange={(e) => setListingStatus(e.target.value as "all" | AdminListingStatus)}
+              >
+                {LISTING_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "all" ? "All listing statuses" : prettyStatus(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.stack}>
+              {filteredListings.length === 0 ? <p className={styles.empty}>No listings match those filters.</p> : null}
+              {filteredListings.map((row) => {
+                const title = row.product_title?.trim() || row.product_handle;
+                const thumb = row.photo_urls[0] || row.product_image_url;
+                return (
+                  <article key={row.id} className={styles.tradeCard}>
+                    <div className={styles.listingTop}>
+                      {thumb ? (
+                        <a href={thumb} target="_blank" rel="noreferrer" className={styles.listingThumb}>
+                          <img src={thumb} alt="" loading="lazy" />
                         </a>
                       ) : (
-                        "Not created"
+                        <div className={styles.listingThumbEmpty} aria-hidden>
+                          —
+                        </div>
                       )}
-                    </strong>
-                  </span>
-                  <span>
-                    Seller tracking
-                    <strong>{row.seller_tracking_number ?? "Not set"}</strong>
-                  </span>
-                  <span>
-                    Buyer tracking
-                    <strong>{row.buyer_tracking_number ?? "Not set"}</strong>
-                  </span>
-                  <span>
-                    Buyer label
-                    <strong>
-                      {row.buyer_label_url ? (
-                        <a href={row.buyer_label_url} target="_blank" rel="noreferrer">
-                          {row.buyer_label_carrier ?? "Open label"}
-                        </a>
-                      ) : (
-                        "Not created"
-                      )}
-                    </strong>
-                  </span>
-                  <span>
-                    Buyer ship-to
-                    <strong>
-                      {row.buyer_shipping_line1
-                        ? `${row.buyer_shipping_city ?? ""}, ${row.buyer_shipping_state ?? ""} ${row.buyer_shipping_postal_code ?? ""}`
-                        : "Not captured"}
-                    </strong>
-                  </span>
-                </div>
-
-                <section className={styles.reviewBox} aria-label="Seller listing review">
-                  <div className={styles.reviewHead}>
-                    <div>
-                      <p className={styles.eyebrow}>Listing review</p>
-                      <h3>Photos and seller details</h3>
+                      <div className={styles.listingBody}>
+                        <div className={styles.tradeTop}>
+                          <div>
+                            <h3 className={styles.title}>
+                              <Link to={`/product/${encodeURIComponent(row.product_handle)}`}>{title}</Link>
+                              <span className={styles.pill}>{row.size_label}</span>
+                            </h3>
+                            <p className={styles.small}>
+                              Seller {row.seller_email ?? row.seller_id} • Listed {shortDate(row.created_at)}
+                            </p>
+                          </div>
+                          <span className={styles.status}>{prettyStatus(row.status)}</span>
+                        </div>
+                        <div className={styles.details}>
+                          <span>
+                            Ask
+                            <strong>{formatMoney(moneyFromCents(row.price_cents, row.currency))}</strong>
+                          </span>
+                          <span>
+                            Condition
+                            <strong>{prettyCondition(row.condition)}</strong>
+                          </span>
+                          <span>
+                            Photos
+                            <strong>{row.photo_urls.length}</strong>
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className={styles.pill}>{prettyCondition(row.listing_condition)}</span>
-                  </div>
-                  {row.listing_photo_urls?.length ? (
-                    <div className={styles.photoGrid}>
-                      {row.listing_photo_urls.map((url, index) => (
-                        <a key={`${row.id}-photo-${index}`} href={url} target="_blank" rel="noreferrer" className={styles.photoLink}>
-                          <img src={url} alt={`Seller listing photo ${index + 1}`} loading="lazy" />
-                        </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className={styles.empty}>No seller photos were uploaded for this listing.</p>
-                  )}
-                  <div className={styles.reviewDetails}>
-                    <span>
-                      Box included
-                      <strong>{row.listing_box_included ? "Yes" : "No"}</strong>
-                    </span>
-                    <span>
-                      SKU / style code
-                      <strong>{row.listing_sku ?? "Not provided"}</strong>
-                    </span>
-                    <span>
-                      Requirements accepted
-                      <strong>{shortDate(row.listing_verification_requirements_accepted_at)}</strong>
-                    </span>
-                  </div>
-                  {row.listing_defects ? (
-                    <p className={styles.reviewNote}>
-                      <strong>Defects / wear</strong>
-                      {row.listing_defects}
-                    </p>
-                  ) : null}
-                  {row.listing_seller_notes ? (
-                    <p className={styles.reviewNote}>
-                      <strong>Seller notes</strong>
-                      {row.listing_seller_notes}
-                    </p>
-                  ) : null}
-                </section>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      ) : null}
 
-                <div className={styles.actions}>
-                  <label>
-                    <span className={styles.small}>Tracking numbers</span>
-                    <input
-                      className={styles.input}
-                      placeholder="Seller-to-VRNA tracking"
-                      value={draft.sellerTracking}
-                      onChange={(e) => setDraft(row.id, { sellerTracking: e.target.value })}
-                    />
-                    <input
-                      className={styles.input}
-                      placeholder="VRNA-to-buyer tracking"
-                      value={draft.buyerTracking}
-                      onChange={(e) => setDraft(row.id, { buyerTracking: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    <span className={styles.small}>Verification notes</span>
-                    <textarea
-                      className={styles.textarea}
-                      value={draft.notes}
-                      onChange={(e) => setDraft(row.id, { notes: e.target.value })}
-                      placeholder="Condition/authenticity notes"
-                    />
-                  </label>
-                  {rowErrors[row.id] ? <p className={styles.warn}>{rowErrors[row.id]}</p> : null}
-                  <div className={styles.buttonRow}>
-                    <ReturnLink to={`/trade/${row.id}`} className={styles.ghostBtn}>
-                      View details
-                    </ReturnLink>
-                    {row.buyer_label_url ? (
-                      <a className={styles.ghostBtn} href={row.buyer_label_url} target="_blank" rel="noreferrer">
-                        Open buyer label
-                      </a>
-                    ) : null}
-                    {row.status === "verification_passed" ? (
-                      <button
-                        type="button"
-                        className={styles.btn}
-                        disabled={busyId === `${row.id}-buyer-label`}
-                        onClick={() => onCreateBuyerLabel(row)}
-                      >
-                        {busyId === `${row.id}-buyer-label` ? "Creating label..." : "Create buyer label"}
-                      </button>
-                    ) : null}
-                    {actions.map((action) => {
-                      const blocker = actionBlocker(row, action.status);
-                      return (
-                        <button
-                          key={action.status}
-                          type="button"
-                          className={action.danger ? styles.dangerBtn : styles.btn}
-                          disabled={Boolean(blocker) || busyId === `${row.id}-${action.status}`}
-                          title={blocker ?? undefined}
-                          onClick={() =>
-                            row.status === "payout_available" && action.status === "payout_paid"
-                              ? onReleasePayout(row)
-                              : onMove(row, action.status)
-                          }
-                        >
-                          {busyId === `${row.id}-${action.status}` ? "Saving..." : action.label}
-                        </button>
-                      );
-                    })}
-                    {actions.length === 0 ? <span className={styles.muted}>No next action</span> : null}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+      {tab === "orders" ? (
+        <>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Orders</p>
+              <h2 className={styles.sectionTitle}>Order funnel & GMV</h2>
+            </div>
+            <div className={styles.split}>
+              <div>
+                <h3 className={styles.subTitle}>By status</h3>
+                <StatusTable data={ordersAnalytics?.by_status ?? {}} />
+              </div>
+              <div>
+                <h3 className={styles.subTitle}>Paid orders / day</h3>
+                <MiniBars
+                  values={(ordersAnalytics?.daily ?? []).map((d) => d.orders)}
+                  labels={(ordersAnalytics?.daily ?? []).map((d) => d.day.slice(5))}
+                />
+              </div>
+            </div>
+          </section>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Ops</p>
+              <h2 className={styles.sectionTitle}>Verification queue</h2>
+              <p className={styles.lead}>Move paid trades through shipment, verification, delivery, and payout.</p>
+            </div>
+            <AdminVerificationPanel
+              trades={trades}
+              loading={loading}
+              onRefresh={() => void refresh()}
+              onError={setError}
+            />
+          </section>
+        </>
+      ) : null}
+
+      {tab === "revenue" ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>Money</p>
+            <h2 className={styles.sectionTitle}>Revenue</h2>
+          </div>
+          <div className={styles.kpiGrid}>
+            <div className={styles.metric}>
+              <strong>{revenue ? usd(revenue.buyer_fee_cents) : "—"}</strong>
+              <span>Buyer processing fees</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{revenue ? usd(revenue.seller_fee_cents) : "—"}</strong>
+              <span>Seller fees</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{revenue ? usd(revenue.total_revenue_cents) : "—"}</strong>
+              <span>Total platform revenue</span>
+            </div>
+            <div className={styles.metric}>
+              <strong>{revenue ? usd(revenue.payouts_released_cents) : "—"}</strong>
+              <span>Payouts released</span>
+            </div>
+          </div>
+          <MiniBars
+            values={(revenue?.daily ?? []).map((d) => d.total_cents / 100)}
+            labels={(revenue?.daily ?? []).map((d) => d.day.slice(5))}
+          />
+        </section>
+      ) : null}
+
+      {tab === "sellers" ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>Supply</p>
+            <h2 className={styles.sectionTitle}>Sellers</h2>
+          </div>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Seller</th>
+                <th>Listings</th>
+                <th>Sold</th>
+                <th>GMV</th>
+                <th>Seller fees</th>
+                <th>Connect</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sellers.map((row) => (
+                <tr key={row.seller_id}>
+                  <td>
+                    <div>{row.seller_email ?? row.seller_id}</div>
+                    <div className={styles.small}>{row.display_name ?? ""}</div>
+                  </td>
+                  <td>{row.listings}</td>
+                  <td>{row.sold}</td>
+                  <td>{usd(row.gmv_cents)}</td>
+                  <td>{usd(row.seller_fee_cents)}</td>
+                  <td>
+                    {!row.stripe_account_id
+                      ? "Not connected"
+                      : row.stripe_payouts_enabled
+                        ? "Payouts on"
+                        : "Onboarding incomplete"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!sellers.length ? <p className={styles.empty}>No sellers in this range yet.</p> : null}
+        </section>
+      ) : null}
+
+      {tab === "search" ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>Discovery</p>
+            <h2 className={styles.sectionTitle}>Search analytics</h2>
+            <p className={styles.lead}>{searchAnalytics?.total_events ?? 0} search events in range.</p>
+          </div>
+          <div className={styles.split}>
+            <div>
+              <h3 className={styles.subTitle}>Top queries</h3>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Query</th>
+                    <th>Searches</th>
+                    <th>Avg results</th>
+                    <th>Clicks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(searchAnalytics?.top_queries ?? []).map((row) => (
+                    <tr key={row.query}>
+                      <td>{row.query}</td>
+                      <td>{row.searches}</td>
+                      <td>{row.avg_results}</td>
+                      <td>{row.clicks}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!searchAnalytics?.top_queries?.length ? (
+                <p className={styles.empty}>No searches logged yet — data starts accumulating after deploy.</p>
+              ) : null}
+            </div>
+            <div>
+              <h3 className={styles.subTitle}>Zero-result queries</h3>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Query</th>
+                    <th>Searches</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(searchAnalytics?.zero_result_queries ?? []).map((row) => (
+                    <tr key={row.query}>
+                      <td>{row.query}</td>
+                      <td>{row.searches}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <h3 className={styles.subTitle}>Recent searches</h3>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Query</th>
+                <th>Results</th>
+                <th>Clicked</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(searchAnalytics?.recent ?? []).map((row) => (
+                <tr key={row.id}>
+                  <td>{shortDate(row.created_at)}</td>
+                  <td>{row.query}</td>
+                  <td>{row.result_count}</td>
+                  <td>{row.clicked_handle ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      {tab === "auth" ? (
+        <div className={styles.split}>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Auth</p>
+              <h2 className={styles.sectionTitle}>Unverified emails</h2>
+            </div>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Joined</th>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Token expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(authQueue?.unverified ?? []).map((row) => (
+                  <tr key={row.id}>
+                    <td>{shortDate(row.created_at)}</td>
+                    <td>{row.email ?? row.id}</td>
+                    <td>{row.display_name ?? "—"}</td>
+                    <td>{shortDate(row.email_verify_token_expires_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!authQueue?.unverified?.length ? <p className={styles.empty}>No unverified users.</p> : null}
+          </section>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <p className={styles.eyebrow}>Payouts</p>
+              <h2 className={styles.sectionTitle}>Stripe Connect incomplete</h2>
+            </div>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Seller</th>
+                  <th>Listings</th>
+                  <th>Sales</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(authQueue?.connect_incomplete ?? []).map((row) => (
+                  <tr key={row.seller_id}>
+                    <td>
+                      <div>{row.seller_email ?? row.seller_id}</div>
+                      <div className={styles.small}>{row.display_name ?? ""}</div>
+                    </td>
+                    <td>{row.listings}</td>
+                    <td>{row.sales}</td>
+                    <td>{row.stripe_account_id ? "Onboarding incomplete" : "Not connected"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!authQueue?.connect_incomplete?.length ? <p className={styles.empty}>No Connect gaps.</p> : null}
+          </section>
         </div>
-      </section>
+      ) : null}
+
+      {tab === "activity" ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>Realtime</p>
+            <h2 className={styles.sectionTitle}>Live activity feed</h2>
+            <p className={styles.lead}>Auto-refreshes about every 20 seconds while this tab is open.</p>
+          </div>
+          <ul className={styles.activityList}>
+            {activity.map((row, index) => (
+              <li key={`${row.at}-${row.kind}-${row.subject}-${index}`} className={styles.activityItem}>
+                <span className={styles.activityTime}>{shortDate(row.at)}</span>
+                <span className={styles.pill}>{prettyStatus(row.kind)}</span>
+                <strong>{row.subject}</strong>
+                <span className={styles.small}>{row.detail}</span>
+              </li>
+            ))}
+          </ul>
+          {!activity.length ? <p className={styles.empty}>No recent activity.</p> : null}
+        </section>
+      ) : null}
     </div>
   );
 }
