@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { CONTACT_EMAILS } from "@/lib/contact-emails";
 import styles from "./StaticPages.module.css";
 
 export function HelpPage() {
@@ -41,6 +42,22 @@ export function HelpPage() {
           is no placeholder depth. If a size has no asks or bids yet, those fields show a dash until someone lists or
           bids.
         </p>
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.h2}>Contact us</h2>
+        <p className={styles.p}>Email the team anytime — these addresses route to VRNA support.</p>
+        <ul className={styles.contactList}>
+          {CONTACT_EMAILS.map((item) => (
+            <li key={item.address} className={styles.contactItem}>
+              <a className={styles.contactLink} href={`mailto:${item.address}`}>
+                {item.address}
+              </a>
+              <span className={styles.contactMeta}>
+                <strong>{item.label}</strong> — {item.blurb}
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
       <p className={styles.p}>
         <Link to="/">Home</Link> · <Link to="/catalog">Catalog</Link>

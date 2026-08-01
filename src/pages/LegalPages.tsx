@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SUPPORT_EMAIL } from "@/lib/contact-emails";
 import styles from "./StaticPages.module.css";
 
 type LegalSection = {
@@ -92,7 +93,7 @@ const PAGES: Record<string, LegalPageContent> = {
         title: "Your choices",
         body: [
           "You can update account details in your account page. Some data must be retained for legal, security, tax, or dispute reasons.",
-          "Contact support to request access, correction, deletion, or export where required by applicable law.",
+          `Email ${SUPPORT_EMAIL} to request access, correction, deletion, or export where required by applicable law.`,
         ],
       },
     ],
@@ -264,7 +265,7 @@ const PAGES: Record<string, LegalPageContent> = {
       {
         title: "Feedback",
         body: [
-          "If something is difficult to use, contact support with the page, browser, device, and assistive technology details if available.",
+          `If something is difficult to use, email ${SUPPORT_EMAIL} with the page, browser, device, and assistive technology details if available.`,
           "We will use feedback to prioritize improvements and fix issues.",
         ],
       },
@@ -293,7 +294,8 @@ function LegalArticle({ page }: { page: LegalPageContent }) {
         </section>
       ))}
       <p className={styles.p}>
-        Questions? Visit <Link to="/help">Help</Link> or return to the <Link to="/legal">Legal hub</Link>.
+        Questions? Visit <Link to="/help">Help</Link>, email{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>, or return to the <Link to="/legal">Legal hub</Link>.
       </p>
     </article>
   );

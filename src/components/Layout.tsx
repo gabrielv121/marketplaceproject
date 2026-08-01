@@ -16,6 +16,7 @@ import {
   IconSparkles,
   IconTag,
 } from "@/components/HeaderIcons";
+import { SUPPORT_EMAIL } from "@/lib/contact-emails";
 import styles from "./Layout.module.css";
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
@@ -212,6 +213,8 @@ export function Layout() {
           © {new Date().getFullYear()} VRNA. Verified peer-to-peer marketplace for sneakers and streetwear.
         </p>
         <nav className={styles.footerLinks} aria-label="Legal">
+          <Link to="/help">Help</Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`}>Support</a>
           <Link to="/legal">Legal</Link>
           <Link to="/legal/terms">Terms</Link>
           <Link to="/legal/privacy">Privacy</Link>
