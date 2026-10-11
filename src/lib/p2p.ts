@@ -113,12 +113,15 @@ export type PlatformOffer = {
   size_prices?: Record<string, number> | null;
 };
 
-export function platformCentsForSize(offer: PlatformOffer, sizeLabel: string): number {
+export function platformCentsForSize(offer: PlatformOffer, sizeLabel: string): number | null {
   const prices = offer.size_prices;
   if (prices && typeof prices === "object") {
-    const raw = prices[sizeLabel];
-    const cents = typeof raw === "number" ? raw : Number(raw);
-    if (Number.isFinite(cents) && cents > 0) return cents;
+    if (Object.prototype.hasOwnProperty.call(prices, sizeLabel)) {
+      const raw = prices[sizeLabel];
+      const cents = typeof raw === "number" ? raw : Number(raw);
+      return Number.isFinite(cents) && cents > 0 ? cents : null;
+    }
+    if (Object.keys(prices).length > 0) return null;
   }
   return offer.price_cents;
 }

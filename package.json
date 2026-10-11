@@ -12,6 +12,7 @@
     "catalog:dry-run": "node scripts/import-catalog.mjs --dry-run",
     "kicks:import": "node scripts/import-kicksdb.mjs",
     "kicks:dry-run": "node scripts/import-kicksdb.mjs --dry-run",
+    "kicks:size-prices": "node scripts/import-size-prices.mjs",
     "kicks:audit-images": "node scripts/audit-kicksdb-images.mjs",
     "kicks:audit-accessories": "node scripts/audit-accessories-count.mjs",
     "kicks:hide-placeholders": "node scripts/hide-kicks-placeholder-images.mjs",

@@ -370,7 +370,9 @@ export function ProductPage() {
   const platformMoneyForLabel = useCallback(
     (sizeLabel: string) => {
       if (!platformInStock || !platformOffer || !sizeLabel) return null;
-      return moneyFromCents(platformCentsForSize(platformOffer, sizeLabel), platformOffer.currency || currency);
+      const cents = platformCentsForSize(platformOffer, sizeLabel);
+      if (cents == null) return null;
+      return moneyFromCents(cents, platformOffer.currency || currency);
     },
     [currency, platformInStock, platformOffer],
   );
@@ -618,7 +620,7 @@ export function ProductPage() {
   };
 
   const onBuyFromPlatform = () => {
-    if (!product || !platformOffer || platformOffer.quantity_available < 1) return;
+    if (!product || !platformOffer || !platformMoney || platformOffer.quantity_available < 1) return;
     if (!user) {
       setActionMsg("Sign in to buy from VRNA.");
       return;
@@ -835,7 +837,7 @@ export function ProductPage() {
                       : "—"}
                 </span>
               </div>
-              {platformInStock && !lowestPeerListing && platformOffer ? (
+              {platformInStock && platformMoney && !lowestPeerListing && platformOffer ? (
                 <p className={styles.hint}>
                   {platformOffer.quantity_available} available from VRNA · {platformSourceLabel(platformOffer.source)}
                 </p>
@@ -849,7 +851,7 @@ export function ProductPage() {
                 >
                   Buy from peer (P2P)
                 </button>
-              ) : p2p && platformInStock ? (
+              ) : p2p && platformInStock && platformMoney ? (
                 <button
                   type="button"
                   className={styles.primary}
@@ -866,7 +868,7 @@ export function ProductPage() {
               <p className={styles.hint}>
                 {lowestPeerListing
                   ? "Reserves the peer listing, then opens Stripe Checkout. VRNA holds payment while the seller ships to us for verification."
-                  : platformInStock
+                  : platformInStock && platformMoney
                     ? "VRNA inventory is already authenticated and sourced from a trusted supplier. Checkout skips the seller shipment — we ship it to you after payment."
                     : "Reserves the listing, then opens Stripe Checkout with item price, a 3% processing fee, and verified delivery shipping."}
               </p>
