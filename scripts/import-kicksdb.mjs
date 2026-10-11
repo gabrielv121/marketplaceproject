@@ -188,6 +188,7 @@ function usage() {
   npm run kicks:import -- --keep-existing
   npm run kicks:import -- --fill-low-brands --keep-existing
   npm run kicks:import -- --query "Vans" --limit-per-query 100 --pages 5 --require-brand "Vans"
+  npm run kicks:import -- --new-releases --keep-existing
 
 Environment:
   KICKSDB_API_KEY or KICKSDEV_API_KEY
@@ -199,6 +200,7 @@ Notes:
   - Imports exact product images from KicksDB's image/gallery fields.
   - Upserts by handle, using the KicksDB product slug.
   - After import, all published rows without the kicksdb tag are unpublished (template/demo seeds are not kept), unless --keep-existing.
+  - --new-releases searches sneakers releasing in the last 30 days through the next 180 days, sorted newest first. It always keeps existing catalog rows.
 `);
 }
 
@@ -229,8 +231,15 @@ function parseArgs(argv) {
     fillLowBrands: argv.includes("--fill-low-brands"),
     limitPerQuery: 20,
     pages: 1,
+    pageSize: null,
     requireBrand: null,
     queries: [],
+    sort: null,
+    filters: null,
+    traits: argv.includes("--traits"),
+    newReleases: argv.includes("--new-releases"),
+    limitSet: false,
+    pagesSet: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -250,9 +259,20 @@ function parseArgs(argv) {
       i++;
     } else if (arg === "--limit-per-query" && next) {
       args.limitPerQuery = Number(next);
+      args.limitSet = true;
       i++;
     } else if (arg === "--pages" && next) {
       args.pages = Number(next);
+      args.pagesSet = true;
+      i++;
+    } else if (arg === "--page-size" && next) {
+      args.pageSize = Number(next);
+      i++;
+    } else if (arg === "--sort" && next) {
+      args.sort = next;
+      i++;
+    } else if (arg === "--filters" && next) {
+      args.filters = next;
       i++;
     } else if (arg === "--require-brand" && next) {
       args.requireBrand = next;
@@ -260,7 +280,26 @@ function parseArgs(argv) {
     }
   }
 
+  if (args.newReleases) {
+    const day = 86400;
+    const now = Math.floor(Date.now() / 1000);
+    const start = now - 30 * day;
+    const end = now + 180 * day;
+    args.filters =
+      args.filters || `product_type = "sneakers" AND release_date >= ${start} AND release_date <= ${end}`;
+    args.sort = args.sort || "release_date";
+    args.traits = true;
+    args.keepExisting = true;
+    if (!args.queries.length) args.queries = [""];
+    if (!args.limitSet) args.limitPerQuery = 300;
+    if (!args.pagesSet) args.pages = 3;
+    if (!args.pageSize) args.pageSize = 100;
+  }
+
   if (!args.fillLowBrands && !args.queries.length) args.queries = DEFAULT_QUERIES;
+  if (args.pageSize != null && (!Number.isFinite(args.pageSize) || args.pageSize < 1 || args.pageSize > 100)) {
+    throw new Error("--page-size must be a number from 1 to 100");
+  }
   if (!Number.isFinite(args.limitPerQuery) || args.limitPerQuery < 1 || args.limitPerQuery > 400) {
     throw new Error("--limit-per-query must be a number from 1 to 400");
   }
@@ -415,6 +454,19 @@ function activityTagsFor(product, kind) {
   return ["training"];
 }
 
+function traitValue(product, name) {
+  if (!Array.isArray(product?.traits)) return "";
+  const wanted = name.toLowerCase();
+  const hit = product.traits.find((trait) => cleanText(trait?.trait).toLowerCase() === wanted);
+  return hit ? cleanText(hit.value) : "";
+}
+
+function retailPrice(product) {
+  const raw = traitValue(product, "Retail Price").replace(/[^0-9.]/g, "");
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : 0;
+}
+
 function productToCatalogRow(product) {
   const title = cleanText(product.title);
   const handle = cleanText(product.slug) || slugify(title);
@@ -425,8 +477,11 @@ function productToCatalogRow(product) {
   const rawImage = cleanText(product.image);
   const gallery = Array.isArray(product.gallery) ? product.gallery.map(cleanText).filter(Boolean) : [];
   const image = pickBestProductImageUrl(rawImage, gallery);
-  const priceMin = Number(product.min_price ?? product.avg_price ?? 0);
-  const priceMax = Number(product.max_price ?? product.avg_price ?? priceMin);
+  const priceMinMarket = Number(product.min_price ?? product.avg_price ?? 0);
+  const priceMaxMarket = Number(product.max_price ?? product.avg_price ?? priceMinMarket);
+  const retail = retailPrice(product);
+  const priceMin = priceMinMarket > 0 ? priceMinMarket : retail;
+  const priceMax = priceMaxMarket > 0 ? priceMaxMarket : Math.max(priceMin, retail);
   const modelSlug = slugify(cleanText(product.model || product.primary_title || title));
   const colorSlug = slugify(cleanText(product.secondary_title || ""));
   const categorySlug = slugify(cleanText(product.secondary_category || product.category || "sneakers"));
@@ -452,6 +507,7 @@ function productToCatalogRow(product) {
       cleanText(product.product_type) ? slugify(product.product_type) : null,
       product.product_type === "collectibles" || product.category === "Collectibles" ? "collectibles" : null,
       product.sku ? `sku-${slugify(product.sku)}` : null,
+      releaseTag(product),
       kind === "sneaker" ? "home-trending-sneakers" : kind === "apparel" ? "home-featured-apparel" : "home-featured-accessories",
       "kicksdb",
     ]),
@@ -509,16 +565,27 @@ async function hideNonKicksDbRows(supabase) {
   console.log(`Unpublished ${handles.length} non-KicksDB catalog row(s).`);
 }
 
-async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1 } = {}) {
-  const pageCount = Math.max(pages, Math.ceil(limit / API_PAGE_SIZE));
+function releaseTag(product) {
+  const raw = traitValue(product, "Release Date");
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return `release-${match[1]}-${match[2]}-${match[3]}`;
+}
+
+async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1, pageSize = API_PAGE_SIZE, sort = null, filters = null, traits = false } = {}) {
+  const size = Math.min(100, Math.max(1, pageSize));
+  const pageCount = Math.max(pages, Math.ceil(limit / size));
   const collected = [];
   const seen = new Set();
 
   for (let page = 1; page <= pageCount && collected.length < limit; page++) {
     const url = new URL(API_BASE);
-    url.searchParams.set("query", query);
-    url.searchParams.set("per_page", String(API_PAGE_SIZE));
+    if (cleanText(query)) url.searchParams.set("query", query);
+    url.searchParams.set("limit", String(size));
     url.searchParams.set("page", String(page));
+    if (sort) url.searchParams.set("sort", sort);
+    if (filters) url.searchParams.set("filters", filters);
+    if (traits) url.searchParams.set("display[traits]", "true");
 
     const response = await fetch(url, {
       headers: {
@@ -547,7 +614,7 @@ async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1 }
       if (collected.length >= limit) break;
     }
 
-    if (batch.length < API_PAGE_SIZE) break;
+    if (batch.length < size) break;
     await new Promise((resolve) => setTimeout(resolve, 80));
   }
 
@@ -676,12 +743,19 @@ async function main() {
     args.keepExisting = true;
   } else {
     const rowsByHandle = new Map();
+    if (args.filters || args.sort) {
+      console.log(`KicksDB sort=${args.sort || "(default)"} filters=${args.filters || "(none)"}`);
+    }
     for (const query of args.queries) {
       console.log(`Searching KicksDB: ${query}`);
       try {
         const products = await fetchProducts(query, apiKey, {
           limit: args.limitPerQuery,
           pages: args.pages,
+          pageSize: args.pageSize || API_PAGE_SIZE,
+          sort: args.sort,
+          filters: args.filters,
+          traits: args.traits,
         });
         for (const product of products) {
           if (args.requireBrand && !brandMatches(product.brand, args.requireBrand)) continue;
@@ -697,7 +771,15 @@ async function main() {
 
   rows.sort((a, b) => b.trend_score - a.trend_score || a.title.localeCompare(b.title));
   console.log(`Prepared ${rows.length} KicksDB product(s).`);
-  console.table(rows.slice(0, 30).map((row) => ({ handle: row.handle, title: row.title, brand: row.brand, price_min: row.price_min, trend_score: row.trend_score })));
+  console.table(
+    rows.slice(0, 30).map((row) => ({
+      handle: row.handle,
+      title: row.title,
+      brand: row.brand,
+      price_min: row.price_min,
+      release: (row.tags || []).find((tag) => String(tag).startsWith("release-")) || "",
+    })),
+  );
   if (rows.length > 30) console.log(`...and ${rows.length - 30} more.`);
   if (!rows.length) {
     console.log("No importable KicksDB products found.");
