@@ -25,6 +25,7 @@ import {
   rpcListActiveListings,
   rpcListOpenBids,
   rpcListRecentSales,
+  platformCentsForSize,
   platformSourceLabel,
   rpcListPlatformOffer,
   rpcTakeListing,
@@ -366,13 +367,23 @@ export function ProductPage() {
 
   const lowestPeerListing = p2p && selectedRow ? lowestListingForSize(listings, activeSizeLabel) : null;
   const platformInStock = Boolean(platformOffer && platformOffer.quantity_available > 0);
-  const platformMoney =
-    platformInStock && platformOffer
-      ? moneyFromCents(platformOffer.price_cents, platformOffer.currency || currency)
-      : null;
+  const platformMoneyForLabel = useCallback(
+    (sizeLabel: string) => {
+      if (!platformInStock || !platformOffer || !sizeLabel) return null;
+      return moneyFromCents(platformCentsForSize(platformOffer, sizeLabel), platformOffer.currency || currency);
+    },
+    [currency, platformInStock, platformOffer],
+  );
+  const platformMoney = activeSizeLabel ? platformMoneyForLabel(activeSizeLabel) : null;
   const shownSizeRows = useMemo(
-    () => sizeRows.map((row) => (row.lowestAsk || !platformMoney ? row : { ...row, lowestAsk: platformMoney })),
-    [platformMoney, sizeRows],
+    () =>
+      sizeRows.map((row) => {
+        if (row.lowestAsk) return row;
+        const sizeLabel = row.canonicalLabel ?? row.label;
+        const money = platformMoneyForLabel(sizeLabel);
+        return money ? { ...row, lowestAsk: money } : row;
+      }),
+    [platformMoneyForLabel, sizeRows],
   );
 
   const myOpenBidAtSize = useMemo(() => {

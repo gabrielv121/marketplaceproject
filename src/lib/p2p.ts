@@ -110,7 +110,18 @@ export type PlatformOffer = {
   price_cents: number;
   currency: string;
   source: "trusted_supplier" | "certified_supplier";
+  size_prices?: Record<string, number> | null;
 };
+
+export function platformCentsForSize(offer: PlatformOffer, sizeLabel: string): number {
+  const prices = offer.size_prices;
+  if (prices && typeof prices === "object") {
+    const raw = prices[sizeLabel];
+    const cents = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(cents) && cents > 0) return cents;
+  }
+  return offer.price_cents;
+}
 
 export function platformSourceLabel(source: string | null | undefined): string {
   if (source === "certified_supplier") return "Certified supplier";
