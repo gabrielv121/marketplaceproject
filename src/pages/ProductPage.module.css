@@ -411,6 +411,18 @@
   margin-bottom: 1rem;
 }
 
+.bidActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.bidActions .secondary {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
 .k {
   color: var(--muted);
   font-size: 0.85rem;
@@ -583,6 +595,10 @@
   font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.stockHint {
+  margin-bottom: 1rem;
 }
 
 .textBtn {

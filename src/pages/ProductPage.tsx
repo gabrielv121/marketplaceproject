@@ -838,7 +838,7 @@ export function ProductPage() {
                 </span>
               </div>
               {platformInStock && platformMoney && !lowestPeerListing && platformOffer ? (
-                <p className={styles.hint}>
+                <p className={`${styles.hint} ${styles.stockHint}`}>
                   {platformOffer.quantity_available} available from VRNA · {platformSourceLabel(platformOffer.source)}
                 </p>
               ) : null}
@@ -1092,7 +1092,7 @@ export function ProductPage() {
                       onChange={(e) => setBidPrice(e.target.value)}
                     />
                   </label>
-                  <div className={styles.row}>
+                  <div className={styles.bidActions}>
                     <button type="button" className={styles.secondary} disabled={actionBusy} onClick={() => onUpdateMyBid()}>
                       {actionBusy ? "Updating..." : "Increase bid"}
                     </button>
