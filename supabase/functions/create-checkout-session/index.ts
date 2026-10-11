@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
   const { data: trade, error: tradeErr } = await admin
     .from("p2p_trades")
-    .select("id, buyer_id, seller_id, product_handle, size_label, price_cents, currency, status, stripe_checkout_session_id")
+    .select("id, buyer_id, seller_id, product_handle, size_label, price_cents, currency, status, stripe_checkout_session_id, fulfillment_source")
     .eq("id", tradeId)
     .maybeSingle();
 
@@ -164,13 +164,14 @@ Deno.serve(async (req) => {
     );
   }
 
+  const isPlatform = trade.fulfillment_source === "platform";
   const buyerShippingCents = envCents("BUYER_SHIPPING_CENTS", 1495);
   const buyerProcessingFeeBps = envBps("BUYER_PROCESSING_FEE_BPS", 300);
   const buyerProcessingFeeCents = Math.floor((trade.price_cents * buyerProcessingFeeBps) / 10000);
-  const sellerInboundLabelCents = envCents("SELLER_INBOUND_LABEL_CENTS", 995);
-  const sellerFeeBps = envBps("SELLER_FEE_BPS", envBps("PLATFORM_FEE_BPS", 900));
-  const sellerFeeCents = Math.floor((trade.price_cents * sellerFeeBps) / 10000);
-  const sellerNetPayoutCents = Math.max(trade.price_cents - sellerFeeCents - sellerInboundLabelCents, 0);
+  const sellerInboundLabelCents = isPlatform ? 0 : envCents("SELLER_INBOUND_LABEL_CENTS", 995);
+  const sellerFeeBps = isPlatform ? 0 : envBps("SELLER_FEE_BPS", envBps("PLATFORM_FEE_BPS", 900));
+  const sellerFeeCents = isPlatform ? 0 : Math.floor((trade.price_cents * sellerFeeBps) / 10000);
+  const sellerNetPayoutCents = isPlatform ? 0 : Math.max(trade.price_cents - sellerFeeCents - sellerInboundLabelCents, 0);
   const buyerTotalCents = trade.price_cents + buyerShippingCents + buyerProcessingFeeCents;
   const pricingVersion = "shipping-fees-v2";
 
@@ -207,8 +208,12 @@ Deno.serve(async (req) => {
   const productTitle = cleanText(catalogProduct?.title, trade.product_handle);
   const productBrand = cleanText(catalogProduct?.brand, "VRNA");
   const productDescription = cleanText(
-    catalogProduct?.description,
-    "VRNA holds your payment while the seller ships the item to us for verification.",
+    isPlatform
+      ? "VRNA inventory sourced from a trusted supplier. Already authenticated — ships from VRNA after payment."
+      : catalogProduct?.description,
+    isPlatform
+      ? "VRNA inventory sourced from a trusted supplier. Already authenticated — ships from VRNA after payment."
+      : "VRNA holds your payment while the seller ships the item to us for verification.",
   );
 
   try {
@@ -270,8 +275,9 @@ Deno.serve(async (req) => {
         metadata: {
           trade_id: trade.id,
           buyer_id: trade.buyer_id,
-          seller_id: trade.seller_id,
-          held_for_verification: "true",
+          seller_id: trade.seller_id ?? "",
+          held_for_verification: isPlatform ? "false" : "true",
+          fulfillment_source: isPlatform ? "platform" : "peer",
           buyer_shipping_cents: String(buyerShippingCents),
           buyer_processing_fee_cents: String(buyerProcessingFeeCents),
           seller_inbound_label_cents: String(sellerInboundLabelCents),
@@ -281,7 +287,8 @@ Deno.serve(async (req) => {
       },
       metadata: {
         trade_id: trade.id,
-        held_for_verification: "true",
+        held_for_verification: isPlatform ? "false" : "true",
+        fulfillment_source: isPlatform ? "platform" : "peer",
         pricing_version: pricingVersion,
         buyer_shipping_cents: String(buyerShippingCents),
         buyer_processing_fee_bps: String(buyerProcessingFeeBps),
@@ -294,11 +301,14 @@ Deno.serve(async (req) => {
       },
       custom_text: {
         shipping_address: {
-          message: "Ship-to address is used after VRNA verifies the item.",
+          message: isPlatform
+            ? "Ship-to address is where VRNA sends this authenticated item."
+            : "Ship-to address is used after VRNA verifies the item.",
         },
         submit: {
-          message:
-            "Processing fee and shipping are shown above. Your payment is held until the item passes verification and is delivered.",
+          message: isPlatform
+            ? "This item is VRNA inventory from a trusted supplier. Payment covers the item, processing, and shipping to you."
+            : "Processing fee and shipping are shown above. Your payment is held until the item passes verification and is delivered.",
         },
       },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,

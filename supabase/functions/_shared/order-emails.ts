@@ -25,7 +25,7 @@ async function sendTemplated(
 export type PaymentTrade = {
   id: string;
   buyer_id: string;
-  seller_id: string;
+  seller_id: string | null;
   product_handle: string;
   size_label: string;
   currency: string;
@@ -35,13 +35,15 @@ export type PaymentTrade = {
   buyer_total_cents: number | null;
   seller_net_payout_cents: number | null;
   seller_ship_by: string | null;
+  fulfillment_source?: string | null;
 };
 
 export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: PaymentTrade): Promise<void> {
   const siteUrl = resolveSiteUrl(null);
+  const isPlatform = trade.fulfillment_source === "platform" || !trade.seller_id;
   const [buyerEmail, sellerEmail, product, relatedProducts] = await Promise.all([
     emailForUser(admin, trade.buyer_id),
-    emailForUser(admin, trade.seller_id),
+    isPlatform || !trade.seller_id ? Promise.resolve(null) : emailForUser(admin, trade.seller_id),
     loadProductCard(admin, trade.product_handle, trade.size_label, siteUrl),
     loadRelatedProducts(admin, trade.product_handle, siteUrl, 3),
   ]);
@@ -70,47 +72,70 @@ export async function sendPaymentReceivedEmails(admin: SupabaseClient, trade: Pa
 
   await Promise.all([
     sendTemplated(buyerEmail, `Order confirmed — ${product.title}`, {
-      preheader: `Payment received for ${product.title}`,
-      headline: "Payment received",
-      paragraphs: [
-        `Thanks for your purchase. VRNA is holding ${total} while the seller ships the item to us for verification.`,
-      ],
+      preheader: isPlatform
+        ? `VRNA is shipping ${product.title}`
+        : `Payment received for ${product.title}`,
+      headline: isPlatform ? "Order confirmed — shipping from VRNA" : "Payment received",
+      paragraphs: isPlatform
+        ? [
+            `Thanks for your purchase. This ${product.title} is VRNA inventory sourced from a trusted supplier and already authenticated.`,
+            `We are preparing it to ship to you. Total charged: ${total}.`,
+          ]
+        : [
+            `Thanks for your purchase. VRNA is holding ${total} while the seller ships the item to us for verification.`,
+          ],
       product,
       orderRows: buyerRows,
       relatedProducts,
       cta: { label: "View your order", href: accountLink },
     }),
-    sendTemplated(sellerEmail, `Ship to VRNA — ${product.title}`, {
-      preheader: `Your ${product.title} sold — ship by ${shipBy}`,
-      headline: "Your item sold",
-      paragraphs: [
-        `Create or use your prepaid label in your account and ship this item to VRNA by ${shipBy}.`,
-        `Estimated payout after verification and delivery: ${payout}.`,
-      ],
-      product,
-      orderRows: sellerRows,
-      cta: { label: "Open seller actions", href: accountLink },
-    }),
+    isPlatform
+      ? Promise.resolve()
+      : sendTemplated(sellerEmail, `Ship to VRNA — ${product.title}`, {
+          preheader: `Your ${product.title} sold — ship by ${shipBy}`,
+          headline: "Your item sold",
+          paragraphs: [
+            `Create or use your prepaid label in your account and ship this item to VRNA by ${shipBy}.`,
+            `Estimated payout after verification and delivery: ${payout}.`,
+          ],
+          product,
+          orderRows: sellerRows,
+          cta: { label: "Open seller actions", href: accountLink },
+        }),
   ]);
 
-  await insertUserNotifications(admin, [
-    {
-      user_id: trade.buyer_id,
-      kind: "payment_received",
-      title: "Payment received",
-      body: `${product.title} (size ${trade.size_label}) — ${total}.`,
-      href: tradePath(trade.id),
-      trade_id: trade.id,
-    },
-    {
-      user_id: trade.seller_id,
-      kind: "sale_paid",
-      title: "Your item sold",
-      body: `Ship ${product.title} to VRNA by ${shipBy}. Est. payout ${payout}.`,
-      href: accountPath("selling"),
-      trade_id: trade.id,
-    },
-  ]);
+  await insertUserNotifications(
+    admin,
+    isPlatform
+      ? [
+          {
+            user_id: trade.buyer_id,
+            kind: "payment_received",
+            title: "Order confirmed",
+            body: `${product.title} (size ${trade.size_label}) ships from VRNA. ${total}.`,
+            href: tradePath(trade.id),
+            trade_id: trade.id,
+          },
+        ]
+      : [
+          {
+            user_id: trade.buyer_id,
+            kind: "payment_received",
+            title: "Payment received",
+            body: `${product.title} (size ${trade.size_label}) — ${total}.`,
+            href: tradePath(trade.id),
+            trade_id: trade.id,
+          },
+          {
+            user_id: trade.seller_id as string,
+            kind: "sale_paid",
+            title: "Your item sold",
+            body: `Ship ${product.title} to VRNA by ${shipBy}. Est. payout ${payout}.`,
+            href: accountPath("selling"),
+            trade_id: trade.id,
+          },
+        ],
+  );
 }
 
 export type BidMatchTrade = {

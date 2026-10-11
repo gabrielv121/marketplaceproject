@@ -84,23 +84,49 @@ Deno.serve(async (req) => {
       }
     }
 
+    const paidAt = new Date().toISOString();
+    const { data: pending } = await admin
+      .from("p2p_trades")
+      .select("fulfillment_source, platform_inventory_id")
+      .eq("id", tradeId)
+      .maybeSingle<{ fulfillment_source: string | null; platform_inventory_id: string | null }>();
+    const isPlatform = pending?.fulfillment_source === "platform";
+
     const { data: trade, error } = await admin
       .from("p2p_trades")
-      .update({
-        status: "seller_notified",
-        stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id: paymentIntentId,
-        stripe_charge_id: chargeId,
-        stripe_amount_total_cents: session.amount_total,
-        stripe_amount_shipping_cents: session.total_details?.amount_shipping ?? 0,
-        ...buyerShippingPatch(session),
-        paid_at: new Date().toISOString(),
-        seller_notified_at: new Date().toISOString(),
-        seller_ship_by: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      })
+      .update(
+        isPlatform
+          ? {
+              status: "verification_passed",
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: paymentIntentId,
+              stripe_charge_id: chargeId,
+              stripe_amount_total_cents: session.amount_total,
+              stripe_amount_shipping_cents: session.total_details?.amount_shipping ?? 0,
+              ...buyerShippingPatch(session),
+              paid_at: paidAt,
+              verified_at: paidAt,
+              seller_fee_cents: 0,
+              seller_fee_bps: 0,
+              seller_inbound_label_cents: 0,
+              seller_net_payout_cents: 0,
+            }
+          : {
+              status: "seller_notified",
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: paymentIntentId,
+              stripe_charge_id: chargeId,
+              stripe_amount_total_cents: session.amount_total,
+              stripe_amount_shipping_cents: session.total_details?.amount_shipping ?? 0,
+              ...buyerShippingPatch(session),
+              paid_at: paidAt,
+              seller_notified_at: paidAt,
+              seller_ship_by: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+      )
       .eq("id", tradeId)
       .in("status", ["reserved", "pending_payment"])
-      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, price_cents, buyer_shipping_cents, buyer_processing_fee_cents, buyer_total_cents, seller_net_payout_cents, seller_ship_by")
+      .select("id, listing_id, buyer_id, seller_id, product_handle, size_label, currency, price_cents, buyer_shipping_cents, buyer_processing_fee_cents, buyer_total_cents, seller_net_payout_cents, seller_ship_by, fulfillment_source, platform_inventory_id")
       .maybeSingle();
 
     if (error) {
@@ -124,6 +150,15 @@ Deno.serve(async (req) => {
           status: 500,
           headers: { "Content-Type": "application/json" },
         });
+      }
+    }
+
+    if (trade?.fulfillment_source === "platform" && trade.platform_inventory_id) {
+      const { error: stockErr } = await admin.rpc("commit_platform_inventory_sale", {
+        p_trade_id: trade.id,
+      });
+      if (stockErr) {
+        console.error("stripe-webhook platform inventory commit:", stockErr);
       }
     }
 

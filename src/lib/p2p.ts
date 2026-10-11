@@ -68,6 +68,15 @@ function readableRpcError(error: { message?: string; details?: string; hint?: st
   if (raw.includes("email_not_verified")) {
     return new Error("Verify your email to buy, bid, or list. Check your inbox or resend from Account.");
   }
+  if (raw.includes("platform_out_of_stock")) {
+    return new Error("VRNA is out of stock in this item. Try another size or check back later.");
+  }
+  if (raw.includes("platform_inventory_missing") || raw.includes("platform_price_missing")) {
+    return new Error("VRNA inventory is not available for this product yet.");
+  }
+  if (raw.includes("size_required")) {
+    return new Error("Choose a size before buying from VRNA inventory.");
+  }
   if (raw.includes("trade_not_releasable")) {
     return new Error("This checkout reservation is no longer active.");
   }
@@ -93,6 +102,40 @@ function readableRpcError(error: { message?: string; details?: string; hint?: st
     return new Error("Enter a valid bid amount.");
   }
   return new Error(error.message ?? "P2P action failed");
+}
+
+export type PlatformOffer = {
+  product_handle: string;
+  quantity_available: number;
+  price_cents: number;
+  currency: string;
+  source: "trusted_supplier" | "certified_supplier";
+};
+
+export function platformSourceLabel(source: string | null | undefined): string {
+  if (source === "certified_supplier") return "Certified supplier";
+  return "Trusted supplier";
+}
+
+export async function rpcListPlatformOffer(productHandle: string): Promise<PlatformOffer | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.rpc("list_platform_offer", { p_product_handle: productHandle });
+  if (error) throw error;
+  const row = (data ?? [])[0] as PlatformOffer | undefined;
+  return row ?? null;
+}
+
+export async function rpcTakePlatformInventory(productHandle: string, sizeLabel: string): Promise<string> {
+  const sb = getSupabase();
+  if (!sb) throw new Error("Supabase not configured");
+  const { data, error } = await sb.rpc("take_platform_inventory", {
+    p_product_handle: productHandle,
+    p_size_label: sizeLabel,
+  });
+  if (error) throw readableRpcError(error);
+  if (typeof data !== "string") throw new Error("Unexpected take_platform_inventory response");
+  return data;
 }
 
 export async function rpcTakeListing(listingId: string): Promise<string> {

@@ -99,7 +99,11 @@ function actionBlocker(row: AdminVerificationTrade, nextStatus: AdminTradeStatus
 
 function visibleActions(row: AdminVerificationTrade): Array<{ label: string; status: AdminTradeStatus; danger?: boolean }> {
   if (row.status === "verification_passed") return [];
-  return NEXT_ACTIONS[row.status] ?? [];
+  const actions = NEXT_ACTIONS[row.status] ?? [];
+  if (!row.seller_id) {
+    return actions.filter((action) => action.status !== "payout_available" && action.status !== "payout_paid");
+  }
+  return actions;
 }
 
 type Props = {
@@ -226,8 +230,11 @@ export function AdminVerificationPanel({ trades, loading, onRefresh, onError }: 
                     Buyer {row.buyer_email ?? row.buyer_id} • Seller {row.seller_email ?? row.seller_id}
                   </p>
                 </div>
-                <span className={styles.status}>{prettyStatus(row.status)}</span>
-              </div>
+                  <span className={styles.status}>{prettyStatus(row.status)}</span>
+                </div>
+                {!row.seller_id ? (
+                  <p className={styles.small}>VRNA inventory · trusted supplier · no seller shipment or payout</p>
+                ) : null}
 
               <div className={styles.details}>
                 <span>

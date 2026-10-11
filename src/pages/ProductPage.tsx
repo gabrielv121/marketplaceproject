@@ -25,7 +25,11 @@ import {
   rpcListActiveListings,
   rpcListOpenBids,
   rpcListRecentSales,
+  platformSourceLabel,
+  rpcListPlatformOffer,
   rpcTakeListing,
+  rpcTakePlatformInventory,
+  type PlatformOffer,
   uploadListingPhotos,
   type ActiveListingRow,
   type ListingCondition,
@@ -88,6 +92,7 @@ export function ProductPage() {
   const [listings, setListings] = useState<ActiveListingRow[]>([]);
   const [bids, setBids] = useState<OpenBidRow[]>([]);
   const [sales, setSales] = useState<RecentSaleRow[]>([]);
+  const [platformOffer, setPlatformOffer] = useState<PlatformOffer | null>(null);
   const [p2pLoadError, setP2pLoadError] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -204,15 +209,17 @@ export function ProductPage() {
     (async () => {
       setP2pLoadError(null);
       try {
-        const [L, B, S] = await Promise.all([
+        const [L, B, S, offer] = await Promise.all([
           rpcListActiveListings(handle),
           rpcListOpenBids(handle),
           rpcListRecentSales(handle),
+          rpcListPlatformOffer(handle),
         ]);
         if (!cancelled) {
           setListings(L);
           setBids(B);
           setSales(S);
+          setPlatformOffer(offer);
         }
       } catch (e) {
         if (!cancelled) setP2pLoadError(e instanceof Error ? e.message : "P2P load failed");
@@ -358,6 +365,15 @@ export function ProductPage() {
   }, [p2p, listings, bids, selectedRow, activeSizeLabel]);
 
   const lowestPeerListing = p2p && selectedRow ? lowestListingForSize(listings, activeSizeLabel) : null;
+  const platformInStock = Boolean(platformOffer && platformOffer.quantity_available > 0);
+  const platformMoney =
+    platformInStock && platformOffer
+      ? moneyFromCents(platformOffer.price_cents, platformOffer.currency || currency)
+      : null;
+  const shownSizeRows = useMemo(
+    () => sizeRows.map((row) => (row.lowestAsk || !platformMoney ? row : { ...row, lowestAsk: platformMoney })),
+    [platformMoney, sizeRows],
+  );
 
   const myOpenBidAtSize = useMemo(() => {
     if (!product || !selectedRow) return null;
@@ -590,6 +606,28 @@ export function ProductPage() {
       .finally(() => setActionBusy(false));
   };
 
+  const onBuyFromPlatform = () => {
+    if (!product || !platformOffer || platformOffer.quantity_available < 1) return;
+    if (!user) {
+      setActionMsg("Sign in to buy from VRNA.");
+      return;
+    }
+    if (!requireVerifiedEmail()) return;
+    if (!activeSizeLabel) {
+      setActionMsg("Choose a size before buying from VRNA inventory.");
+      return;
+    }
+    setActionMsg(null);
+    setActionBusy(true);
+    void rpcTakePlatformInventory(product.handle, activeSizeLabel)
+      .then(async (tradeId) => {
+        const url = await startCheckoutForTrade(tradeId, window.location.origin);
+        window.location.assign(url);
+      })
+      .catch((e: unknown) => setActionMsg(e instanceof Error ? e.message : "Could not start VRNA checkout"))
+      .finally(() => setActionBusy(false));
+  };
+
   const onBuyFromPeer = () => {
     if (!lowestPeerListing) return;
     if (!user) {
@@ -734,7 +772,7 @@ export function ProductPage() {
             </div>
           ) : null}
           <div className={shoeProduct ? `${styles.sizes} ${styles.sizesScroll}` : styles.sizes}>
-            {sizeRows.map((row) => (
+            {shownSizeRows.map((row) => (
               <button
                 key={row.id}
                 type="button"
@@ -779,9 +817,18 @@ export function ProductPage() {
               <div className={styles.row}>
                 <span className={styles.k}>Lowest ask</span>
                 <span className={styles.v}>
-                  {selectedRow?.lowestAsk ? formatMoney(selectedRow.lowestAsk) : "—"}
+                  {lowestPeerListing
+                    ? formatMoney(moneyFromCents(lowestPeerListing.price_cents, lowestPeerListing.currency))
+                    : platformMoney
+                      ? formatMoney(platformMoney)
+                      : "—"}
                 </span>
               </div>
+              {platformInStock && !lowestPeerListing && platformOffer ? (
+                <p className={styles.hint}>
+                  {platformOffer.quantity_available} available from VRNA · {platformSourceLabel(platformOffer.source)}
+                </p>
+              ) : null}
               {p2p && lowestPeerListing ? (
                 <button
                   type="button"
@@ -791,14 +838,26 @@ export function ProductPage() {
                 >
                   Buy from peer (P2P)
                 </button>
+              ) : p2p && platformInStock ? (
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={actionBusy}
+                  onClick={() => onBuyFromPlatform()}
+                >
+                  Buy from VRNA
+                </button>
               ) : (
                 <button type="button" className={`${styles.primary} ${styles.btnDisabled}`} disabled>
-                  {p2p ? "No peer ask at this size" : "Sign in to buy or sell from the live order book"}
+                  {p2p ? "No ask at this size" : "Sign in to buy or sell from the live order book"}
                 </button>
               )}
               <p className={styles.hint}>
-                Reserves the listing, then opens <strong>Stripe Checkout</strong> with item price, a 3% processing fee,
-                and verified delivery shipping. VRNA holds payment while the seller ships to us for verification.
+                {lowestPeerListing
+                  ? "Reserves the peer listing, then opens Stripe Checkout. VRNA holds payment while the seller ships to us for verification."
+                  : platformInStock
+                    ? "VRNA inventory is already authenticated and sourced from a trusted supplier. Checkout skips the seller shipment — we ship it to you after payment."
+                    : "Reserves the listing, then opens Stripe Checkout with item price, a 3% processing fee, and verified delivery shipping."}
               </p>
             </div>
           )}
