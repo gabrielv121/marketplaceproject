@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUOTA_STOP = 900;
-const PRIORITY_HANDLE = "nike-air-more-uptempo-black-white-2016";
 
 function parseArgs(argv) {
   const args = { limit: 400, handle: null };
@@ -54,20 +53,59 @@ function canonicalUsLabel(raw) {
   return `US ${match[1].toUpperCase()} ${num}`;
 }
 
+const APPAREL_LABELS = {
+  xxs: "XXS",
+  xs: "XS",
+  s: "S",
+  small: "S",
+  m: "M",
+  medium: "M",
+  l: "L",
+  large: "L",
+  xl: "XL",
+  xxl: "XXL",
+  "2xl": "XXL",
+  xxxl: "XXXL",
+  "3xl": "XXXL",
+  "s/m": "S/M",
+  "m/l": "M/L",
+  "l/xl": "L/XL",
+  os: "One size",
+  "o/s": "One size",
+  "one size": "One size",
+  onesize: "One size",
+};
+
+function apparelLabel(raw) {
+  const key = String(raw ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  return APPAREL_LABELS[key] ?? null;
+}
+
 function labelsForVariant(variant) {
   const labels = new Set();
   const sizes = Array.isArray(variant.sizes) ? variant.sizes : [];
   for (const row of sizes) {
     const type = String(row?.type ?? "").toLowerCase();
-    if (type !== "us m" && type !== "us w") continue;
-    const label = canonicalUsLabel(row?.size);
-    if (label) labels.add(label);
+    if (type === "us m" || type === "us w") {
+      const label = canonicalUsLabel(row?.size);
+      if (label) labels.add(label);
+      continue;
+    }
+    const apparel = apparelLabel(row?.size);
+    if (apparel) labels.add(apparel);
   }
   if (!labels.size && variant.size) {
     const type = String(variant.size_type ?? "").toLowerCase();
-    const prefix = type.includes("w") && !type.includes("m") ? "US W" : "US M";
-    const label = canonicalUsLabel(`${prefix} ${variant.size}`);
-    if (label) labels.add(label);
+    if (type === "us m" || (type.includes("m") && !type.includes("w") && /\d/.test(String(variant.size)))) {
+      const label = canonicalUsLabel(`US M ${variant.size}`);
+      if (label) labels.add(label);
+    } else if (type === "us w" || (type.includes("w") && !type.includes("m"))) {
+      const label = canonicalUsLabel(`US W ${variant.size}`) || apparelLabel(variant.size);
+      if (label) labels.add(label);
+    } else {
+      const apparel = apparelLabel(variant.size);
+      if (apparel) labels.add(apparel);
+    }
   }
   return [...labels];
 }
@@ -185,10 +223,9 @@ async function main() {
   const synced = await loadSynced(supabase);
   const handles = await loadHandles(supabase);
   const queue = [];
-  const priority = args.handle || PRIORITY_HANDLE;
-  if (priority && !synced.has(priority)) queue.push(priority);
+  if (args.handle) queue.push(args.handle);
   for (const handle of handles) {
-    if (handle === priority || synced.has(handle)) continue;
+    if (handle === args.handle || synced.has(handle)) continue;
     queue.push(handle);
   }
 
@@ -220,7 +257,6 @@ async function main() {
       priced += 1;
       if (fetched === 1 || fetched % 25 === 0) {
         const sample = rows
-          .filter((row) => row.size_label.startsWith("US M "))
           .slice(0, 6)
           .map((row) => `${row.size_label} $${Math.round(row.price_cents / 100)}`)
           .join(", ");
