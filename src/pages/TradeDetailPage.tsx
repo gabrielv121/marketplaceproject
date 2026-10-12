@@ -5,6 +5,7 @@ import { CatalogProductImage } from "@/components/CatalogProductImage";
 import { useAuth } from "@/context/AuthContext";
 import { fetchMyAddresses, fetchMyProfile, type ProfileAddressRow, type ProfileRow } from "@/lib/account-data";
 import { createBuyerOutboundLabel, releaseSellerPayout } from "@/lib/admin-verification";
+import { buyerFacingStatus, isPlatformOrder } from "@/lib/buyer-order-status";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { fetchCatalogSummaryByHandle } from "@/lib/catalog-supabase";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
@@ -21,7 +22,7 @@ type TimelineStep = {
   key: string;
   label: string;
   detail: string;
-  date: keyof TradeDetailRow;
+  date?: keyof TradeDetailRow;
 };
 type TimelineState = "done" | "current" | "upcoming" | "failed";
 
@@ -30,6 +31,12 @@ const BUYER_TIMELINE: TimelineStep[] = [
   { key: "seller_shipped_to_exch", label: "Seller shipped", detail: "Seller is sending the item to VRNA", date: "seller_shipped_at" },
   { key: "received_by_exch", label: "Received by VRNA", detail: "The item arrived for inspection.", date: "received_by_exch_at" },
   { key: "verification_passed", label: "Verified", detail: "Authenticity and condition passed.", date: "verified_at" },
+  { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
+  { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
+];
+const PLATFORM_BUYER_TIMELINE: TimelineStep[] = [
+  { key: "seller_notified", label: "Paid", detail: "Payment received.", date: "paid_at" },
+  { key: "verification_passed", label: "Preparing shipment", detail: "Already authenticated. Waiting for VRNA to ship." },
   { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
 ];
@@ -81,7 +88,8 @@ function timelineState(row: TradeDetailRow, step: TimelineStep, index: number, s
   return "upcoming";
 }
 
-function timelineDate(row: TradeDetailRow, key: keyof TradeDetailRow): string | null {
+function timelineDate(row: TradeDetailRow, key: keyof TradeDetailRow | null | undefined): string | null {
+  if (!key) return null;
   const value = row[key];
   return typeof value === "string" && value ? shortDate(value) : null;
 }
@@ -153,7 +161,8 @@ function shippingAddressLine(row: TradeDetailRow): string {
 }
 
 function StatusTimeline({ row, role }: { row: TradeDetailRow; role: TradeDetailRole }) {
-  const steps = role === "buyer" ? BUYER_TIMELINE : SELLER_TIMELINE;
+  const steps =
+    role === "buyer" && isPlatformOrder(row) ? PLATFORM_BUYER_TIMELINE : role === "buyer" ? BUYER_TIMELINE : SELLER_TIMELINE;
   return (
     <ol className={styles.timeline} aria-label={`${role} trade timeline`}>
       {steps.map((step, index) => {
@@ -373,7 +382,9 @@ export function TradeDetailPage() {
             Size {trade.size_label} · Created {shortDate(trade.created_at)}
           </p>
           <div className={styles.heroActions}>
-            <span className={styles.status}>{prettyStatus(trade.status)}</span>
+            <span className={styles.status}>
+              {trade.role === "buyer" ? buyerFacingStatus(trade.status, trade.fulfillment_source) : prettyStatus(trade.status)}
+            </span>
             <Link to={`/product/${trade.product_handle}`} className={styles.ghostBtn}>
               View item
             </Link>

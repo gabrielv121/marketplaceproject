@@ -15,6 +15,7 @@ import {
   type MyTradeRow,
   type ProfileAddressRow,
 } from "@/lib/account-data";
+import { buyerFacingStatus, isPlatformOrder } from "@/lib/buyer-order-status";
 import {
   confirmCheckoutSession,
   notifyBidMatch,
@@ -150,6 +151,12 @@ const BUYER_TIMELINE: TimelineStep[] = [
   { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
   { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
 ];
+const PLATFORM_BUYER_TIMELINE: TimelineStep[] = [
+  { key: "seller_notified", label: "Paid", detail: "Payment received.", date: "paid_at" },
+  { key: "verification_passed", label: "Preparing shipment", detail: "Already authenticated. Waiting for VRNA to ship.", date: null },
+  { key: "shipped_to_buyer", label: "On the way", detail: "VRNA shipped the item to you.", date: "shipped_to_buyer_at" },
+  { key: "delivered_to_buyer", label: "Delivered", detail: "The order was delivered.", date: "delivered_to_buyer_at" },
+];
 const SELLER_TIMELINE: TimelineStep[] = [
   { key: "seller_notified", label: "Sale paid", detail: "Buyer payment is held by VRNA", date: "paid_at" },
   { key: "seller_shipped_to_exch", label: "Ship to VRNA", detail: "Send your item with the prepaid label.", date: "seller_shipped_at" },
@@ -220,7 +227,7 @@ function timelineDate(row: MyTradeRow, key: string | null | undefined): string |
 }
 
 function StatusTimeline({ row, role }: { row: MyTradeRow; role: TimelineRole }) {
-  const steps = role === "buyer" ? BUYER_TIMELINE : SELLER_TIMELINE;
+  const steps = role === "buyer" && isPlatformOrder(row) ? PLATFORM_BUYER_TIMELINE : role === "buyer" ? BUYER_TIMELINE : SELLER_TIMELINE;
   return (
     <ol className={styles.timeline} aria-label={`${role} order timeline`}>
       {steps.map((step, index) => {
@@ -860,7 +867,7 @@ export function AccountPage() {
         title: row.product_handle,
         detail: `${row.size_label} - trade`,
         amount: formatMoney(moneyFromCents(buyerTradeTotalCents(row), row.currency)),
-        status: prettyStatus(row.status),
+        status: buyerFacingStatus(row.status, row.fulfillment_source),
         to: `/trade/${row.id}`,
       })),
       ...bids.map((row) => ({
@@ -1276,7 +1283,7 @@ export function AccountPage() {
                 <div key={row.id} className={styles.listRow}>
                   {productMini(row.product_handle, `${row.size_label} - ${shortDate(row.created_at)}`, `/trade/${row.id}`)}
                   <span>{formatMoney(moneyFromCents(buyerTradeTotalCents(row), row.currency))}</span>
-                  <span className={styles.status}>{prettyStatus(row.status)}</span>
+                  <span className={styles.status}>{buyerFacingStatus(row.status, row.fulfillment_source)}</span>
                   <div className={styles.timelineWrap}>
                     <StatusTimeline row={row} role="buyer" />
                   </div>

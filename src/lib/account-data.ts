@@ -61,6 +61,7 @@ export type MyTradeRow = {
   price_cents: number;
   currency: string;
   status: string;
+  fulfillment_source?: string | null;
   stripe_checkout_session_id: string | null;
   buyer_shipping_cents?: number | null;
   buyer_processing_fee_cents?: number | null;
