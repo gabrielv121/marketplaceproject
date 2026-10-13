@@ -23,6 +23,7 @@ import {
   ShippingReturnsPage,
   TermsPage,
 } from "@/pages/LegalPages";
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NewArrivalsPage } from "@/pages/NewArrivalsPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="shop/activity/:activitySlug" element={<ActivityCatalogPage />} />
           <Route path="product/:handle" element={<ProductPage />} />
           <Route path="search" element={<SearchPage />} />
+          <Route path="auth/callback" element={<AuthCallbackPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
           <Route path="verify-email" element={<VerifyEmailPage />} />

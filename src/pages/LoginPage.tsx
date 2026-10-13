@@ -1,9 +1,11 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
+import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
 import { friendlyAuthError } from "@/lib/auth-errors";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { isP2pConfigured } from "@/lib/supabase";
 import styles from "./LoginPage.module.css";
 
@@ -22,7 +24,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg] = useState(routeState.signupMessage ?? null);
-  const next = new URLSearchParams(location.search).get("next") || "/account";
+  const next = safeNextPath(new URLSearchParams(location.search).get("next"), "/account");
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -77,8 +79,10 @@ export function LoginPage() {
         <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Sign in</h1>
         <p className={styles.lead}>
-          Use your email and password to access buying, selling, bids, favorites, and payouts.
+          Continue with Google or Apple, or use your email and password.
         </p>
+
+        <SocialAuthButtons next={next} />
 
         <form className={styles.form} onSubmit={onSubmit}>
           <label className={styles.label}>

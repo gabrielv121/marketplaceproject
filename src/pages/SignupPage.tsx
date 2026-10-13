@@ -1,8 +1,10 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
+import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { IconMail } from "@/components/HeaderIcons";
 import { useAuth } from "@/context/AuthContext";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
 import { isP2pConfigured } from "@/lib/supabase";
 import { friendlyAuthError } from "@/lib/auth-errors";
@@ -12,7 +14,7 @@ export function SignupPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, signUpWithPassword } = useAuth();
-  const next = new URLSearchParams(location.search).get("next") || "/";
+  const next = safeNextPath(new URLSearchParams(location.search).get("next"), "/");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -111,8 +113,10 @@ export function SignupPage() {
         <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Create account</h1>
         <p className={styles.lead}>
-          Sign up to browse instantly. Verify your email later when you buy, bid, or list.
+          Continue with Google or Apple, or create an account with email.
         </p>
+
+        <SocialAuthButtons next={next} />
 
         <form className={styles.form} onSubmit={onSubmit}>
           <label className={styles.label}>

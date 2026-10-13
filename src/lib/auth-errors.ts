@@ -1,6 +1,13 @@
 /** Map Supabase Auth API errors to clearer copy for the UI. */
 export function friendlyAuthError(message: string): string {
   const lower = message.toLowerCase();
+  if (
+    lower.includes("provider is not enabled") ||
+    lower.includes("unsupported provider") ||
+    lower.includes("validation_failed")
+  ) {
+    return "Google and Apple sign-in are not turned on for this site yet. Use email for now, or try again after they are enabled.";
+  }
   if (lower.includes("email rate limit")) {
     return (
       "Too many auth emails were sent from this project (Supabase rate limit). " +

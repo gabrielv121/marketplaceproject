@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { oauthCallbackUrl } from "@/lib/auth-redirect";
 import { getSupabase, isP2pConfigured } from "@/lib/supabase";
+
+export type OAuthProvider = "google" | "apple";
 
 type AuthResult = { error: Error | null; session: Session | null };
 
@@ -11,6 +14,7 @@ type AuthState = {
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
   signUpWithPassword: (email: string, password: string, displayName?: string) => Promise<AuthResult>;
+  signInWithOAuth: (provider: OAuthProvider, nextPath: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -87,6 +91,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const signInWithOAuth = useCallback(async (provider: OAuthProvider, nextPath: string) => {
+    const sb = getSupabase();
+    if (!sb) return { error: new Error("Supabase is not configured") };
+    const { error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: oauthCallbackUrl(nextPath),
+        ...(provider === "google" ? { queryParams: { prompt: "select_account" } } : {}),
+      },
+    });
+    return { error: error ? new Error(error.message) : null };
+  }, []);
+
   const signOut = useCallback(async () => {
     const sb = getSupabase();
     if (sb) await sb.auth.signOut();
@@ -100,9 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithEmail,
       signInWithPassword,
       signUpWithPassword,
+      signInWithOAuth,
       signOut,
     }),
-    [session, loading, signInWithEmail, signInWithPassword, signOut, signUpWithPassword],
+    [session, loading, signInWithEmail, signInWithPassword, signUpWithPassword, signInWithOAuth, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
