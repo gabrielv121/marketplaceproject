@@ -79,7 +79,7 @@ export function LoginPage() {
         <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Sign in</h1>
         <p className={styles.lead}>
-          Continue with Google or Apple, or use your email and password.
+          Continue with Google, or use your email and password.
         </p>
 
         <SocialAuthButtons next={next} />

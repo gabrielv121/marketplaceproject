@@ -6,7 +6,7 @@ export function friendlyAuthError(message: string): string {
     lower.includes("unsupported provider") ||
     lower.includes("validation_failed")
   ) {
-    return "Google and Apple sign-in are not turned on for this site yet. Use email for now, or try again after they are enabled.";
+    return "Google sign-in is not turned on for this site yet. Use email for now, or try again after it is enabled.";
   }
   if (lower.includes("email rate limit")) {
     return (

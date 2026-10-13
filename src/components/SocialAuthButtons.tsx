@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { friendlyAuthError } from "@/lib/auth-errors";
-import { IconApple, IconGoogle } from "@/components/SocialAuthIcons";
+import { IconGoogle } from "@/components/SocialAuthIcons";
 import styles from "@/pages/LoginPage.module.css";
 
 type OAuthProvider = "google" | "apple";
@@ -27,10 +27,6 @@ export function SocialAuthButtons({ next }: { next: string }) {
       <button type="button" className={styles.socialBtn} disabled={busy !== null} onClick={() => start("google")}>
         <IconGoogle />
         {busy === "google" ? "Opening Google..." : "Continue with Google"}
-      </button>
-      <button type="button" className={styles.socialBtn} disabled={busy !== null} onClick={() => start("apple")}>
-        <IconApple />
-        {busy === "apple" ? "Opening Apple..." : "Continue with Apple"}
       </button>
       {error ? <p className={`${styles.msg} ${styles.error}`}>{error}</p> : null}
       <p className={styles.divider}>or</p>

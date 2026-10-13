@@ -33,7 +33,7 @@ export function AuthCallbackPage() {
           {providerError
             ? friendlyAuthError(providerError)
             : stuck
-              ? "Google or Apple did not return a session. Try again from the sign-in page."
+              ? "Google did not return a session. Try again from the sign-in page."
               : "Finishing sign-in and taking you back."}
         </p>
         <Link to={`/login?next=${encodeURIComponent(next)}`} className={styles.secondaryLink}>

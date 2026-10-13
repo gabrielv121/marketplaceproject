@@ -113,7 +113,7 @@ export function SignupPage() {
         <p className={styles.eyebrow}>VRNA account</p>
         <h1 className={styles.h1}>Create account</h1>
         <p className={styles.lead}>
-          Continue with Google or Apple, or create an account with email.
+          Continue with Google, or create an account with email.
         </p>
 
         <SocialAuthButtons next={next} />
