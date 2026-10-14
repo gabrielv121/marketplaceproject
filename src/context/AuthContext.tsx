@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { oauthCallbackUrl } from "@/lib/auth-redirect";
+import { canonicalSiteOrigin, oauthCallbackUrl } from "@/lib/auth-redirect";
 import { getSupabase, isP2pConfigured } from "@/lib/supabase";
 
 export type OAuthProvider = "google" | "apple";
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!sb) return { error: new Error("Supabase not configured") };
     const { error } = await sb.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: canonicalSiteOrigin() },
     });
     return { error: error ? new Error(error.message) : null };
   }, []);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: {
           data: displayName?.trim() ? { display_name: displayName.trim() } : undefined,
-          emailRedirectTo: `${window.location.origin}/account`,
+          emailRedirectTo: `${canonicalSiteOrigin()}/account`,
         },
       });
       if (data.session) setSession(data.session);

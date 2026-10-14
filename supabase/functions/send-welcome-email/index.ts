@@ -33,7 +33,7 @@ function requiredEnv(name: string): string {
 }
 
 function normalizeSiteUrl(raw: string | undefined): string {
-  const fallback = Deno.env.get("CHECKOUT_SITE_URL")?.trim() || "https://marketplaceproject-two.vercel.app";
+  const fallback = Deno.env.get("CHECKOUT_SITE_URL")?.trim() || "https://vrna.io";
   const candidate = (raw?.trim() || fallback).replace(/\/$/, "");
   try {
     const u = new URL(candidate);
