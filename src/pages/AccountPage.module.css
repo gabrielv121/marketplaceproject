@@ -912,6 +912,22 @@
   white-space: nowrap;
 }
 
+.productMiniText small {
+  white-space: nowrap;
+}
+
+.bidFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  grid-column: 1 / -1;
+}
+
+.bidFoot .inlineActions {
+  margin-left: auto;
+}
+
 .timelineWrap {
   grid-column: 1 / -1;
   min-width: 0;

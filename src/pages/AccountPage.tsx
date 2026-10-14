@@ -1246,16 +1246,15 @@ export function AccountPage() {
         <div className={styles.subSection}>
           <h3 className={styles.h3}>Bids</h3>
           {bids.length === 0 ? <p className={styles.empty}>No bids yet.</p> : (
-            <div className={styles.tableWrap}><table className={styles.table}><tbody>
+            <div className={styles.stackList}>
               {bids.map((row) => (
-                <tr key={row.id}>
-                  <td>{productMini(row.product_handle)}</td>
-                  <td>{row.size_label}</td>
-                  <td>{formatMoney(moneyFromCents(row.max_price_cents, row.currency))}</td>
-                  <td><span className={styles.status}>{prettyStatus(row.status)}</span></td>
-                  <td>
+                <div key={row.id} className={styles.listRow}>
+                  {productMini(row.product_handle, row.size_label, `/product/${row.product_handle}`)}
+                  <div className={styles.bidFoot}>
+                    <span>{formatMoney(moneyFromCents(row.max_price_cents, row.currency))}</span>
+                    <span className={styles.status}>{prettyStatus(row.status)}</span>
                     {row.status === "open" ? (
-                      <>
+                      <div className={styles.inlineActions}>
                         <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onIncreaseBid(row)}>
                           Increase
                         </button>
@@ -1265,14 +1264,12 @@ export function AccountPage() {
                         <Link to={`/product/${row.product_handle}`} className={styles.linkBtn}>
                           View
                         </Link>
-                      </>
-                    ) : (
-                      <span className={styles.small}>—</span>
-                    )}
-                  </td>
-                </tr>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               ))}
-            </tbody></table></div>
+            </div>
           )}
         </div>
         <div className={styles.subSection}>
