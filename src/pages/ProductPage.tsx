@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
-import { CatalogProductImage } from "@/components/CatalogProductImage";
+import { ProductGallery } from "@/components/ProductGallery";
 import { useAuth } from "@/context/AuthContext";
 import { fetchMyBids, fetchMyProfile, type MyBidRow } from "@/lib/account-data";
 import { formatMoney } from "@/lib/money-format";
@@ -43,7 +43,6 @@ import { recordProductView } from "@/lib/recently-viewed";
 import { logProductView } from "@/lib/analytics-events";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
 import { isFavoriteProduct, toggleFavoriteProduct } from "@/lib/favorites";
-import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 import {
   EMAIL_VERIFY_REQUIRED_MESSAGE,
   fetchEmailVerified,
@@ -715,11 +714,7 @@ export function ProductPage() {
       ) : null}
       <div className={styles.grid}>
         <div className={styles.media}>
-          {resolveFeaturedImageUrl(product) ? (
-            <CatalogProductImage product={product} alt="" className={styles.image} />
-          ) : (
-            <div className={styles.ph} />
-          )}
+          <ProductGallery product={product} />
         </div>
         <div>
           <h1 className={styles.title}>{product.title}</h1>
