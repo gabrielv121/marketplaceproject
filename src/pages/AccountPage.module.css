@@ -2,7 +2,8 @@
   max-width: 1120px;
   width: 100%;
   min-width: 0;
-  overflow-x: clip;
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .hero {
@@ -97,7 +98,10 @@
   z-index: 5;
   display: flex;
   gap: 0.35rem;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   padding: 0.45rem;
   margin-bottom: 1rem;
   border: 1px solid var(--border);
@@ -336,12 +340,22 @@
 .search,
 .textarea {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.62rem 0.7rem;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
   font-size: 0.92rem;
+}
+
+@media (max-width: 760px) {
+  .input,
+  .search,
+  .textarea {
+    font-size: 16px;
+  }
 }
 
 .textarea {
@@ -636,8 +650,11 @@
 }
 
 .tableWrap {
+  min-width: 0;
   overflow-x: auto;
   max-width: 100%;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -769,15 +786,20 @@
 .stackList {
   display: grid;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .listRow {
   display: grid;
   gap: 0.5rem;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.75rem;
   color: var(--text);
   font-size: 0.86rem;
+  overflow-x: hidden;
 }
 
 .listRow > .warn {
@@ -913,6 +935,8 @@
 }
 
 .productMiniText small {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -922,6 +946,8 @@
   align-items: center;
   gap: 0.45rem 0.75rem;
   grid-column: 1 / -1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bidFoot .inlineActions {
@@ -932,6 +958,8 @@
   display: grid;
   gap: 0.5rem;
   grid-column: 1 / -1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .increaseForm .warn {
@@ -947,6 +975,8 @@
 .timelineWrap {
   grid-column: 1 / -1;
   min-width: 0;
+  max-width: 100%;
+  touch-action: pan-x pan-y;
 }
 
 .timeline {

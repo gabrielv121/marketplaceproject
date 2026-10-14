@@ -143,6 +143,7 @@
   min-width: 0;
   padding-bottom: 0.35rem;
   scrollbar-color: var(--border) transparent;
+  overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
 

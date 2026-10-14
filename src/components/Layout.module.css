@@ -4,7 +4,7 @@
   flex-direction: column;
   width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 .menuBackdropFixed {
@@ -288,6 +288,7 @@
   min-width: 0;
   margin: 0 auto;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 @media (max-width: 520px) {
