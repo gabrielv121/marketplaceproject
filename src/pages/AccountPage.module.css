@@ -928,6 +928,22 @@
   margin-left: auto;
 }
 
+.increaseForm {
+  display: grid;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+
+.increaseForm .warn {
+  margin: 0;
+}
+
+.increaseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .timelineWrap {
   grid-column: 1 / -1;
   min-width: 0;

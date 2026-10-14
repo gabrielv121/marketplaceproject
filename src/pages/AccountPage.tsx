@@ -393,6 +393,9 @@ export function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [increaseBidId, setIncreaseBidId] = useState<string | null>(null);
+  const [increaseDraft, setIncreaseDraft] = useState("");
+  const [increaseError, setIncreaseError] = useState<string | null>(null);
   const [checkoutBanner, setCheckoutBanner] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [username, setUsername] = useState("");
@@ -579,19 +582,21 @@ export function AccountPage() {
       .finally(() => setBusyId(null));
   };
 
-  const onIncreaseBid = (row: MyBidRow) => {
-    const next = window.prompt(
-      `New max bid for ${row.size_label} (${row.currency})`,
-      String(Math.ceil(row.max_price_cents / 100) + 10),
-    );
-    if (next == null) return;
-    const cents = parseToCents(next);
+  const onStartIncreaseBid = (row: MyBidRow) => {
+    setIncreaseError(null);
+    setIncreaseBidId(row.id);
+    setIncreaseDraft(String(Math.ceil(row.max_price_cents / 100) + 10));
+  };
+
+  const onSubmitIncreaseBid = (row: MyBidRow) => {
+    setIncreaseError(null);
+    const cents = parseToCents(increaseDraft);
     if (cents == null) {
-      setLoadError("Enter a valid price.");
+      setIncreaseError("Enter a valid price.");
       return;
     }
     if (cents <= row.max_price_cents) {
-      setLoadError("New max must be higher than your current bid.");
+      setIncreaseError(`Enter more than ${formatMoney(moneyFromCents(row.max_price_cents, row.currency))}.`);
       return;
     }
     setBusyId(row.id);
@@ -604,10 +609,12 @@ export function AccountPage() {
           window.location.assign(url);
           return;
         }
+        setIncreaseBidId(null);
+        setIncreaseDraft("");
         setSaveMsg("Bid increased.");
         void refresh();
       })
-      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not update bid"))
+      .catch((e: unknown) => setIncreaseError(e instanceof Error ? e.message : "Could not update bid"))
       .finally(() => setBusyId(null));
   };
 
@@ -1255,7 +1262,7 @@ export function AccountPage() {
                     <span className={styles.status}>{prettyStatus(row.status)}</span>
                     {row.status === "open" ? (
                       <div className={styles.inlineActions}>
-                        <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onIncreaseBid(row)}>
+                        <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onStartIncreaseBid(row)}>
                           Increase
                         </button>
                         <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onCancelBid(row.id)}>
@@ -1267,6 +1274,43 @@ export function AccountPage() {
                       </div>
                     ) : null}
                   </div>
+                  {increaseBidId === row.id ? (
+                    <form
+                      className={styles.increaseForm}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        onSubmitIncreaseBid(row);
+                      }}
+                    >
+                      <label className={styles.field}>
+                        <span className={styles.label}>New max ({row.currency})</span>
+                        <input
+                          className={styles.input}
+                          inputMode="decimal"
+                          value={increaseDraft}
+                          onChange={(event) => setIncreaseDraft(event.target.value)}
+                          autoFocus
+                        />
+                      </label>
+                      {increaseError ? <p className={styles.warn}>{increaseError}</p> : null}
+                      <div className={styles.increaseActions}>
+                        <button type="submit" className={styles.payBtn} disabled={busyId === row.id}>
+                          {busyId === row.id ? "Saving..." : "Update bid"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostBtn}
+                          disabled={busyId === row.id}
+                          onClick={() => {
+                            setIncreaseBidId(null);
+                            setIncreaseError(null);
+                          }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </form>
+                  ) : null}
                 </div>
               ))}
             </div>
