@@ -3,7 +3,6 @@
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  touch-action: pan-y;
 }
 
 .hero {
@@ -122,6 +121,22 @@
 .anchorNav a:hover {
   color: var(--text);
   background: var(--surface-2);
+}
+
+@media (max-width: 720px) {
+  .anchorNav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: 16px;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  .anchorNav a {
+    min-width: 0;
+    padding: 0.5rem 0.35rem;
+    text-align: center;
+  }
 }
 
 .muted {
