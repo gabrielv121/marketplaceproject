@@ -6,23 +6,52 @@ import { ProductRail } from "@/components/ProductRail";
 import { useAuth } from "@/context/AuthContext";
 import { DEPARTMENTS } from "@/lib/catalog-taxonomy";
 import { loadCatalogProducts } from "@/lib/catalog-products";
+import { fetchNewestCatalogProducts } from "@/lib/catalog-supabase";
+import { fetchMyAddresses, fetchMyBids } from "@/lib/account-data";
+import { fetchCatalogDemandScores } from "@/lib/catalog-demand";
+import { fetchMyFavoriteHandles } from "@/lib/favorites";
 import {
   ACTIVITY_COVER,
-  pickByRail,
-  pickFeaturedAccessoriesRail,
-  pickFeaturedApparel,
-  pickFeaturedDesignerRail,
+  apparelRotationStep,
+  designerRailWindow,
+  designerRotationStep,
+  msUntilNextApparelSlot,
+  msUntilNextDesignerSlot,
+  msUntilNextRecommendedSlot,
+  msUntilNextTrendingSlot,
+  msUntilNextTwiceDailySlot,
+  locationWindowStep,
   pickNewAtExch,
-  pickRecommended,
-  pickTrendingSneakers,
+  rankBelowRetail,
+  rankFeaturedApparel,
+  rankDesignerProducts,
+  rankFeaturedAccessories,
+  rankPopularLocal,
+  rankRecommendedProducts,
+  rankTrendingSneakers,
+  twiceDailyRotationStep,
+  recommendedRotationStep,
+  trendingRotationStep,
   resolveRecentProducts,
   SHOP_ACTIVITIES,
+  type TasteSeed,
 } from "@/lib/home-feed";
 import { getRecentViews, subscribeRecentViews } from "@/lib/recently-viewed";
+import { getSupabase } from "@/lib/supabase";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./HomePage.module.css";
 
 const N = 6;
+
+function guestPlace(): { key: string; label: string } {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+    const label = zone.split("/").pop()?.replace(/_/g, " ") || "your area";
+    return { key: zone, label };
+  } catch {
+    return { key: "local", label: "your area" };
+  }
+}
 
 export function HomePage() {
   const { user, loading: authLoading } = useAuth();
@@ -30,6 +59,16 @@ export function HomePage() {
   const [recent, setRecent] = useState(() => getRecentViews(user?.id));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [demand, setDemand] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const [designerStep, setDesignerStep] = useState(() => designerRotationStep());
+  const [recommendedStep, setRecommendedStep] = useState(() => recommendedRotationStep());
+  const [trendingStep, setTrendingStep] = useState(() => trendingRotationStep());
+  const [apparelStep, setApparelStep] = useState(() => apparelRotationStep());
+  const [twiceDailyStep, setTwiceDailyStep] = useState(() => twiceDailyRotationStep());
+  const [savedHandles, setSavedHandles] = useState<string[]>([]);
+  const [bidHandles, setBidHandles] = useState<string[]>([]);
+  const [newest, setNewest] = useState<CatalogProductSummary[]>([]);
+  const [place, setPlace] = useState(guestPlace);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +88,169 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let timer = 0;
+    const loadNewest = () => {
+      void fetchNewestCatalogProducts(24).then((rows) => {
+        if (!cancelled && rows?.length) setNewest(rows);
+      });
+    };
+    loadNewest();
+
+    const sb = getSupabase();
+    const channel = sb?.channel("catalog-new-at-vrna");
+    channel?.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "catalog_products" },
+      () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          loadNewest();
+          void fetchCatalogDemandScores().then((scores) => {
+            if (!cancelled) setDemand(scores);
+          });
+        }, 400);
+      },
+    );
+    channel?.subscribe();
+    const onFocus = () => loadNewest();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", onFocus);
+      if (sb && channel) void sb.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void fetchCatalogDemandScores().then((scores) => {
+        if (!cancelled) setDemand(scores);
+      });
+    };
+    load();
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", load);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setPlace(guestPlace());
+      return;
+    }
+    let cancelled = false;
+    void fetchMyAddresses()
+      .then((rows) => {
+        if (cancelled) return;
+        const address = rows.find((row) => row.is_default) ?? rows[0];
+        if (!address) {
+          setPlace(guestPlace());
+          return;
+        }
+        const city = address.city.trim();
+        const region = address.region.trim();
+        const country = address.country.trim();
+        const key = [city, region, country].filter(Boolean).join("|").toLowerCase();
+        const label = city || region || country || guestPlace().label;
+        setPlace(key ? { key, label } : guestPlace());
+      })
+      .catch(() => {
+        if (!cancelled) setPlace(guestPlace());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setDesignerStep(designerRotationStep());
+        schedule();
+      }, msUntilNextDesignerSlot());
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setRecommendedStep(recommendedRotationStep());
+        schedule();
+      }, msUntilNextRecommendedSlot());
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setTrendingStep(trendingRotationStep());
+        schedule();
+      }, msUntilNextTrendingSlot());
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setApparelStep(apparelRotationStep());
+        schedule();
+      }, msUntilNextApparelSlot());
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setTwiceDailyStep(twiceDailyRotationStep());
+        schedule();
+      }, msUntilNextTwiceDailySlot());
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedHandles([]);
+      setBidHandles([]);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      fetchMyFavoriteHandles().catch(() => [] as string[]),
+      fetchMyBids()
+        .then((rows) => rows.map((row) => row.product_handle))
+        .catch(() => [] as string[]),
+    ]).then(([favorites, bids]) => {
+      if (cancelled) return;
+      setSavedHandles(favorites);
+      setBidHandles(bids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
     setRecent(getRecentViews(user?.id));
     return subscribeRecentViews(() => {
       setRecent(getRecentViews(user?.id));
@@ -63,42 +265,83 @@ export function HomePage() {
     const recentProducts = resolveRecentProducts(all, recent);
     const used = new Set<string>(signedIn ? recentHandles : []);
 
-    const trending = pickTrendingSneakers(all, N, [...used]);
-    trending.forEach((p) => used.add(p.handle));
+    const tasteSeeds: TasteSeed[] = [
+      ...savedHandles.map((handle) => ({ handle, weight: 6 })),
+      ...bidHandles.map((handle) => ({ handle, weight: 5 })),
+      ...recent.map((view, index) => ({ handle: view.handle, weight: Math.max(1, 4 - index * 0.2) })),
+    ];
+    const recommendedRail = rankRecommendedProducts(all, tasteSeeds, [...used]);
+    designerRailWindow(recommendedRail.ranked, recommendedRail.taste, 0, N).forEach((p) => used.add(p.handle));
 
-    const recommended = pickRecommended(all, [...used], N);
-    recommended.forEach((p) => used.add(p.handle));
+    const trendingRanked = rankTrendingSneakers(all, [...used]);
+    designerRailWindow(trendingRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
     // Accessories before apparel / popular — few SKUs and easily crowded out by hoodies + popular-local tag.
-    const accessories = pickFeaturedAccessoriesRail(all, N, [...used]);
-    accessories.forEach((p) => used.add(p.handle));
+    const accessoriesRanked = rankFeaturedAccessories(all, [...used]);
+    designerRailWindow(accessoriesRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
-    const apparel = pickFeaturedApparel(all, N, [...used]);
-    apparel.forEach((p) => used.add(p.handle));
+    const apparelRanked = rankFeaturedApparel(all, [...used]);
+    designerRailWindow(apparelRanked, new Map(), apparelStep, N).forEach((p) => used.add(p.handle));
 
-    const designer = pickFeaturedDesignerRail(all, N, [...used]);
-    designer.forEach((p) => used.add(p.handle));
+    const designerRanked = rankDesignerProducts(all, demand, [...used]);
+    designerRailWindow(designerRanked, demand, 0, N).forEach((p) => used.add(p.handle));
 
-    const popular = pickByRail(all, "popular-local", N, [...used]);
-    popular.forEach((p) => used.add(p.handle));
+    const popularRanked = rankPopularLocal(all, demand, [...used]);
+    const popularVisible = designerRailWindow(popularRanked, new Map(), locationWindowStep(place.key), N);
+    popularVisible.forEach((p) => used.add(p.handle));
 
-    const below = pickByRail(all, "below-retail", N, [...used]);
-    below.forEach((p) => used.add(p.handle));
+    const belowRanked = rankBelowRetail(all, [...used]);
+    designerRailWindow(belowRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
-    const newAt = pickNewAtExch(all, 6, [...used]);
+    const newAt = pickNewAtExch(newest.length ? newest : all, 6, [...used]);
 
     return {
       recentProducts,
-      recommended,
-      trending,
-      apparel,
-      designer,
-      popular,
-      below,
-      accessories,
+      recommendedRanked: recommendedRail.ranked,
+      recommendedTaste: recommendedRail.taste,
+      recommendedPersonalized: recommendedRail.personalized,
+      trendingRanked,
+      apparelRanked,
+      designerRanked,
+      popular: popularVisible,
+      belowRanked,
+      accessoriesRanked,
       newAt,
     };
-  }, [all, recent, signedIn]);
+  }, [all, apparelStep, bidHandles, demand, newest, place.key, recent, savedHandles, signedIn]);
+
+  const recommendedProducts = useMemo(
+    () =>
+      rails
+        ? designerRailWindow(rails.recommendedRanked, rails.recommendedTaste, recommendedStep, N)
+        : [],
+    [rails, recommendedStep],
+  );
+
+  const apparelProducts = useMemo(
+    () => (rails ? designerRailWindow(rails.apparelRanked, new Map(), apparelStep, N) : []),
+    [rails, apparelStep],
+  );
+
+  const trendingProducts = useMemo(
+    () => (rails ? designerRailWindow(rails.trendingRanked, new Map(), trendingStep, N) : []),
+    [rails, trendingStep],
+  );
+
+  const belowProducts = useMemo(
+    () => (rails ? designerRailWindow(rails.belowRanked, new Map(), twiceDailyStep, N) : []),
+    [rails, twiceDailyStep],
+  );
+
+  const accessoryProducts = useMemo(
+    () => (rails ? designerRailWindow(rails.accessoriesRanked, new Map(), twiceDailyStep, N) : []),
+    [rails, twiceDailyStep],
+  );
+
+  const designerProducts = useMemo(
+    () => (rails ? designerRailWindow(rails.designerRanked, demand, designerStep, N) : []),
+    [rails, demand, designerStep],
+  );
 
   return (
     <div>
@@ -187,38 +430,42 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Recommended for you"
-            subtitle={signedIn ? "Outside your recent history." : "Curated from the catalog."}
-            titleInfo="Picks tailored to what is popular on VRNA, separate from the trending sneakers row."
+            subtitle={
+              rails.recommendedPersonalized
+                ? "Matched to what you browse, save, and bid on."
+                : "Curated from the catalog until you browse."
+            }
+            titleInfo="Follows your brands and styles. The row changes every two days, and the closest matches stay up front."
             action={{ label: "See all →", to: "/catalog" }}
           >
-            <ProductGrid products={rails.recommended} emptyMessage="Nothing to recommend yet." layout="homeSix" />
+            <ProductGrid products={recommendedProducts} emptyMessage="Nothing to recommend yet." layout="homeSix" />
           </HomeSection>
 
           <HomeSection
             variant="market"
             title="Trending sneakers"
-            titleInfo="Popular footwear from leading brands and collaborations."
+            titleInfo="Popular footwear from leading brands and collaborations. The row changes once a week."
             action={{ label: "See all →", to: "/search?q=sneakers" }}
           >
-            <ProductGrid products={rails.trending} layout="homeSix" />
+            <ProductGrid products={trendingProducts} layout="homeSix" />
           </HomeSection>
 
           <HomeSection
             variant="market"
             title="Featured apparel"
-            titleInfo="Standout clothing across streetwear and contemporary labels."
+            titleInfo="Streetwear and collabs, mixed across brands. The row changes every day at midnight."
             action={{ label: "See all →", to: "/search?q=apparel" }}
           >
-            <ProductGrid products={rails.apparel} layout="homeSix" />
+            <ProductGrid products={apparelProducts} layout="homeSix" />
           </HomeSection>
 
           <HomeSection
             variant="market"
             title="Designer & avant-garde"
-            titleInfo="Designer and avant-garde footwear and apparel."
+            titleInfo="The row changes over time. Pieces people are viewing, saving, or bidding on stay up front."
             action={{ label: "See all →", to: "/search?q=designer" }}
           >
-            <ProductGrid products={rails.designer} layout="homeSix" emptyMessage="Designer picks loading soon." />
+            <ProductGrid products={designerProducts} layout="homeSix" emptyMessage="Designer picks loading soon." />
           </HomeSection>
 
           <HomeSection
@@ -251,7 +498,8 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Most popular around you"
-            titleInfo="Styles getting attention on VRNA right now."
+            subtitle={place.label ? `Popular in ${place.label}` : undefined}
+            titleInfo="Follows what people are viewing, saving, and bidding on, and changes with your area."
             action={{ label: "See all →", to: "/catalog" }}
           >
             <ProductGrid products={rails.popular} layout="homeSix" />
@@ -260,26 +508,26 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Below retail price"
-            titleInfo="Listings priced below typical market value."
+            titleInfo="Listings priced below typical market value. The row changes twice a day."
             action={{ label: "See all →", to: "/search?q=below-retail" }}
           >
-            <ProductGrid products={rails.below} layout="homeSix" />
+            <ProductGrid products={belowProducts} layout="homeSix" />
           </HomeSection>
 
           <HomeSection
             variant="market"
             title="Featured accessories"
-            titleInfo="Bags, hats, watches, and add-ons — not sneakers or apparel."
+            titleInfo="Bags, hats, watches, and add-ons — not sneakers or apparel. The row changes twice a day."
             action={{ label: "See all →", to: "/catalog/accessories" }}
           >
-            <ProductGrid products={rails.accessories} layout="homeSix" />
+            <ProductGrid products={accessoryProducts} layout="homeSix" />
           </HomeSection>
 
           <HomeSection
             variant="market"
             title="New at VRNA"
             subtitle="Fresh drops on the marketplace."
-            titleInfo="The newest listings added to VRNA."
+            titleInfo="Swaps in as soon as new products arrive from the catalog."
             action={{ label: "See all →", to: "/new" }}
           >
             <ProductGrid products={rails.newAt} layout="homeSix" />

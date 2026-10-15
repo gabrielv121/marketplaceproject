@@ -410,16 +410,146 @@ function excludeSet(handles: string[]): Set<string> {
   return new Set(handles);
 }
 
-export function pickRecommended(products: CatalogProductSummary[], excludeHandles: string[], limit: number): CatalogProductSummary[] {
-  const ex = excludeSet(excludeHandles);
+export type TasteSeed = { handle: string; weight: number };
+
+const TASTE_STOP = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "from",
+  "mens",
+  "men",
+  "womens",
+  "women",
+  "womans",
+  "kids",
+  "youth",
+  "retro",
+  "high",
+  "low",
+  "mid",
+  "og",
+  "sp",
+  "gs",
+  "shoe",
+  "shoes",
+  "size",
+]);
+
+function bump(map: Map<string, number>, key: string, weight: number) {
+  const k = key.trim().toLowerCase();
+  if (!k || k === "_unknown" || weight <= 0) return;
+  map.set(k, (map.get(k) ?? 0) + weight);
+}
+
+function tasteTokens(p: CatalogProductSummary): string[] {
+  return `${p.brand ?? ""} ${p.title} ${p.productType ?? ""}`
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 2 && !TASTE_STOP.has(token));
+}
+
+export type RecommendedRail = {
+  ranked: CatalogProductSummary[];
+  taste: ReadonlyMap<string, number>;
+  personalized: boolean;
+};
+
+/**
+ * Rank a diverse pool from the viewer's taste (saves, bids, and recent views).
+ * With no history, fall back to the usual home order.
+ */
+export function rankRecommendedProducts(
+  products: CatalogProductSummary[],
+  seeds: TasteSeed[],
+  excludeHandles: string[] = [],
+): RecommendedRail {
+  const ex = excludeSet([...excludeHandles, ...seeds.map((seed) => seed.handle)]);
+  const byHandle = new Map(products.map((p) => [p.handle, p]));
+  const brands = new Map<string, number>();
+  const departments = new Map<string, number>();
+  const types = new Map<string, number>();
+  const activities = new Map<string, number>();
+  const tokens = new Map<string, number>();
+  let seedWeight = 0;
+
+  for (const seed of seeds) {
+    const product = byHandle.get(seed.handle);
+    if (!product || seed.weight <= 0) continue;
+    seedWeight += seed.weight;
+    bump(brands, brandKey(product), seed.weight);
+    bump(departments, product.departmentSlug ?? "", seed.weight);
+    bump(types, product.productType ?? "", seed.weight);
+    for (const activity of product.activities ?? []) bump(activities, activity, seed.weight);
+    for (const token of tasteTokens(product)) bump(tokens, token, seed.weight);
+  }
+
+  const personalized = seedWeight > 0;
+  const scoreOf = (product: CatalogProductSummary) => {
+    if (!personalized) return 0;
+    let score = brands.get(brandKey(product)) ?? 0;
+    score += (departments.get((product.departmentSlug ?? "").toLowerCase()) ?? 0) * 0.4;
+    score += (types.get((product.productType ?? "").toLowerCase()) ?? 0) * 0.35;
+    for (const activity of product.activities ?? []) score += (activities.get(activity) ?? 0) * 0.25;
+    let tokenScore = 0;
+    for (const token of tasteTokens(product)) tokenScore += tokens.get(token) ?? 0;
+    score += Math.min(tokenScore, 8);
+    if (!hasCatalogFeaturedImage(product)) score -= 2;
+    return score;
+  };
+
   const pool = products.filter((p) => !ex.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts(pool), limit);
+  const sorted = [...pool].sort((a, b) => {
+    const taste = scoreOf(b) - scoreOf(a);
+    if (taste !== 0) return taste;
+    const image = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
+    if (image !== 0) return image;
+    const brand = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
+    if (brand !== 0) return brand;
+    const trend = (b.trendScore ?? 0) - (a.trendScore ?? 0);
+    if (trend !== 0) return trend;
+    return a.title.localeCompare(b.title);
+  });
+  const ranked = pickDiverseHomeProducts(sorted, 24);
+  const taste = new Map<string, number>();
+  if (personalized) {
+    for (const product of ranked) {
+      const score = scoreOf(product);
+      if (score > 0) taste.set(product.handle, score);
+    }
+  }
+  return { ranked, taste, personalized };
+}
+
+export function pickRecommended(
+  products: CatalogProductSummary[],
+  excludeHandles: string[],
+  limit: number,
+  seeds: TasteSeed[] = [],
+): CatalogProductSummary[] {
+  const rail = rankRecommendedProducts(products, seeds, excludeHandles);
+  return designerRailWindow(rail.ranked, rail.taste, 0, limit);
+}
+
+/** One new recommended set every two local days. */
+export function recommendedRotationStep(now = new Date()): number {
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  return Math.floor(dayIndex / 2);
+}
+
+export function msUntilNextRecommendedSlot(now = new Date()): number {
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  const daysLeft = dayIndex % 2 === 0 ? 2 : 1;
+  const next = new Date(now);
+  next.setDate(next.getDate() + daysLeft);
+  next.setHours(0, 0, 0, 0);
+  return Math.max(1000, next.getTime() - now.getTime());
 }
 
 /** Footwear only; prefers items tagged `trending-sneakers`, then brand-priority sort. */
-export function pickTrendingSneakers(
+export function rankTrendingSneakers(
   products: CatalogProductSummary[],
-  limit: number,
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
@@ -427,13 +557,34 @@ export function pickTrendingSneakers(
   const tagged = footwear.filter((p) => (p.homeRails ?? []).includes("trending-sneakers"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = footwear.filter((p) => !taggedSet.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
+  return pickDiverseHomeProducts(sortHomeProducts([...tagged, ...rest]), 42);
 }
 
-/** True apparel only — never backfilled with shoes. */
-export function pickFeaturedApparel(
+export function pickTrendingSneakers(
   products: CatalogProductSummary[],
   limit: number,
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
+  return designerRailWindow(rankTrendingSneakers(products, excludeHandles), new Map(), 0, limit);
+}
+
+/** One new trending set every 7 local days. */
+export function trendingRotationStep(now = new Date()): number {
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  return Math.floor(dayIndex / 7);
+}
+
+export function msUntilNextTrendingSlot(now = new Date()): number {
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  const next = new Date(now);
+  next.setDate(next.getDate() + (7 - (dayIndex % 7)));
+  next.setHours(0, 0, 0, 0);
+  return Math.max(1000, next.getTime() - now.getTime());
+}
+
+/** True apparel only — streetwear and collabs first, never backfilled with shoes. */
+export function rankFeaturedApparel(
+  products: CatalogProductSummary[],
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
@@ -441,7 +592,27 @@ export function pickFeaturedApparel(
   const tagged = apparel.filter((p) => (p.homeRails ?? []).includes("featured-apparel"));
   const taggedSet = new Set(tagged.map((p) => p.handle));
   const rest = apparel.filter((p) => !taggedSet.has(p.handle));
-  return pickFromSortedPool(sortHomeApparelProducts([...tagged, ...rest]), limit, excludeHandles);
+  return pickDiverseHomeProducts(sortHomeApparelProducts([...tagged, ...rest]), 42);
+}
+
+export function pickFeaturedApparel(
+  products: CatalogProductSummary[],
+  limit: number,
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
+  return designerRailWindow(rankFeaturedApparel(products, excludeHandles), new Map(), 0, limit);
+}
+
+/** One new apparel set at local midnight. */
+export function apparelRotationStep(now = new Date()): number {
+  return now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+}
+
+export function msUntilNextApparelSlot(now = new Date()): number {
+  const next = new Date(now);
+  next.setDate(next.getDate() + 1);
+  next.setHours(0, 0, 0, 0);
+  return Math.max(1000, next.getTime() - now.getTime());
 }
 
 /** Designer / avant-garde rail — strict pool; no unrelated fill. */
@@ -449,32 +620,164 @@ export function pickFeaturedDesignerRail(
   products: CatalogProductSummary[],
   limit: number,
   excludeHandles: string[] = [],
+  demand: ReadonlyMap<string, number> = new Map(),
+): CatalogProductSummary[] {
+  return designerRailWindow(rankDesignerProducts(products, demand, excludeHandles), demand, 0, limit);
+}
+
+/**
+ * Diverse designer pool, most wanted first.
+ * Live demand (views, saves, open bids) outranks brand priority.
+ */
+export function rankDesignerProducts(
+  products: CatalogProductSummary[],
+  demand: ReadonlyMap<string, number> = new Map(),
+  excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
   const pool = products.filter((p) => isDesignerHomeProduct(p) && !ex.has(p.handle));
-  const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-designer"));
-  const taggedSet = new Set(tagged.map((p) => p.handle));
-  const rest = pool.filter((p) => !taggedSet.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
+  const tagged = new Set(
+    pool.filter((p) => (p.homeRails ?? []).includes("featured-designer")).map((p) => p.handle),
+  );
+  const sorted = [...pool].sort((a, b) => {
+    const db = (demand.get(b.handle) ?? 0) - (demand.get(a.handle) ?? 0);
+    if (db !== 0) return db;
+    const ib = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
+    if (ib !== 0) return ib;
+    const tb = (tagged.has(b.handle) ? 1 : 0) - (tagged.has(a.handle) ? 1 : 0);
+    if (tb !== 0) return tb;
+    const pb = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
+    if (pb !== 0) return pb;
+    const tr = (b.trendScore ?? 0) - (a.trendScore ?? 0);
+    if (tr !== 0) return tr;
+    return a.title.localeCompare(b.title);
+  });
+  return pickDiverseHomeProducts(sorted, 24);
+}
+
+/**
+ * Six-up window over the ranked designer pool.
+ * Products people want right now stay on screen; the other slots walk the rest of the pool.
+ */
+/** Four windows a day: 12am, 6am, 12pm, and 6pm local time. */
+export function designerRotationStep(now = new Date()): number {
+  const slot = Math.floor(now.getHours() / 6);
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  return dayIndex * 4 + slot;
+}
+
+export function msUntilNextDesignerSlot(now = new Date()): number {
+  const next = new Date(now);
+  next.setHours(Math.floor(now.getHours() / 6) * 6 + 6, 0, 0, 0);
+  return Math.max(1000, next.getTime() - now.getTime());
+}
+
+export function designerRailWindow(
+  ranked: CatalogProductSummary[],
+  demand: ReadonlyMap<string, number>,
+  step: number,
+  limit = 6,
+): CatalogProductSummary[] {
+  if (ranked.length <= limit) return ranked.slice(0, limit);
+  const safeStep = Number.isFinite(step) ? Math.max(0, Math.floor(step)) : 0;
+  const wanted = ranked.filter((p) => (demand.get(p.handle) ?? 0) > 0).slice(0, Math.min(3, limit - 1));
+  if (!wanted.length) {
+    const start = (safeStep * limit) % ranked.length;
+    const out: CatalogProductSummary[] = [];
+    for (let i = 0; i < limit; i++) out.push(ranked[(start + i) % ranked.length]!);
+    return out;
+  }
+  const pinned = new Set(wanted.map((p) => p.handle));
+  const rest = ranked.filter((p) => !pinned.has(p.handle));
+  const slots = limit - wanted.length;
+  if (!rest.length) return wanted.slice(0, limit);
+  const start = (safeStep * slots) % rest.length;
+  const out = [...wanted];
+  for (let i = 0; i < slots; i++) out.push(rest[(start + i) % rest.length]!);
+  return out;
+}
+
+/** Noon and midnight, local time. */
+export function twiceDailyRotationStep(now = new Date()): number {
+  const slot = Math.floor(now.getHours() / 12);
+  const dayIndex = now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate();
+  return dayIndex * 2 + slot;
+}
+
+export function msUntilNextTwiceDailySlot(now = new Date()): number {
+  const next = new Date(now);
+  next.setHours(Math.floor(now.getHours() / 12) * 12 + 12, 0, 0, 0);
+  return Math.max(1000, next.getTime() - now.getTime());
 }
 
 /** Bags, hats, watches, etc. — not shoes or clothing. */
+export function rankFeaturedAccessories(
+  products: CatalogProductSummary[],
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
+  const ex = excludeSet(excludeHandles);
+  const candidates = products.filter((p) => isCatalogAccessoryCandidate(p) && !isCatalogApparel(p));
+  let pool = candidates.filter((p) => !ex.has(p.handle));
+  if (pool.length < 6) pool = candidates;
+  const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));
+  const taggedSet = new Set(tagged.map((p) => p.handle));
+  const rest = pool.filter((p) => !taggedSet.has(p.handle));
+  return pickDiverseHomeProducts(sortHomeProducts([...tagged, ...rest]), 42);
+}
+
 export function pickFeaturedAccessoriesRail(
   products: CatalogProductSummary[],
   limit: number,
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
+  return designerRailWindow(rankFeaturedAccessories(products, excludeHandles), new Map(), 0, limit);
+}
+
+/** Below-retail tags first, then the rest of the catalog, ready for a twice-daily window. */
+export function rankBelowRetail(
+  products: CatalogProductSummary[],
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const candidates = products.filter((p) => isCatalogAccessoryCandidate(p) && !isCatalogApparel(p));
-  // Prefer not already shown on the page; if catalog has few accessories, still show them (not an empty rail).
-  let pool = candidates.filter((p) => !ex.has(p.handle));
-  if (pool.length < limit) {
-    pool = candidates;
-  }
-  const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));
-  const taggedSet = new Set(tagged.map((p) => p.handle));
-  const rest = pool.filter((p) => !taggedSet.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit);
+  const hit = products.filter((p) => (p.homeRails ?? []).includes("below-retail") && !ex.has(p.handle));
+  const hitHandles = new Set(hit.map((p) => p.handle));
+  const fill = products.filter(
+    (p) => !ex.has(p.handle) && !hitHandles.has(p.handle) && !isCatalogAccessoryCandidate(p),
+  );
+  return pickDiverseHomeProducts(sortHomeProducts([...hit, ...fill]), 42);
+}
+
+/**
+ * Non-accessory pool, live demand first.
+ * A location key picks which slice is on screen, so two areas do not share the same six.
+ */
+export function rankPopularLocal(
+  products: CatalogProductSummary[],
+  demand: ReadonlyMap<string, number> = new Map(),
+  excludeHandles: string[] = [],
+): CatalogProductSummary[] {
+  const ex = excludeSet(excludeHandles);
+  const pool = products.filter((p) => !ex.has(p.handle) && !isCatalogAccessoryCandidate(p));
+  const sorted = [...pool].sort((a, b) => {
+    const wanted = (demand.get(b.handle) ?? 0) - (demand.get(a.handle) ?? 0);
+    if (wanted !== 0) return wanted;
+    const image = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
+    if (image !== 0) return image;
+    const brand = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
+    if (brand !== 0) return brand;
+    const trend = (b.trendScore ?? 0) - (a.trendScore ?? 0);
+    if (trend !== 0) return trend;
+    return a.title.localeCompare(b.title);
+  });
+  return pickDiverseHomeProducts(sorted, 42);
+}
+
+/** Stable window offset for a city, region, or timezone. */
+export function locationWindowStep(locationKey: string): number {
+  const key = locationKey.trim().toLowerCase() || "local";
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 33 + key.charCodeAt(i)) >>> 0;
+  return hash % 997;
 }
 
 export function pickByRail(
@@ -516,12 +819,30 @@ export function resolveRecentProducts(all: CatalogProductSummary[], recent: { ha
   return out.slice(0, 12);
 }
 
+function createdStamp(product: CatalogProductSummary): number {
+  const stamp = product.createdAt ? Date.parse(product.createdAt) : 0;
+  return Number.isFinite(stamp) ? stamp : 0;
+}
+
+/** Newest catalog arrivals. Falls back to the tagged new rail when nothing has a date. */
 export function pickNewAtExch(products: CatalogProductSummary[], limit: number, excludeHandles: string[] = []): CatalogProductSummary[] {
-  const tagged = products.filter((p) => {
-    const rails = p.homeRails ?? [];
-    return rails.includes("new-at-vrna") || rails.includes("new-at-exch");
+  const hasDates = products.some((product) => createdStamp(product) > 0);
+  if (!hasDates) {
+    const tagged = products.filter((p) => {
+      const rails = p.homeRails ?? [];
+      return rails.includes("new-at-vrna") || rails.includes("new-at-exch");
+    });
+    const taggedHandles = new Set(tagged.map((p) => p.handle));
+    const rest = products.filter((p) => !taggedHandles.has(p.handle));
+    return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
+  }
+
+  const byNewest = [...products].sort((a, b) => {
+    const delta = createdStamp(b) - createdStamp(a);
+    if (delta !== 0) return delta;
+    return a.title.localeCompare(b.title);
   });
-  const taggedHandles = new Set(tagged.map((p) => p.handle));
-  const rest = products.filter((p) => !taggedHandles.has(p.handle));
-  return pickFromSortedPool(sortHomeProducts([...tagged, ...rest]), limit, excludeHandles);
+  const unseen = byNewest.filter((product) => !excludeHandles.includes(product.handle));
+  const pool = unseen.length >= limit ? unseen : byNewest;
+  return pickDiverseHomeProducts(pool, limit);
 }

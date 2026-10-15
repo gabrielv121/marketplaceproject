@@ -20,6 +20,8 @@ export type CatalogProductSummary = {
   variantSizePreset?: "shoe" | "apparel" | "accessory";
   /** Higher numbers surface earlier in trending/product rails. */
   trendScore?: number;
+  /** When this product was added to the catalog. */
+  createdAt?: string | null;
   /** Optional extra catalog imagery from Supabase. */
   imageGallery?: string[];
   /** Optional source/reference URL for catalog import provenance. */

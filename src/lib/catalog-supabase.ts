@@ -90,6 +90,7 @@ type CatalogProductRow = {
   source_url?: string | null;
   category?: string | null;
   gender?: "men" | "women" | "kids" | "unisex" | null;
+  created_at?: string | null;
 };
 
 function numToPriceString(v: string | number): string {
@@ -112,6 +113,7 @@ export function rowToSummary(r: CatalogProductRow): CatalogProductSummary {
     variantSizePreset: r.variant_size_preset ?? undefined,
     featuredImageUrl: r.featured_image_url?.trim() || null,
     trendScore: r.trend_score == null ? 0 : Number(r.trend_score) || 0,
+    createdAt: r.created_at ?? null,
     imageGallery: r.image_gallery ?? [],
     sourceUrl: r.source_url ?? null,
     category: r.category ?? null,
@@ -151,6 +153,21 @@ export async function getCatalogSourceInfo(): Promise<CatalogSourceInfo> {
 export async function catalogUsesSupabase(): Promise<boolean> {
   const info = await getCatalogSourceInfo();
   return info.mode === "db";
+}
+
+/** Newest published catalog rows, newest first. Used by the New at VRNA rail. */
+export async function fetchNewestCatalogProducts(limit = 24): Promise<CatalogProductSummary[] | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const size = Math.min(Math.max(limit, 1), 60);
+  const { data, error } = await sb
+    .from("catalog_products")
+    .select("*")
+    .eq("published", true)
+    .order("created_at", { ascending: false })
+    .limit(size);
+  if (error || !data) return null;
+  return (data as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row)));
 }
 
 /** When the `catalog_products` table has at least one published row, the app uses DB as the sole catalog source. */
