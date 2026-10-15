@@ -137,11 +137,14 @@ export function isCatalogCollectible(p: CatalogProductSummary): boolean {
   return /\b(bearbrick|be@rbrick|collectible|collectable|art toy|kaws|funko|lego|statue|figurine|sculpture|designer toy)\b/.test(blob);
 }
 
-/** Home rows: sneakers, apparel, and only unisex accessories or collectibles. */
+/** Home rows: men's and unisex sneakers or apparel, plus unisex accessories and collectibles. */
 export function isHomePageProduct(p: CatalogProductSummary): boolean {
+  const audience = catalogAudience(p);
+  const dept = (p.departmentSlug ?? "").toLowerCase();
+  if (audience === "women" || audience === "kids" || dept === "women" || dept === "kids") return false;
   if (isCatalogFootwear(p)) return true;
   if (isCatalogApparel(p) && !isCatalogAccessoryCandidate(p)) return true;
-  if (catalogAudience(p) !== "unisex") return false;
+  if (audience !== "unisex") return false;
   return isCatalogCollectible(p) || isCatalogAccessoryCandidate(p);
 }
 
@@ -629,17 +632,64 @@ export function msUntilNextTrendingSlot(now = new Date()): number {
   return Math.max(1000, next.getTime() - now.getTime());
 }
 
-/** True apparel only — streetwear and collabs first, never backfilled with shoes. */
+function isFeaturedJacket(p: CatalogProductSummary): boolean {
+  if (designerFocusKind(p) !== "jacket" || isCatalogAccessoryCandidate(p)) return false;
+  const blob = `${p.title ?? ""} ${p.category ?? ""}`.toLowerCase();
+  if (/\bvest\b/.test(blob) && !/\b(jacket|coat|parka|bomber|puffer)\b/.test(blob)) return false;
+  return true;
+}
+
+function jacketBrandBucket(p: CatalogProductSummary): "northface" | "moncler" | "stussy" | "other" {
+  const blob = `${p.brand ?? ""} ${p.title ?? ""}`.toLowerCase();
+  if (/moncler/.test(blob)) return "moncler";
+  if (/stussy|stüssy/.test(blob)) return "stussy";
+  if (/the north face|north face/.test(blob)) return "northface";
+  return "other";
+}
+
+/** Jackets only. Every set keeps a North Face, Moncler, and Stussy jacket when the catalog has them. */
 export function rankFeaturedApparel(
   products: CatalogProductSummary[],
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const apparel = products.filter((p) => isCatalogApparel(p) && !isCatalogAccessoryCandidate(p) && !ex.has(p.handle));
-  const tagged = apparel.filter((p) => (p.homeRails ?? []).includes("featured-apparel"));
-  const taggedSet = new Set(tagged.map((p) => p.handle));
-  const rest = apparel.filter((p) => !taggedSet.has(p.handle));
-  return pickDiverseHomeProducts(sortHomeApparelProducts([...tagged, ...rest]), 42);
+  const jackets = products.filter((p) => isFeaturedJacket(p) && !ex.has(p.handle));
+  const buckets = {
+    northface: [] as CatalogProductSummary[],
+    moncler: [] as CatalogProductSummary[],
+    stussy: [] as CatalogProductSummary[],
+    other: [] as CatalogProductSummary[],
+  };
+  for (const jacket of jackets) buckets[jacketBrandBucket(jacket)].push(jacket);
+  const northface = pickDiverseHomeProducts(sortHomeApparelProducts(buckets.northface), 8);
+  const moncler = pickDiverseHomeProducts(sortHomeApparelProducts(buckets.moncler), 8);
+  const stussy = pickDiverseHomeProducts(sortHomeApparelProducts(buckets.stussy), 8);
+  const other = pickDiverseHomeProducts(sortHomeApparelProducts(buckets.other), 24);
+  const cursors = { northface: 0, moncler: 0, stussy: 0, other: 0 };
+  const lists = { northface, moncler, stussy, other };
+  const take = (key: keyof typeof lists) => {
+    const item = lists[key][cursors[key]];
+    if (!item) return null;
+    cursors[key] += 1;
+    return item;
+  };
+  const out: CatalogProductSummary[] = [];
+  while (out.length + 6 <= 42) {
+    const block: CatalogProductSummary[] = [];
+    for (const key of ["northface", "moncler", "stussy"] as const) {
+      const item = take(key);
+      if (item) block.push(item);
+    }
+    while (block.length < 6) {
+      const item = take("other") ?? take("northface") ?? take("moncler") ?? take("stussy");
+      if (!item) break;
+      block.push(item);
+    }
+    if (block.length < 6) break;
+    out.push(...block);
+  }
+  if (out.length >= 6) return out;
+  return pickDiverseHomeProducts(sortHomeApparelProducts(jackets), 42);
 }
 
 export function pickFeaturedApparel(
@@ -735,9 +785,10 @@ export function pickFeaturedDesignerRail(
 function designerFocusKind(p: CatalogProductSummary): "jacket" | "pants" | "shoes" | null {
   if (isCatalogFootwear(p)) return "shoes";
   const blob = `${p.title ?? ""} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
-  if (/\b(hoodie|hooded|sweatshirt|crewneck|t-?shirt|tee|polo|jersey)\b/.test(blob)) return null;
-  if (/\b(jacket|coat|parka|bomber|anorak|windbreaker|puffer|trench|blazer|overcoat|varsity|nuptse)\b/.test(blob))
+  if (/\b(jacket|coat|parka|bomber|anorak|windbreaker|puffer|trench|blazer|overcoat|nuptse)\b/.test(blob))
     return "jacket";
+  if (/\b(hoodie|hooded|sweatshirt|crewneck|t-?shirt|tee|polo|jersey)\b/.test(blob)) return null;
+  if (/\bvarsity\b/.test(blob)) return "jacket";
   if (/\b(pants|pant|trousers|trouser|jeans|jean|cargo|sweatpants|joggers|chinos)\b/.test(blob)) return "pants";
   return null;
 }

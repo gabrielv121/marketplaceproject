@@ -457,8 +457,8 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Featured apparel"
-            titleInfo="Streetwear and collabs, mixed across brands. The row changes every day at midnight."
-            action={{ label: "See all →", to: "/search?q=apparel" }}
+            titleInfo="Jackets from The North Face, Moncler, Stussy, and more. The row changes every day at midnight."
+            action={{ label: "See all →", to: "/search?q=jacket" }}
           >
             <ProductGrid products={apparelProducts} layout="homeSix" />
           </HomeSection>
