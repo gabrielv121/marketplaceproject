@@ -5,9 +5,11 @@ import { withResolvedFeaturedImage } from "@/lib/catalog-images";
 import { hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import { withoutBlockedCatalogProducts } from "@/lib/blocked-catalog-handles";
 import {
+  catalogAudience,
   enrichProductsForHome,
   isCatalogAccessoryCandidate,
   isCatalogApparel,
+  isCatalogCollectible,
   isCatalogFootwear,
   isDesignerHomeProduct,
   pickByRail,
@@ -68,7 +70,11 @@ function resolveDepartmentSlug(p: CatalogProductSummary): string | null {
 }
 
 function matchesDepartment(p: CatalogProductSummary, deptSlug: string): boolean {
-  if (deptSlug === "accessories") return isCatalogAccessoryCandidate(p);
+  const audience = catalogAudience(p);
+  if (deptSlug === "accessories") return isCatalogAccessoryCandidate(p) || isCatalogCollectible(p);
+  if (deptSlug === "kids") return audience === "kids";
+  if (deptSlug === "men") return audience === "men" || audience === "unisex";
+  if (deptSlug === "women") return audience === "women" || audience === "unisex";
   return resolveDepartmentSlug(p) === deptSlug;
 }
 

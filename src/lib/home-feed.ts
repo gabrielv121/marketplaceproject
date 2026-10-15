@@ -74,7 +74,7 @@ export function isCatalogAccessory(p: CatalogProductSummary): boolean {
   if (p.variantSizePreset === "accessory") return true;
   const blob = `${p.title} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
   if (
-    /\b(watch|watches|cap|hat|beanie|bag|tote|backpack|duffle|duffel|sling|crossbody|messenger|satchel|wallet|belt|sunglass|glove|sock|scarf|keychain|pin|jewelry|necklace|ring\b|earring|headwear|strap)\b/.test(
+    /\b(watch|watches|cap|hat|beanie|bag|tote|backpack|duffle|duffel|sling|crossbody|messenger|satchel|wallet|belt|sunglasses?|eyewear|glasses|bandeau|glove|sock|scarf|keychain|pin|jewelry|necklace|ring\b|earring|headwear|strap)\b/.test(
       blob,
     )
   )
@@ -96,6 +96,53 @@ export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
   if (tags.some((t) => t === "accessory" || t === "dept-accessories" || t.startsWith("home-featured-accessories")))
     return true;
   return false;
+}
+
+export type CatalogAudience = "men" | "women" | "kids" | "unisex";
+
+/** Title wins over a stored gender, so a women's shoe tagged as men's stays women's. */
+export function catalogAudience(p: CatalogProductSummary): CatalogAudience {
+  const title = (p.title ?? "").toLowerCase();
+  const tags = (p.tags ?? []).map((tag) => tag.toLowerCase());
+  const gender = (p.gender ?? "").toLowerCase();
+  const dept = (p.departmentSlug ?? "").toLowerCase();
+  const titleWomen = /\b(women'?s|womens|wmns|ladies)\b/.test(title) || /\(\s*w\s*\)/.test(title);
+  const titleMen = /\b(men'?s|mens)\b/.test(title);
+  const titleKids =
+    /\b(kids|youth|toddler|preschool|grade school|infant|girls?|boys)\b/.test(title) ||
+    /\bgs\b/.test(title) ||
+    /\(\s*(gs|ps|td)\s*\)/.test(title);
+
+  if (titleWomen && !titleMen) return "women";
+  if (titleKids) return "kids";
+  if (titleMen && !titleWomen) return "men";
+
+  // Stored gender beats a department slug that was inferred from mixed tags.
+  if (gender === "women" || gender === "men" || gender === "kids") return gender;
+
+  const tagWomen = tags.includes("dept-women");
+  const tagMen = tags.includes("dept-men");
+  const tagKids = tags.includes("dept-kids");
+  const tagged = [tagWomen, tagMen, tagKids].filter(Boolean).length;
+  if (tagged > 1) return "unisex";
+  if (tagWomen) return "women";
+  if (tagMen) return "men";
+  if (tagKids) return "kids";
+  if (dept === "women" || dept === "men" || dept === "kids") return dept;
+  return "unisex";
+}
+
+export function isCatalogCollectible(p: CatalogProductSummary): boolean {
+  const blob = `${p.title} ${p.category ?? ""} ${p.productType ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
+  return /\b(bearbrick|be@rbrick|collectible|collectable|art toy|kaws|funko|lego|statue|figurine|sculpture|designer toy)\b/.test(blob);
+}
+
+/** Home rows: sneakers, apparel, and only unisex accessories or collectibles. */
+export function isHomePageProduct(p: CatalogProductSummary): boolean {
+  if (isCatalogFootwear(p)) return true;
+  if (isCatalogApparel(p) && !isCatalogAccessoryCandidate(p)) return true;
+  if (catalogAudience(p) !== "unisex") return false;
+  return isCatalogCollectible(p) || isCatalogAccessoryCandidate(p);
 }
 
 /** Designer / street-luxury brands eligible for the home designer rail (brand field). */
@@ -243,7 +290,7 @@ function titleFingerprint(p: CatalogProductSummary): string {
     .toLowerCase()
     .replace(/\([^)]*\)/g, " ")
     .replace(
-      /\b(black|white|navy|grey|gray|red|blue|green|brown|cream|fossil|cement|beige|pink|purple|orange|yellow|olive|tan|burgundy|maroon|silver|gold|multicolor|men'?s|women'?s|womens|kids|youth|asia sizing)\b/g,
+      /\b(black|white|navy|grey|gray|red|blue|green|brown|cream|fossil|cement|beige|pink|purple|orange|yellow|olive|tan|burgundy|maroon|silver|gold|multicolor|cotton|nylon|wool|leather|canvas|suede|silk|men'?s|women'?s|womens|kids|youth|asia sizing)\b/g,
       " ",
     )
     .replace(/[^a-z0-9]+/g, " ")
@@ -615,6 +662,65 @@ export function msUntilNextApparelSlot(now = new Date()): number {
   return Math.max(1000, next.getTime() - now.getTime());
 }
 
+/**
+ * Each six keeps a mix of jackets, pants, and shoes.
+ * Wanted pieces stay in their own slot; the rest of that slot rotates.
+ */
+export function windowDesignerFocus(
+  ranked: CatalogProductSummary[],
+  demand: ReadonlyMap<string, number> = new Map(),
+  step = 0,
+  limit = 6,
+): CatalogProductSummary[] {
+  const jackets = ranked.filter((p) => designerFocusKind(p) === "jacket");
+  const pants = ranked.filter((p) => designerFocusKind(p) === "pants");
+  const shoes = ranked.filter((p) => designerFocusKind(p) === "shoes");
+  const other = ranked.filter((p) => !designerFocusKind(p));
+  const safeStep = Number.isFinite(step) ? Math.max(0, Math.floor(step)) : 0;
+
+  const rotate = (list: CatalogProductSummary[], count: number) => {
+    if (!list.length || count <= 0) return [];
+    const wanted = list.filter((p) => (demand.get(p.handle) ?? 0) > 0).slice(0, count);
+    const pinned = new Set(wanted.map((p) => p.handle));
+    const rest = list.filter((p) => !pinned.has(p.handle));
+    const out = [...wanted];
+    const source = rest.length ? rest : list;
+    const need = count - out.length;
+    if (need <= 0 || !source.length) return out.slice(0, count);
+    const start = (safeStep * need) % source.length;
+    for (let i = 0; i < source.length && out.length < count; i++) {
+      const item = source[(start + i) % source.length]!;
+      if (!pinned.has(item.handle)) out.push(item);
+    }
+    return out.slice(0, count);
+  };
+
+  let jacketSlots = Math.min(2, jackets.length);
+  let pantSlots = Math.min(2, pants.length);
+  let shoeSlots = Math.min(2, shoes.length);
+  let spare = limit - (jacketSlots + pantSlots + shoeSlots);
+  while (spare > 0 && jacketSlots < jackets.length) {
+    jacketSlots += 1;
+    spare -= 1;
+  }
+  while (spare > 0 && shoeSlots < shoes.length) {
+    shoeSlots += 1;
+    spare -= 1;
+  }
+  while (spare > 0 && pantSlots < pants.length) {
+    pantSlots += 1;
+    spare -= 1;
+  }
+
+  const mixed = interleaveProducts([
+    rotate(jackets, jacketSlots),
+    rotate(pants, pantSlots),
+    rotate(shoes, shoeSlots),
+    rotate(other, spare),
+  ]);
+  return mixed.slice(0, limit);
+}
+
 /** Designer / avant-garde rail — strict pool; no unrelated fill. */
 export function pickFeaturedDesignerRail(
   products: CatalogProductSummary[],
@@ -622,12 +728,35 @@ export function pickFeaturedDesignerRail(
   excludeHandles: string[] = [],
   demand: ReadonlyMap<string, number> = new Map(),
 ): CatalogProductSummary[] {
-  return designerRailWindow(rankDesignerProducts(products, demand, excludeHandles), demand, 0, limit);
+  return windowDesignerFocus(rankDesignerProducts(products, demand, excludeHandles), demand, 0, limit);
+}
+
+/** Jackets, pants, or shoes. Hoodies, tees, and hats stay out of this rail. */
+function designerFocusKind(p: CatalogProductSummary): "jacket" | "pants" | "shoes" | null {
+  if (isCatalogFootwear(p)) return "shoes";
+  const blob = `${p.title ?? ""} ${p.category ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
+  if (/\b(hoodie|hooded|sweatshirt|crewneck|t-?shirt|tee|polo|jersey)\b/.test(blob)) return null;
+  if (/\b(jacket|coat|parka|bomber|anorak|windbreaker|puffer|trench|blazer|overcoat|varsity|nuptse)\b/.test(blob))
+    return "jacket";
+  if (/\b(pants|pant|trousers|trouser|jeans|jean|cargo|sweatpants|joggers|chinos)\b/.test(blob)) return "pants";
+  return null;
+}
+
+function interleaveProducts(groups: CatalogProductSummary[][]): CatalogProductSummary[] {
+  const out: CatalogProductSummary[] = [];
+  const max = groups.reduce((n, group) => Math.max(n, group.length), 0);
+  for (let i = 0; i < max; i++) {
+    for (const group of groups) {
+      const item = group[i];
+      if (item) out.push(item);
+    }
+  }
+  return out;
 }
 
 /**
- * Diverse designer pool, most wanted first.
- * Live demand (views, saves, open bids) outranks brand priority.
+ * Designer pool of jackets, pants, and shoes, most wanted first.
+ * Live demand (views, saves, open bids) outranks brand priority inside each group.
  */
 export function rankDesignerProducts(
   products: CatalogProductSummary[],
@@ -639,20 +768,33 @@ export function rankDesignerProducts(
   const tagged = new Set(
     pool.filter((p) => (p.homeRails ?? []).includes("featured-designer")).map((p) => p.handle),
   );
-  const sorted = [...pool].sort((a, b) => {
-    const db = (demand.get(b.handle) ?? 0) - (demand.get(a.handle) ?? 0);
-    if (db !== 0) return db;
-    const ib = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
-    if (ib !== 0) return ib;
-    const tb = (tagged.has(b.handle) ? 1 : 0) - (tagged.has(a.handle) ? 1 : 0);
-    if (tb !== 0) return tb;
-    const pb = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
-    if (pb !== 0) return pb;
-    const tr = (b.trendScore ?? 0) - (a.trendScore ?? 0);
-    if (tr !== 0) return tr;
-    return a.title.localeCompare(b.title);
-  });
-  return pickDiverseHomeProducts(sorted, 24);
+  const sortPool = (list: CatalogProductSummary[]) =>
+    [...list].sort((a, b) => {
+      const db = (demand.get(b.handle) ?? 0) - (demand.get(a.handle) ?? 0);
+      if (db !== 0) return db;
+      const ib = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
+      if (ib !== 0) return ib;
+      const tb = (tagged.has(b.handle) ? 1 : 0) - (tagged.has(a.handle) ? 1 : 0);
+      if (tb !== 0) return tb;
+      const pb = homeBrandPriorityScore(b) - homeBrandPriorityScore(a);
+      if (pb !== 0) return pb;
+      const tr = (b.trendScore ?? 0) - (a.trendScore ?? 0);
+      if (tr !== 0) return tr;
+      return a.title.localeCompare(b.title);
+    });
+
+  const focus = interleaveProducts([
+    pickDiverseHomeProducts(sortPool(pool.filter((p) => designerFocusKind(p) === "jacket")), 8),
+    pickDiverseHomeProducts(sortPool(pool.filter((p) => designerFocusKind(p) === "pants")), 8),
+    pickDiverseHomeProducts(sortPool(pool.filter((p) => designerFocusKind(p) === "shoes")), 8),
+  ]);
+  if (focus.length >= 6) return focus.slice(0, 24);
+
+  const rest = pickDiverseHomeProducts(
+    sortPool(pool.filter((p) => !designerFocusKind(p))),
+    24 - focus.length,
+  );
+  return [...focus, ...rest].slice(0, 24);
 }
 
 /**
@@ -716,7 +858,13 @@ export function rankFeaturedAccessories(
   excludeHandles: string[] = [],
 ): CatalogProductSummary[] {
   const ex = excludeSet(excludeHandles);
-  const candidates = products.filter((p) => isCatalogAccessoryCandidate(p) && !isCatalogApparel(p));
+  const candidates = products.filter(
+    (p) =>
+      (isCatalogAccessoryCandidate(p) || isCatalogCollectible(p)) &&
+      !isCatalogApparel(p) &&
+      !isCatalogFootwear(p) &&
+      catalogAudience(p) === "unisex",
+  );
   let pool = candidates.filter((p) => !ex.has(p.handle));
   if (pool.length < 6) pool = candidates;
   const tagged = pool.filter((p) => (p.homeRails ?? []).includes("featured-accessories"));

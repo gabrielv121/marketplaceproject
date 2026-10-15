@@ -20,11 +20,13 @@ import {
   msUntilNextRecommendedSlot,
   msUntilNextTrendingSlot,
   msUntilNextTwiceDailySlot,
+  isHomePageProduct,
   locationWindowStep,
   pickNewAtExch,
   rankBelowRetail,
   rankFeaturedApparel,
   rankDesignerProducts,
+  windowDesignerFocus,
   rankFeaturedAccessories,
   rankPopularLocal,
   rankRecommendedProducts,
@@ -258,11 +260,13 @@ export function HomePage() {
   }, [user?.id]);
 
   const signedIn = Boolean(user?.email);
+  const homeCatalog = useMemo(() => all.filter(isHomePageProduct), [all]);
+  const homeNewest = useMemo(() => newest.filter(isHomePageProduct), [newest]);
 
   const rails = useMemo(() => {
-    if (!all.length) return null;
+    if (!homeCatalog.length) return null;
     const recentHandles = recent.map((r) => r.handle);
-    const recentProducts = resolveRecentProducts(all, recent);
+    const recentProducts = resolveRecentProducts(homeCatalog, recent);
     const used = new Set<string>(signedIn ? recentHandles : []);
 
     const tasteSeeds: TasteSeed[] = [
@@ -270,30 +274,30 @@ export function HomePage() {
       ...bidHandles.map((handle) => ({ handle, weight: 5 })),
       ...recent.map((view, index) => ({ handle: view.handle, weight: Math.max(1, 4 - index * 0.2) })),
     ];
-    const recommendedRail = rankRecommendedProducts(all, tasteSeeds, [...used]);
+    const recommendedRail = rankRecommendedProducts(homeCatalog, tasteSeeds, [...used]);
     designerRailWindow(recommendedRail.ranked, recommendedRail.taste, 0, N).forEach((p) => used.add(p.handle));
 
-    const trendingRanked = rankTrendingSneakers(all, [...used]);
+    const trendingRanked = rankTrendingSneakers(homeCatalog, [...used]);
     designerRailWindow(trendingRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
     // Accessories before apparel / popular — few SKUs and easily crowded out by hoodies + popular-local tag.
-    const accessoriesRanked = rankFeaturedAccessories(all, [...used]);
+    const accessoriesRanked = rankFeaturedAccessories(homeCatalog, [...used]);
     designerRailWindow(accessoriesRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
-    const apparelRanked = rankFeaturedApparel(all, [...used]);
+    const apparelRanked = rankFeaturedApparel(homeCatalog, [...used]);
     designerRailWindow(apparelRanked, new Map(), apparelStep, N).forEach((p) => used.add(p.handle));
 
-    const designerRanked = rankDesignerProducts(all, demand, [...used]);
-    designerRailWindow(designerRanked, demand, 0, N).forEach((p) => used.add(p.handle));
+    const designerRanked = rankDesignerProducts(homeCatalog, demand, [...used]);
+    windowDesignerFocus(designerRanked, demand, 0, N).forEach((p) => used.add(p.handle));
 
-    const popularRanked = rankPopularLocal(all, demand, [...used]);
+    const popularRanked = rankPopularLocal(homeCatalog, demand, [...used]);
     const popularVisible = designerRailWindow(popularRanked, new Map(), locationWindowStep(place.key), N);
     popularVisible.forEach((p) => used.add(p.handle));
 
-    const belowRanked = rankBelowRetail(all, [...used]);
+    const belowRanked = rankBelowRetail(homeCatalog, [...used]);
     designerRailWindow(belowRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
-    const newAt = pickNewAtExch(newest.length ? newest : all, 6, [...used]);
+    const newAt = pickNewAtExch(homeNewest.length ? homeNewest : homeCatalog, 6, [...used]);
 
     return {
       recentProducts,
@@ -308,7 +312,7 @@ export function HomePage() {
       accessoriesRanked,
       newAt,
     };
-  }, [all, apparelStep, bidHandles, demand, newest, place.key, recent, savedHandles, signedIn]);
+  }, [apparelStep, bidHandles, demand, homeCatalog, homeNewest, place.key, recent, savedHandles, signedIn]);
 
   const recommendedProducts = useMemo(
     () =>
@@ -339,7 +343,7 @@ export function HomePage() {
   );
 
   const designerProducts = useMemo(
-    () => (rails ? designerRailWindow(rails.designerRanked, demand, designerStep, N) : []),
+    () => (rails ? windowDesignerFocus(rails.designerRanked, demand, designerStep, N) : []),
     [rails, demand, designerStep],
   );
 
@@ -462,7 +466,7 @@ export function HomePage() {
           <HomeSection
             variant="market"
             title="Designer & avant-garde"
-            titleInfo="The row changes over time. Pieces people are viewing, saving, or bidding on stay up front."
+            titleInfo="Jackets, pants, and shoes. The row changes through the day, and pieces people want stay up front."
             action={{ label: "See all →", to: "/search?q=designer" }}
           >
             <ProductGrid products={designerProducts} layout="homeSix" emptyMessage="Designer picks loading soon." />

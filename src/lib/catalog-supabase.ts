@@ -49,6 +49,11 @@ async function fetchPublishedCatalogRows(
       q = q.or(
         "department_slug.eq.accessories,tags.cs.{dept-accessories},product_type.eq.accessory,tags.cs.{accessory},tags.cs.{home-featured-accessories},home_rails.cs.{featured-accessories}",
       );
+    } else if (opts.departmentSlug === "men" || opts.departmentSlug === "women") {
+      const dept = opts.departmentSlug;
+      q = q.or(
+        `department_slug.eq.${dept},department_slug.eq.unisex,tags.cs.{dept-${dept}},tags.cs.{dept-unisex}`,
+      );
     } else if (opts.departmentSlug) {
       const dept = opts.departmentSlug;
       q = q.or(`department_slug.eq.${dept},tags.cs.{dept-${dept}}`);
