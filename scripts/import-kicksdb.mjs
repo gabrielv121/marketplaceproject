@@ -653,48 +653,98 @@ function catalogCountForBrand(counts, brand, aliases = []) {
   return total;
 }
 
+async function loadCatalogHandles(supabase) {
+  const handles = new Set();
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("catalog_products")
+      .select("handle")
+      .order("handle")
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    if (!data?.length) break;
+    for (const row of data) if (row.handle) handles.add(row.handle);
+    if (data.length < pageSize) break;
+  }
+  return handles;
+}
+
+/** Catalog brand names that are not real brands on StockX. */
+const FILL_SKIP_BRANDS = new Set(["(none)", "dropx™ exclusive:"]);
+/** One brand-filtered call returns up to 100 products, so a full fill stays far under the monthly quota. */
+const FILL_PAGE_SIZE = 100;
+const FILL_MAX_PAGES_PER_BRAND = 6;
+const FILL_MAX_CALLS = 200;
+
 async function collectFillLowBrandRows(apiKey, supabase) {
   const counts = await loadPublishedBrandCounts(supabase);
+  const existing = await loadCatalogHandles(supabase);
   const rowsByHandle = new Map();
 
+  const brands = new Map();
+  for (const [name, n] of counts) {
+    if (n >= TARGET_PER_BRAND || FILL_SKIP_BRANDS.has(name.toLowerCase())) continue;
+    brands.set(normalizeBrandKey(name), { brand: name, aliases: [] });
+  }
   for (const entry of FILL_LOW_BRANDS) {
-    const have = catalogCountForBrand(counts, entry.brand, entry.aliases);
-    const need = Math.max(0, TARGET_PER_BRAND - have);
-    console.log(`\n${entry.brand}: catalog=${have}, need=${need} more to reach ${TARGET_PER_BRAND}`);
-    if (need === 0) {
-      console.log(`  skip — already at target`);
-      continue;
-    }
-
-    let addedForBrand = 0;
-    const pages = Math.min(10, Math.max(3, Math.ceil((need + 40) / API_PAGE_SIZE)));
-
-    for (const query of entry.queries) {
-      if (addedForBrand >= need * 2) break; // gather some headroom for filter drops
-      console.log(`  Searching: ${query} (up to ${pages} pages)`);
-      try {
-        const products = await fetchProducts(query, apiKey, {
-          limit: pages * API_PAGE_SIZE,
-          pages,
-        });
-        let matched = 0;
-        for (const product of products) {
-          if (!brandMatches(product.brand, entry.brand, entry.aliases)) continue;
-          const row = productToCatalogRow(product);
-          if (!row) continue;
-          if (!rowsByHandle.has(row.handle)) {
-            rowsByHandle.set(row.handle, row);
-            addedForBrand += 1;
-          }
-          matched += 1;
-        }
-        console.log(`    api=${products.length}, brand-matched importable≈${matched}, new handles this brand=${addedForBrand}`);
-      } catch (error) {
-        console.warn(`    ${error instanceof Error ? error.message : error}`);
-      }
+    const key = normalizeBrandKey(entry.brand);
+    if (!brands.has(key) && catalogCountForBrand(counts, entry.brand, entry.aliases) < TARGET_PER_BRAND) {
+      brands.set(key, { brand: entry.brand, aliases: entry.aliases });
     }
   }
 
+  let calls = 0;
+  for (const entry of brands.values()) {
+    const have = catalogCountForBrand(counts, entry.brand, entry.aliases);
+    const need = Math.max(0, TARGET_PER_BRAND - have);
+    console.log(`\n${entry.brand}: catalog=${have}, need=${need} more to reach ${TARGET_PER_BRAND}`);
+    if (need === 0) continue;
+
+    let addedForBrand = 0;
+    for (let page = 1; page <= FILL_MAX_PAGES_PER_BRAND && addedForBrand < need; page++) {
+      if (calls >= FILL_MAX_CALLS) {
+        console.warn(`  stop — reached ${FILL_MAX_CALLS} API calls for this run`);
+        return [...rowsByHandle.values()];
+      }
+      calls += 1;
+      let batch = [];
+      try {
+        const url = new URL(API_BASE);
+        url.searchParams.set("filters", `brand = "${entry.brand.replace(/"/g, '\\"')}"`);
+        url.searchParams.set("limit", String(FILL_PAGE_SIZE));
+        url.searchParams.set("page", String(page));
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+        });
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(`KicksDB ${response.status}: ${body.slice(0, 200)}`);
+        }
+        const json = await response.json();
+        batch = Array.isArray(json.data) ? json.data : [];
+        const quota = response.headers.get("x-quota-current");
+        console.log(`  page ${page}: api=${batch.length}${quota ? `, quota used ${quota}` : ""}`);
+      } catch (error) {
+        console.warn(`  ${error instanceof Error ? error.message : error}`);
+        break;
+      }
+
+      for (const product of batch) {
+        if (addedForBrand >= need) break;
+        if (!brandMatches(product.brand, entry.brand, entry.aliases)) continue;
+        const row = productToCatalogRow(product);
+        if (!row || existing.has(row.handle) || rowsByHandle.has(row.handle)) continue;
+        rowsByHandle.set(row.handle, row);
+        addedForBrand += 1;
+      }
+      console.log(`  new for ${entry.brand}: ${addedForBrand}/${need}`);
+      if (batch.length < FILL_PAGE_SIZE) break;
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+  }
+
+  console.log(`\nKicksDB calls this run: ${calls}`);
   return [...rowsByHandle.values()];
 }
 
@@ -818,10 +868,9 @@ async function main() {
   if (args.fillLowBrands) {
     const after = await loadPublishedBrandCounts(supabase);
     console.log("\n=== Brand counts after fill ===");
-    for (const entry of FILL_LOW_BRANDS) {
-      const n = catalogCountForBrand(after, entry.brand, entry.aliases);
+    for (const [brand, n] of [...after.entries()].sort((a, b) => b[1] - a[1])) {
       const mark = n >= TARGET_PER_BRAND ? "OK" : "LOW";
-      console.log(`${mark.padEnd(3)} ${entry.brand.padEnd(18)} ${n}`);
+      console.log(`${mark.padEnd(3)} ${brand.padEnd(24)} ${n}`);
     }
   }
 }
