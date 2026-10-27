@@ -93,7 +93,8 @@ export function HomePage() {
     let cancelled = false;
     let timer = 0;
     const loadNewest = () => {
-      void fetchNewestCatalogProducts(24).then((rows) => {
+      // Imports land in batches full of kids sizes; pull deep enough that six home-eligible items remain.
+      void fetchNewestCatalogProducts(200).then((rows) => {
         if (!cancelled && rows?.length) setNewest(rows);
       });
     };
@@ -297,7 +298,7 @@ export function HomePage() {
     const belowRanked = rankBelowRetail(homeCatalog, [...used]);
     designerRailWindow(belowRanked, new Map(), 0, N).forEach((p) => used.add(p.handle));
 
-    const newAt = pickNewAtExch(homeNewest.length ? homeNewest : homeCatalog, 6, [...used]);
+    const newAt = pickNewAtExch(homeNewest.length >= N ? homeNewest : [...homeNewest, ...homeCatalog], N, [...used]);
 
     return {
       recentProducts,

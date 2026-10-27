@@ -164,7 +164,7 @@ export async function catalogUsesSupabase(): Promise<boolean> {
 export async function fetchNewestCatalogProducts(limit = 24): Promise<CatalogProductSummary[] | null> {
   const sb = getSupabase();
   if (!sb) return null;
-  const size = Math.min(Math.max(limit, 1), 60);
+  const size = Math.min(Math.max(limit, 1), 200);
   const { data, error } = await sb
     .from("catalog_products")
     .select("*")

@@ -300,8 +300,8 @@ function parseArgs(argv) {
   if (args.pageSize != null && (!Number.isFinite(args.pageSize) || args.pageSize < 1 || args.pageSize > 100)) {
     throw new Error("--page-size must be a number from 1 to 100");
   }
-  if (!Number.isFinite(args.limitPerQuery) || args.limitPerQuery < 1 || args.limitPerQuery > 400) {
-    throw new Error("--limit-per-query must be a number from 1 to 400");
+  if (!Number.isFinite(args.limitPerQuery) || args.limitPerQuery < 1 || args.limitPerQuery > 1000) {
+    throw new Error("--limit-per-query must be a number from 1 to 1000");
   }
   if (!Number.isFinite(args.pages) || args.pages < 1 || args.pages > 50) {
     throw new Error("--pages must be a number from 1 to 50");
