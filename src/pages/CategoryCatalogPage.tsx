@@ -3,21 +3,31 @@ import { useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CatalogFilters } from "@/components/CatalogFilters";
+import { PagedCatalog } from "@/components/PagedCatalog";
 import { ProductGrid } from "@/components/ProductGrid";
 import { getDepartmentBySlug } from "@/lib/catalog-taxonomy";
 import { loadCatalogProducts } from "@/lib/catalog-products";
+import type { CatalogAudienceFilter } from "@/lib/catalog-supabase";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import styles from "./CategoryCatalogPage.module.css";
+
+/** Gender aisles page through the database; Men and Women include unisex products. */
+const AISLE_AUDIENCES: Record<string, CatalogAudienceFilter[]> = {
+  men: ["men", "unisex"],
+  women: ["women", "unisex"],
+  kids: ["kids"],
+};
 
 export function CategoryCatalogPage() {
   const { departmentSlug = "" } = useParams();
   const dept = getDepartmentBySlug(departmentSlug);
+  const audiences = dept ? AISLE_AUDIENCES[dept.slug] : undefined;
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!dept) {
+    if (!dept || audiences) {
       setLoading(false);
       return;
     }
@@ -35,7 +45,7 @@ export function CategoryCatalogPage() {
     return () => {
       cancelled = true;
     };
-  }, [dept]);
+  }, [dept, audiences]);
 
   if (!dept) {
     return (
@@ -61,17 +71,23 @@ export function CategoryCatalogPage() {
         <h1 className={styles.h1}>{dept.title}</h1>
         <p className={styles.lead}>{dept.description}</p>
       </header>
-      {error ? (
-        <p className={styles.warn} role="status">
-          {error}
-        </p>
-      ) : null}
-      {loading ? (
-        <p className={styles.muted}>Loading…</p>
+      {audiences ? (
+        <PagedCatalog key={dept.slug} audiences={audiences} fallback={{ departmentSlug: dept.slug }} />
       ) : (
-        <CatalogFilters key={dept.slug} products={products} hideWithoutProductPhoto>
-          {(filtered) => <ProductGrid products={filtered} emptyMessage="No products match those filters." />}
-        </CatalogFilters>
+        <>
+          {error ? (
+            <p className={styles.warn} role="status">
+              {error}
+            </p>
+          ) : null}
+          {loading ? (
+            <p className={styles.muted}>Loading…</p>
+          ) : (
+            <CatalogFilters key={dept.slug} products={products} hideWithoutProductPhoto>
+              {(filtered) => <ProductGrid products={filtered} emptyMessage="No products match those filters." />}
+            </CatalogFilters>
+          )}
+        </>
       )}
     </div>
   );

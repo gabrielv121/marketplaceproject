@@ -30,6 +30,8 @@ export type CatalogProductSummary = {
   category?: string | null;
   /** Department-adjacent gender/audience metadata from DB. */
   gender?: "men" | "women" | "kids" | "unisex" | null;
+  /** Stored by the database from title, gender, and dept tags (see catalog_audience_for). */
+  audience?: "men" | "women" | "kids" | "unisex" | null;
 };
 
 export type CatalogProductDetail = CatalogProductSummary & {

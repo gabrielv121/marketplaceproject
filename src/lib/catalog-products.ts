@@ -16,6 +16,7 @@ import {
 } from "@/lib/home-feed";
 import {
   fetchCatalogSummariesFromSupabase,
+  fetchHomeCatalogSummaries,
   listCatalogBrandsFromSupabase,
   searchCatalogSummariesFromSupabase,
 } from "@/lib/catalog-supabase";
@@ -146,6 +147,28 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
     error: null,
     catalogSource: "local",
   };
+}
+
+/** Home rails: the whole men's and unisex catalog, falling back to the capped loader if the slim query fails. */
+export async function loadHomeCatalogProducts(): Promise<{
+  products: CatalogProductSummary[];
+  error: string | null;
+  catalogSource: "supabase" | "local";
+}> {
+  try {
+    const raw = await fetchHomeCatalogSummaries();
+    if (raw?.length) {
+      const mapped = raw.map((p) => ({ ...p, departmentSlug: resolveDepartmentSlug(p) }));
+      return {
+        products: publishableKicksCatalog(withoutBlockedCatalogProducts(enrichProductsForHome(mapped))),
+        error: null,
+        catalogSource: "supabase",
+      };
+    }
+  } catch {
+    /* fall through to the capped loader */
+  }
+  return loadCatalogProducts({ limit: 3000 });
 }
 
 export async function loadCatalogBrands(): Promise<{

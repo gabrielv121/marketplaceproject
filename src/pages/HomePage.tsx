@@ -5,7 +5,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { ProductRail } from "@/components/ProductRail";
 import { useAuth } from "@/context/AuthContext";
 import { DEPARTMENTS } from "@/lib/catalog-taxonomy";
-import { loadCatalogProducts } from "@/lib/catalog-products";
+import { loadHomeCatalogProducts } from "@/lib/catalog-products";
 import { fetchNewestCatalogProducts } from "@/lib/catalog-supabase";
 import { fetchMyAddresses, fetchMyBids } from "@/lib/account-data";
 import { fetchCatalogDemandScores } from "@/lib/catalog-demand";
@@ -77,7 +77,7 @@ export function HomePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const { products, error: err } = await loadCatalogProducts({ limit: 3000 });
+      const { products, error: err } = await loadHomeCatalogProducts();
       if (!cancelled) {
         setAll(products);
         setError(err);

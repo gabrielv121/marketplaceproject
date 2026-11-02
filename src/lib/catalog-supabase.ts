@@ -1,6 +1,7 @@
 import type { CatalogProductDetail, CatalogProductSummary } from "./catalog-product";
 import { catalogProductMatchesSearch, tokenizeCatalogSearchQuery } from "./catalog-search";
 import { withResolvedFeaturedImage } from "./catalog-images";
+import { BLOCKED_CATALOG_HANDLES } from "./blocked-catalog-handles";
 import { buildProductDetailFromSummary, getDemoProductByHandle } from "./demo-catalog";
 import { getSupabase } from "./supabase";
 
@@ -96,6 +97,7 @@ type CatalogProductRow = {
   category?: string | null;
   gender?: "men" | "women" | "kids" | "unisex" | null;
   created_at?: string | null;
+  audience?: "men" | "women" | "kids" | "unisex" | null;
 };
 
 function numToPriceString(v: string | number): string {
@@ -123,6 +125,7 @@ export function rowToSummary(r: CatalogProductRow): CatalogProductSummary {
     sourceUrl: r.source_url ?? null,
     category: r.category ?? null,
     gender: r.gender ?? null,
+    audience: r.audience ?? null,
     priceRange: {
       min: numToPriceString(r.price_min),
       max: numToPriceString(r.price_max),
@@ -173,6 +176,151 @@ export async function fetchNewestCatalogProducts(limit = 24): Promise<CatalogPro
     .limit(size);
   if (error || !data) return null;
   return (data as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row)));
+}
+
+/** Card columns only — skips description and source_url, which tiles never show. */
+const CATALOG_CARD_COLUMNS =
+  "id,handle,title,brand,department_slug,tags,product_type,home_rails,activities,variant_size_preset,featured_image_url,price_min,price_max,currency,published,trend_score,image_gallery,category,gender,created_at,audience";
+
+export type CatalogAudienceFilter = "men" | "women" | "kids" | "unisex";
+
+export type CatalogPageSort = "trending" | "price-low" | "price-high" | "name" | "new";
+
+export type CatalogPageQuery = {
+  audiences?: CatalogAudienceFilter[];
+  activitySlug?: string;
+  brand?: string;
+  productType?: string;
+  search?: string;
+  sort?: CatalogPageSort;
+  offset?: number;
+  pageSize?: number;
+};
+
+export type CatalogPage = {
+  products: CatalogProductSummary[];
+  /** Only returned for the first page (offset 0). */
+  total: number | null;
+};
+
+function blockedHandlesFilter(): string {
+  return `(${[...BLOCKED_CATALOG_HANDLES].map((h) => `"${h}"`).join(",")})`;
+}
+
+function searchTerms(search: string | undefined): string[] {
+  return (search ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9'&.\- ]+/g, " ")
+    .split(/\s+/)
+    .map((t) => t.replace(/^[.\-']+|[.\-']+$/g, ""))
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+/** Published KicksDB rows with a real photo, filtered, sorted, and paged in the database. */
+export async function fetchCatalogPage(query: CatalogPageQuery): Promise<CatalogPage | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const offset = Math.max(query.offset ?? 0, 0);
+  const pageSize = Math.min(Math.max(query.pageSize ?? 60, 1), 200);
+
+  let q = sb
+    .from("catalog_products")
+    .select(CATALOG_CARD_COLUMNS, offset === 0 ? { count: "exact" } : undefined)
+    .eq("published", true)
+    .eq("has_photo", true)
+    .contains("tags", ["kicksdb"])
+    .not("handle", "in", blockedHandlesFilter());
+  if (query.audiences?.length) q = q.in("audience", query.audiences);
+  if (query.activitySlug) q = q.contains("activities", [query.activitySlug]);
+  if (query.brand) q = q.eq("brand", query.brand);
+  if (query.productType) q = q.eq("product_type", query.productType);
+  for (const term of searchTerms(query.search)) {
+    const pattern = `%${term}%`;
+    q = q.or(`title.ilike.${pattern},brand.ilike.${pattern},category.ilike.${pattern}`);
+  }
+
+  switch (query.sort ?? "trending") {
+    case "price-low":
+      q = q.order("price_min", { ascending: true }).order("title").order("id");
+      break;
+    case "price-high":
+      q = q.order("price_max", { ascending: false }).order("title").order("id");
+      break;
+    case "name":
+      q = q.order("title").order("id");
+      break;
+    case "new":
+      q = q.order("updated_at", { ascending: false }).order("id");
+      break;
+    default:
+      q = q.order("trend_score", { ascending: false, nullsFirst: false }).order("title").order("id");
+  }
+
+  const { data, error, count } = await q.range(offset, offset + pageSize - 1);
+  if (error) throw error;
+  return {
+    products: ((data ?? []) as unknown as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row))),
+    total: offset === 0 ? (count ?? null) : null,
+  };
+}
+
+export type CatalogFacet = { name: string; count: number };
+
+export async function fetchCatalogFacets(query: {
+  audiences?: CatalogAudienceFilter[];
+  activitySlug?: string;
+}): Promise<{ brands: CatalogFacet[]; types: CatalogFacet[] } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.rpc("catalog_facets", {
+    p_audiences: query.audiences?.length ? query.audiences : null,
+    p_activity: query.activitySlug ?? null,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as { kind: string; name: string; product_count: number | string }[];
+  const pick = (kind: string) =>
+    rows
+      .filter((r) => r.kind === kind && r.name)
+      .map((r) => ({ name: r.name, count: Number(r.product_count) || 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  return { brands: pick("brand"), types: pick("type") };
+}
+
+/** Home rails source: every listable men's and unisex row, trend-ordered, without heavy columns. */
+export async function fetchHomeCatalogSummaries(maxRows = 8000): Promise<CatalogProductSummary[] | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const page = (offset: number, withCount: boolean) =>
+    sb
+      .from("catalog_products")
+      .select(CATALOG_CARD_COLUMNS, withCount ? { count: "exact" } : undefined)
+      .eq("published", true)
+      .eq("has_photo", true)
+      .contains("tags", ["kicksdb"])
+      .in("audience", ["men", "unisex"])
+      .order("trend_score", { ascending: false, nullsFirst: false })
+      .order("title")
+      .order("id")
+      .range(offset, Math.min(offset + CATALOG_PAGE_SIZE, maxRows) - 1);
+
+  const first = await page(0, true);
+  if (first.error) throw first.error;
+  const total = Math.min(first.count ?? 0, maxRows);
+  const offsets: number[] = [];
+  for (let offset = CATALOG_PAGE_SIZE; offset < total; offset += CATALOG_PAGE_SIZE) offsets.push(offset);
+  const rest = await Promise.all(offsets.map((offset) => page(offset, false)));
+  const rows = [first, ...rest].flatMap((res) => {
+    if (res.error) throw res.error;
+    return (res.data ?? []) as unknown as CatalogProductRow[];
+  });
+  const seen = new Set<string>();
+  const unique = rows.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+  return unique.map((row) => withResolvedFeaturedImage(rowToSummary(row)));
 }
 
 /** When the `catalog_products` table has at least one published row, the app uses DB as the sole catalog source. */

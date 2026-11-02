@@ -1,5 +1,18 @@
 import type { CatalogProductSummary } from "@/lib/catalog-product";
-import { hasCatalogFeaturedImage } from "@/lib/catalog-images";
+import { hasCatalogFeaturedImage as hasCatalogFeaturedImageUncached } from "@/lib/catalog-images";
+
+/** Home rails sort several thousand products; regex-heavy scores must run once per product, not per comparison. */
+function memoByProduct<T>(fn: (p: CatalogProductSummary) => T): (p: CatalogProductSummary) => T {
+  const cache = new WeakMap<CatalogProductSummary, T>();
+  return (p) => {
+    if (cache.has(p)) return cache.get(p) as T;
+    const value = fn(p);
+    cache.set(p, value);
+    return value;
+  };
+}
+
+const hasCatalogFeaturedImage = memoByProduct(hasCatalogFeaturedImageUncached);
 
 export const SHOP_ACTIVITIES = [
   { slug: "soccer", title: "Soccer" },
@@ -100,8 +113,12 @@ export function isCatalogAccessoryCandidate(p: CatalogProductSummary): boolean {
 
 export type CatalogAudience = "men" | "women" | "kids" | "unisex";
 
-/** Title wins over a stored gender, so a women's shoe tagged as men's stays women's. */
+/**
+ * Title wins over a stored gender, so a women's shoe tagged as men's stays women's.
+ * Keep in sync with `catalog_audience_for` in Postgres, which fills `audience` on every row.
+ */
 export function catalogAudience(p: CatalogProductSummary): CatalogAudience {
+  if (p.audience) return p.audience;
   const title = (p.title ?? "").toLowerCase();
   const tags = (p.tags ?? []).map((tag) => tag.toLowerCase());
   const gender = (p.gender ?? "").toLowerCase();
@@ -109,7 +126,7 @@ export function catalogAudience(p: CatalogProductSummary): CatalogAudience {
   const titleWomen = /\b(women'?s|womens|wmns|ladies)\b/.test(title) || /\(\s*w\s*\)/.test(title);
   const titleMen = /\b(men'?s|mens)\b/.test(title);
   const titleKids =
-    /\b(kids|youth|toddler|preschool|grade school|infant|girls?|boys)\b/.test(title) ||
+    /\b(kids|youth|toddler|preschool|grade school|infants?|girls?|boys)\b/.test(title) ||
     /\bgs\b/.test(title) ||
     /\(\s*(gs|ps|td)\s*\)/.test(title);
 
@@ -174,7 +191,9 @@ export function isDesignerHomeProduct(p: CatalogProductSummary): boolean {
 }
 
 /** Higher score = earlier on home rails (after “has image”). Tuned for lifestyle / priority brands vs. generic performance runners. */
-export function homeBrandPriorityScore(p: CatalogProductSummary): number {
+export const homeBrandPriorityScore = memoByProduct(computeHomeBrandPriorityScore);
+
+function computeHomeBrandPriorityScore(p: CatalogProductSummary): number {
   const brand = (p.brand ?? "").toLowerCase();
   const title = (p.title ?? "").toLowerCase();
   const tags = (p.tags ?? []).join(" ").toLowerCase();
@@ -247,7 +266,9 @@ export function sortHomeProducts(products: CatalogProductSummary[]): CatalogProd
 }
 
 /** Apparel rails: lift street labels so the row is not six generic Nike hoodies. */
-export function homeApparelPriorityScore(p: CatalogProductSummary): number {
+export const homeApparelPriorityScore = memoByProduct(computeHomeApparelPriorityScore);
+
+function computeHomeApparelPriorityScore(p: CatalogProductSummary): number {
   let s = homeBrandPriorityScore(p);
   const brand = (p.brand ?? "").toLowerCase();
   const blob = `${brand} ${p.title ?? ""} ${(p.tags ?? []).join(" ")}`.toLowerCase();
@@ -278,7 +299,9 @@ export function sortHomeApparelProducts(products: CatalogProductSummary[]): Cata
   });
 }
 
-function brandKey(p: CatalogProductSummary): string {
+const brandKey = memoByProduct(computeBrandKey);
+
+function computeBrandKey(p: CatalogProductSummary): string {
   const b = p.brand?.trim();
   if (!b) return "_unknown";
   return b
@@ -288,7 +311,9 @@ function brandKey(p: CatalogProductSummary): string {
 }
 
 /** Collapse color/size noise so one jacket in six colors does not fill a rail. */
-function titleFingerprint(p: CatalogProductSummary): string {
+const titleFingerprint = memoByProduct(computeTitleFingerprint);
+
+function computeTitleFingerprint(p: CatalogProductSummary): string {
   const base = (p.title ?? p.handle)
     .toLowerCase()
     .replace(/\([^)]*\)/g, " ")
@@ -316,11 +341,8 @@ export function pickDiverseHomeProducts(sortedPool: CatalogProductSummary[], lim
     byBrand.set(key, list);
   }
 
-  const brandOrder = [...byBrand.keys()].sort((a, b) => {
-    const ia = sortedPool.findIndex((p) => brandKey(p) === a);
-    const ib = sortedPool.findIndex((p) => brandKey(p) === b);
-    return ia - ib;
-  });
+  // Map keys keep insertion order, which is each brand's first position in the sorted pool.
+  const brandOrder = [...byBrand.keys()];
 
   const out: CatalogProductSummary[] = [];
   const usedHandles = new Set<string>();
@@ -550,8 +572,9 @@ export function rankRecommendedProducts(
   };
 
   const pool = products.filter((p) => !ex.has(p.handle));
+  const tasteScores = new Map(pool.map((p) => [p, scoreOf(p)]));
   const sorted = [...pool].sort((a, b) => {
-    const taste = scoreOf(b) - scoreOf(a);
+    const taste = (tasteScores.get(b) ?? 0) - (tasteScores.get(a) ?? 0);
     if (taste !== 0) return taste;
     const image = (hasCatalogFeaturedImage(b) ? 1 : 0) - (hasCatalogFeaturedImage(a) ? 1 : 0);
     if (image !== 0) return image;
