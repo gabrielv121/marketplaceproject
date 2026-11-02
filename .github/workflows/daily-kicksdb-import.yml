@@ -1,0 +1,33 @@
+name: Daily KicksDB new releases
+
+on:
+  schedule:
+    # 11:00 UTC = 6 AM Eastern (7 AM during daylight saving).
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: kicksdb-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      KICKSDB_API_KEY: ${{ secrets.KICKSDB_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # One KicksDB call: the 100 newest sneaker releases. Existing products are kept.
+      - name: Import new releases
+        run: node scripts/import-kicksdb.mjs --new-releases --pages 1 --limit-per-query 100
+      # Five calls: per-size asks for the newest unsynced sneakers (KicksDB quota is about 1,000 a month).
+      - name: Sync size prices for new sneakers
+        run: node scripts/import-size-prices.mjs --sneakers-only --order updated --limit 5

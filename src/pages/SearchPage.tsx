@@ -1,10 +1,12 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CatalogFilters } from "@/components/CatalogFilters";
+import { PagedCatalog } from "@/components/PagedCatalog";
 import { ProductGrid } from "@/components/ProductGrid";
 import { logSearchEvent } from "@/lib/analytics-events";
-import { searchCatalogProducts } from "@/lib/catalog-products";
+import { isRailSearchQuery, searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { tokenizeCatalogSearchQuery } from "@/lib/catalog-search";
 import styles from "./SearchPage.module.css";
 
 const QUICK_SEARCHES = ["Jordan", "Nike", "UGG", "Yeezy", "Apparel"];
@@ -16,12 +18,20 @@ export function SearchPage() {
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tagged with its query so a previous search's count never shows next to the new query.
+  const [result, setResult] = useState<{ q: string; count: number } | null>(null);
+  const total = result?.q === q ? result.count : null;
+
+  const railQuery = isRailSearchQuery(q);
+  const terms = useMemo(() => tokenizeCatalogSearchQuery(q), [q]);
 
   useEffect(() => {
     setInput(q);
   }, [q]);
 
+  // Rail words ("designer", "sneakers", "deals") filter the home pool on the client.
   useEffect(() => {
+    if (!railQuery) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -31,17 +41,22 @@ export function SearchPage() {
         setProducts(list);
         setError(err);
         setLoading(false);
-        if (q) {
-          logSearchEvent({ query: q, resultCount: list.length, path: "/search" });
-        }
+        setResult({ q, count: list.length });
+        logSearchEvent({ query: q, resultCount: list.length, path: "/search" });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [q]);
+  }, [q, railQuery]);
 
-  const results = products;
+  const onPagedTotal = useCallback(
+    (count: number) => {
+      setResult({ q, count });
+      if (q) logSearchEvent({ query: q, resultCount: count, path: "/search" });
+    },
+    [q],
+  );
 
   const hasActiveSearch = Boolean(q);
 
@@ -60,12 +75,14 @@ export function SearchPage() {
     if (q) {
       logSearchEvent({
         query: q,
-        resultCount: results.length,
+        resultCount: total ?? 0,
         clickedHandle: handle,
         path: "/search",
       });
     }
   };
+
+  const emptyMessage = q ? "No products match that search yet." : "No products available.";
 
   return (
     <div className={styles.page}>
@@ -96,7 +113,11 @@ export function SearchPage() {
 
       <div className={styles.meta}>
         <span>
-          {loading ? "Loading catalog..." : q ? `${results.length} result${results.length === 1 ? "" : "s"} for "${q}"` : `${products.length} products`}
+          {total == null
+            ? "Loading catalog..."
+            : q
+              ? `${total} result${total === 1 ? "" : "s"} for "${q}"`
+              : `${total} products`}
         </span>
         <div className={styles.quick} aria-label="Quick searches">
           {QUICK_SEARCHES.map((term) => (
@@ -107,24 +128,33 @@ export function SearchPage() {
         </div>
       </div>
 
-      {error ? (
-        <p className={styles.warn} role="status">
-          {error}
-        </p>
-      ) : null}
-
-      {loading ? (
-        <p className={styles.muted}>Loading...</p>
-      ) : (
-        <CatalogFilters products={products} hideWithoutProductPhoto>
-          {(filtered) => (
-            <ProductGrid
-              products={filtered}
-              emptyMessage={q ? "No products match that search yet." : "No products available."}
-              onProductNavigate={onProductNavigate}
-            />
+      {railQuery ? (
+        <>
+          {error ? (
+            <p className={styles.warn} role="status">
+              {error}
+            </p>
+          ) : null}
+          {loading ? (
+            <p className={styles.muted}>Loading...</p>
+          ) : (
+            <CatalogFilters products={products} hideWithoutProductPhoto>
+              {(filtered) => (
+                <ProductGrid products={filtered} emptyMessage={emptyMessage} onProductNavigate={onProductNavigate} />
+              )}
+            </CatalogFilters>
           )}
-        </CatalogFilters>
+        </>
+      ) : (
+        <PagedCatalog
+          key={q}
+          terms={terms}
+          showSearch={false}
+          fallback={() => searchCatalogProducts(q)}
+          emptyMessage={emptyMessage}
+          onProductNavigate={onProductNavigate}
+          onTotal={onPagedTotal}
+        />
       )}
     </div>
   );

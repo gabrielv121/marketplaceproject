@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+﻿import { Suspense, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AuthBar } from "@/components/AuthBar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -206,7 +206,9 @@ export function Layout() {
 
       <main className={styles.main}>
         <SetupBanner />
-        <Outlet />
+        <Suspense fallback={<p className={styles.pageLoading}>Loading…</p>}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className={styles.footer}>
         <p>

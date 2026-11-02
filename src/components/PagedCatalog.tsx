@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
-import { loadCatalogProducts, type CatalogLoadOptions } from "@/lib/catalog-products";
 import {
   fetchCatalogFacets,
   fetchCatalogPage,
@@ -19,13 +18,24 @@ type Props = {
   audiences?: CatalogAudienceFilter[];
   activitySlug?: string;
   defaultSort?: CatalogPageSort;
+  /** Whole-word search terms fixed by the page (the search page query). */
+  terms?: string[];
+  /** Hide the in-page search box when the page already has its own. */
+  showSearch?: boolean;
   /** Used when the database query is unavailable (no Supabase, missing columns). */
-  fallback: CatalogLoadOptions;
+  fallback: () => Promise<{ products: CatalogProductSummary[]; error: string | null }>;
   emptyMessage?: string;
+  onProductNavigate?: (handle: string) => void;
+  /** Called with the full match count each time the first page loads. */
+  onTotal?: (total: number) => void;
 };
 
 function audiencesFromKey(key: string): CatalogAudienceFilter[] | undefined {
   return key ? (key.split(",") as CatalogAudienceFilter[]) : undefined;
+}
+
+function termsFromKey(key: string): string[] | undefined {
+  return key ? key.split(" ") : undefined;
 }
 
 const SORT_LABELS: Record<CatalogPageSort, string> = {
@@ -40,8 +50,12 @@ export function PagedCatalog({
   audiences,
   activitySlug,
   defaultSort = "trending",
+  terms,
+  showSearch = true,
   fallback,
   emptyMessage = "No products match those filters.",
+  onProductNavigate,
+  onTotal,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -61,8 +75,11 @@ export function PagedCatalog({
 
   const fallbackRef = useRef(fallback);
   fallbackRef.current = fallback;
+  const onTotalRef = useRef(onTotal);
+  onTotalRef.current = onTotal;
 
   const audienceKey = (audiences ?? []).join(",");
+  const termsKey = (terms ?? []).join(" ");
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearch(query.trim()), 300);
@@ -71,7 +88,7 @@ export function PagedCatalog({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchCatalogFacets({ audiences: audiencesFromKey(audienceKey), activitySlug })
+    void fetchCatalogFacets({ audiences: audiencesFromKey(audienceKey), activitySlug, terms: termsFromKey(termsKey) })
       .then((res) => {
         if (!cancelled && res) setFacets(res);
       })
@@ -81,7 +98,7 @@ export function PagedCatalog({
     return () => {
       cancelled = true;
     };
-  }, [audienceKey, activitySlug]);
+  }, [audienceKey, activitySlug, termsKey]);
 
   const fetchPage = useCallback(
     (offset: number) =>
@@ -91,11 +108,12 @@ export function PagedCatalog({
         brand: brand || undefined,
         productType: type || undefined,
         search,
+        terms: termsFromKey(termsKey),
         sort,
         offset,
         pageSize: PAGE_SIZE,
       }),
-    [audienceKey, activitySlug, brand, type, search, sort],
+    [audienceKey, activitySlug, brand, type, search, termsKey, sort],
   );
 
   useEffect(() => {
@@ -106,26 +124,33 @@ export function PagedCatalog({
       .then(async (page) => {
         if (id !== requestId.current) return;
         if (!page) {
-          const { products: list, error: err } = await loadCatalogProducts(fallbackRef.current);
+          const { products: list, error: err } = await fallbackRef.current();
           if (id !== requestId.current) return;
           setLegacy(list);
           setError(err);
+          onTotalRef.current?.(list.length);
           return;
         }
         setLegacy(null);
         setProducts(enrichProductsForHome(page.products));
         setTotal(page.total);
+        onTotalRef.current?.(page.total ?? page.products.length);
       })
       .catch(async (e: unknown) => {
         if (id !== requestId.current) return;
-        const { products: list } = await loadCatalogProducts(fallbackRef.current);
+        const { products: list } = await fallbackRef.current();
         if (id !== requestId.current) return;
         setLegacy(list);
+        onTotalRef.current?.(list.length);
         setError(e instanceof Error ? e.message : "Catalog error");
       })
       .finally(() => {
         if (id === requestId.current) setLoading(false);
       });
+    return () => {
+      // Late responses from a previous filter set or an unmounted page must not report totals.
+      requestId.current += 1;
+    };
   }, [fetchPage]);
 
   const hasMore = total != null && products.length < total;
@@ -170,7 +195,9 @@ export function PagedCatalog({
           </p>
         ) : null}
         <CatalogFilters products={legacy} hideWithoutProductPhoto>
-          {(filtered) => <ProductGrid products={filtered} emptyMessage={emptyMessage} />}
+          {(filtered) => (
+            <ProductGrid products={filtered} emptyMessage={emptyMessage} onProductNavigate={onProductNavigate} />
+          )}
         </CatalogFilters>
       </>
     );
@@ -203,18 +230,22 @@ export function PagedCatalog({
       </button>
       <section
         id="catalog-filters"
-        className={open ? `${styles.filters} ${styles.filtersOpen}` : styles.filters}
+        className={[styles.filters, open ? styles.filtersOpen : "", showSearch ? "" : styles.filtersNoSearch]
+          .filter(Boolean)
+          .join(" ")}
         aria-label="Catalog filters"
       >
-        <label className={styles.field}>
-          <span>Search</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search these products"
-            className={styles.input}
-          />
-        </label>
+        {showSearch ? (
+          <label className={styles.field}>
+            <span>Search</span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search these products"
+              className={styles.input}
+            />
+          </label>
+        ) : null}
         <label className={styles.field}>
           <span>Brand</span>
           <select value={brand} onChange={(e) => setBrand(e.target.value)} className={styles.select}>
@@ -267,7 +298,7 @@ export function PagedCatalog({
             {brand ? ` · brand: ${brand}` : ""}
             {search ? ` · search: “${search}”` : ""}
           </p>
-          <ProductGrid products={products} emptyMessage={emptyMessage} />
+          <ProductGrid products={products} emptyMessage={emptyMessage} onProductNavigate={onProductNavigate} />
           {hasMore ? (
             <div ref={sentinel} className={styles.loadMoreWrap}>
               <button type="button" className={styles.clearBtn} onClick={loadMore} disabled={loadingMore}>

@@ -38,6 +38,10 @@
   background: var(--surface);
 }
 
+.filtersNoSearch {
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+}
+
 @media (max-width: 760px) {
   .mobileToggle {
     display: flex;

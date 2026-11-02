@@ -72,7 +72,11 @@ export function CategoryCatalogPage() {
         <p className={styles.lead}>{dept.description}</p>
       </header>
       {audiences ? (
-        <PagedCatalog key={dept.slug} audiences={audiences} fallback={{ departmentSlug: dept.slug }} />
+        <PagedCatalog
+          key={dept.slug}
+          audiences={audiences}
+          fallback={() => loadCatalogProducts({ departmentSlug: dept.slug })}
+        />
       ) : (
         <>
           {error ? (

@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PagedCatalog } from "@/components/PagedCatalog";
+import { loadCatalogProducts } from "@/lib/catalog-products";
 import { SHOP_ACTIVITIES } from "@/lib/home-feed";
 import styles from "./CategoryCatalogPage.module.css";
 
@@ -33,7 +34,11 @@ export function ActivityCatalogPage() {
         <h1 className={styles.h1}>{meta.title}</h1>
         <p className={styles.lead}>Footwear and apparel picked for this activity.</p>
       </header>
-      <PagedCatalog key={meta.slug} activitySlug={meta.slug} fallback={{ activitySlug: meta.slug }} />
+      <PagedCatalog
+        key={meta.slug}
+        activitySlug={meta.slug}
+        fallback={() => loadCatalogProducts({ activitySlug: meta.slug })}
+      />
     </div>
   );
 }

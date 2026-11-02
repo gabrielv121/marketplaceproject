@@ -191,7 +191,10 @@ export type CatalogPageQuery = {
   activitySlug?: string;
   brand?: string;
   productType?: string;
+  /** Substring match on title, brand, category (the in-page "Search these products" box). */
   search?: string;
+  /** Whole-word match across title, brand, handle, type, category, tags, activities, audience (the search page). */
+  terms?: string[];
   sort?: CatalogPageSort;
   offset?: number;
   pageSize?: number;
@@ -217,6 +220,28 @@ function searchTerms(search: string | undefined): string[] {
     .slice(0, 6);
 }
 
+const AUDIENCE_TERMS = new Set(["men", "women", "kids", "unisex"]);
+
+function wordTerms(terms: string[] | undefined): string[] {
+  return [...new Set((terms ?? []).map((t) => t.toLowerCase().replace(/[^a-z0-9]/g, "")).filter(Boolean))].slice(0, 6);
+}
+
+/** Mirrors the term match in the `catalog_facets` SQL function. */
+function wordTermFilter(term: string): string {
+  const re = `"[[:<:]]${term}[[:>:]]"`;
+  const parts = [
+    `title.imatch.${re}`,
+    `brand.imatch.${re}`,
+    `handle.imatch.${re}`,
+    `product_type.imatch.${re}`,
+    `category.imatch.${re}`,
+    `tags.cs.{${term}}`,
+    `activities.cs.{${term}}`,
+  ];
+  if (AUDIENCE_TERMS.has(term)) parts.push(`audience.eq.${term}`);
+  return parts.join(",");
+}
+
 /** Published KicksDB rows with a real photo, filtered, sorted, and paged in the database. */
 export async function fetchCatalogPage(query: CatalogPageQuery): Promise<CatalogPage | null> {
   const sb = getSupabase();
@@ -238,6 +263,9 @@ export async function fetchCatalogPage(query: CatalogPageQuery): Promise<Catalog
   for (const term of searchTerms(query.search)) {
     const pattern = `%${term}%`;
     q = q.or(`title.ilike.${pattern},brand.ilike.${pattern},category.ilike.${pattern}`);
+  }
+  for (const term of wordTerms(query.terms)) {
+    q = q.or(wordTermFilter(term));
   }
 
   switch (query.sort ?? "trending") {
@@ -270,12 +298,15 @@ export type CatalogFacet = { name: string; count: number };
 export async function fetchCatalogFacets(query: {
   audiences?: CatalogAudienceFilter[];
   activitySlug?: string;
+  terms?: string[];
 }): Promise<{ brands: CatalogFacet[]; types: CatalogFacet[] } | null> {
   const sb = getSupabase();
   if (!sb) return null;
+  const terms = wordTerms(query.terms);
   const { data, error } = await sb.rpc("catalog_facets", {
     p_audiences: query.audiences?.length ? query.audiences : null,
     p_activity: query.activitySlug ?? null,
+    p_terms: terms.length ? terms : null,
   });
   if (error) throw error;
   const rows = (data ?? []) as { kind: string; name: string; product_count: number | string }[];

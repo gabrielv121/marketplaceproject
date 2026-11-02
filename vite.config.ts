@@ -7,4 +7,15 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Libraries change less often than app code, so browsers keep them cached across deploys.
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
 });

@@ -12,6 +12,7 @@ import {
   isCatalogCollectible,
   isCatalogFootwear,
   isDesignerHomeProduct,
+  isHomePageProduct,
   pickByRail,
 } from "@/lib/home-feed";
 import {
@@ -118,7 +119,7 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
           departmentSlug: resolveDepartmentSlug(p),
         }),
       );
-      let list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
+      const list = deptSlug ? mapped.filter((p) => matchesDepartment(p, deptSlug)) : mapped;
       const enriched = enrichProductsForHome(list);
       const sorted = opts.sortNew ? enriched : trendSort(enriched);
       const filtered = publishableKicksCatalog(
@@ -149,12 +150,28 @@ export async function loadCatalogProducts(opts: CatalogLoadOptions = {}): Promis
   };
 }
 
-/** Home rails: the whole men's and unisex catalog, falling back to the capped loader if the slim query fails. */
-export async function loadHomeCatalogProducts(): Promise<{
+type HomeCatalogResult = {
   products: CatalogProductSummary[];
   error: string | null;
   catalogSource: "supabase" | "local";
-}> {
+};
+
+const HOME_CATALOG_TTL_MS = 5 * 60 * 1000;
+let homeCatalogCache: { at: number; promise: Promise<HomeCatalogResult> } | null = null;
+
+/** Home rails and their "View all" pages share one download for a few minutes. */
+export function loadHomeCatalogProducts(): Promise<HomeCatalogResult> {
+  if (homeCatalogCache && Date.now() - homeCatalogCache.at < HOME_CATALOG_TTL_MS) return homeCatalogCache.promise;
+  const promise = fetchHomeCatalogProducts();
+  homeCatalogCache = { at: Date.now(), promise };
+  void promise.then((res) => {
+    if (res.error && homeCatalogCache?.promise === promise) homeCatalogCache = null;
+  });
+  return promise;
+}
+
+/** The whole men's and unisex catalog, falling back to the capped loader if the slim query fails. */
+async function fetchHomeCatalogProducts(): Promise<HomeCatalogResult> {
   try {
     const raw = await fetchHomeCatalogSummaries();
     if (raw?.length) {
@@ -187,6 +204,11 @@ export async function loadCatalogBrands(): Promise<{
   return { brands: listBrandsFromProducts(demo), catalogSource: "local" };
 }
 
+/** Home rail words ("designer", "sneakers", "deals"...) search the home pool instead of matching text. */
+export function isRailSearchQuery(query: string): boolean {
+  return railSearchFilter(query) !== null;
+}
+
 function railSearchFilter(query: string): ((p: CatalogProductSummary) => boolean) | null {
   const key = query.trim().toLowerCase().replace(/\s+/g, "-");
   if (key === "designer" || key === "avant-garde" || key === "featured-designer") {
@@ -216,7 +238,10 @@ export async function searchCatalogProducts(query: string): Promise<{
 
   const railFilter = railSearchFilter(query);
   if (railFilter) {
-    const { products, error, catalogSource } = await loadCatalogProducts({ limit: 3000 });
+    // Same men's + unisex pool as the home rows these "View all" links come from.
+    const loaded = await loadHomeCatalogProducts();
+    const { error, catalogSource } = loaded;
+    const products = loaded.products.filter(isHomePageProduct);
     const key = query.trim().toLowerCase().replace(/\s+/g, "-");
     // Kicks import never tags below-retail; the home rail backfills. Match that here.
     if (key === "below-retail" || key === "deals" || key === "deal") {

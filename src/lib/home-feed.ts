@@ -220,7 +220,7 @@ function computeHomeBrandPriorityScore(p: CatalogProductSummary): number {
   if (/\bnew balance\b/.test(brand) || /\bnew balance\b/.test(title)) s += 205;
   if (/\basics\b/.test(brand) || /\basics\b/.test(title) || /\basics\b/.test(tags)) s += 200;
   if (/\bugg\b/.test(brand) || /\bugg\b/.test(title)) s += 200;
-  if (/timberland|\btimbs\b|6-?inch boot|6\" boot/.test(blob)) s += 200;
+  if (/timberland|\btimbs\b|6-?inch boot|6" boot/.test(blob)) s += 200;
   if (/balenciaga/.test(blob)) s += 210;
 
   // Tier 3 — apparel / street labels (extra when product is apparel)

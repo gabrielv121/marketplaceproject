@@ -189,6 +189,7 @@ function usage() {
   npm run kicks:import -- --fill-low-brands --keep-existing
   npm run kicks:import -- --query "Vans" --limit-per-query 100 --pages 5 --require-brand "Vans"
   npm run kicks:import -- --new-releases --keep-existing
+  npm run kicks:import -- --query "carhartt" --filters 'brand = "Carhartt"' --page-size 100 --pages 2 --start-page 7 --keep-existing
 
 Environment:
   KICKSDB_API_KEY or KICKSDEV_API_KEY
@@ -231,6 +232,7 @@ function parseArgs(argv) {
     fillLowBrands: argv.includes("--fill-low-brands"),
     limitPerQuery: 20,
     pages: 1,
+    startPage: 1,
     pageSize: null,
     requireBrand: null,
     queries: [],
@@ -267,6 +269,9 @@ function parseArgs(argv) {
       i++;
     } else if (arg === "--page-size" && next) {
       args.pageSize = Number(next);
+      i++;
+    } else if (arg === "--start-page" && next) {
+      args.startPage = Number(next);
       i++;
     } else if (arg === "--sort" && next) {
       args.sort = next;
@@ -305,6 +310,9 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(args.pages) || args.pages < 1 || args.pages > 50) {
     throw new Error("--pages must be a number from 1 to 50");
+  }
+  if (!Number.isInteger(args.startPage) || args.startPage < 1) {
+    throw new Error("--start-page must be a whole number from 1");
   }
 
   return args;
@@ -572,13 +580,13 @@ function releaseTag(product) {
   return `release-${match[1]}-${match[2]}-${match[3]}`;
 }
 
-async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1, pageSize = API_PAGE_SIZE, sort = null, filters = null, traits = false } = {}) {
+async function fetchProducts(query, apiKey, { limit = API_PAGE_SIZE, pages = 1, startPage = 1, pageSize = API_PAGE_SIZE, sort = null, filters = null, traits = false } = {}) {
   const size = Math.min(100, Math.max(1, pageSize));
   const pageCount = Math.max(pages, Math.ceil(limit / size));
   const collected = [];
   const seen = new Set();
 
-  for (let page = 1; page <= pageCount && collected.length < limit; page++) {
+  for (let page = startPage; page < startPage + pageCount && collected.length < limit; page++) {
     const url = new URL(API_BASE);
     if (cleanText(query)) url.searchParams.set("query", query);
     url.searchParams.set("limit", String(size));
@@ -802,6 +810,7 @@ async function main() {
         const products = await fetchProducts(query, apiKey, {
           limit: args.limitPerQuery,
           pages: args.pages,
+          startPage: args.startPage,
           pageSize: args.pageSize || API_PAGE_SIZE,
           sort: args.sort,
           filters: args.filters,

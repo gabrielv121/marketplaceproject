@@ -291,6 +291,12 @@
   overflow-x: hidden;
 }
 
+.pageLoading {
+  margin: 2rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 520px) {
   .main {
     padding: 1rem;

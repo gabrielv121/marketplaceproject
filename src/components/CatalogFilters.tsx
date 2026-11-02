@@ -1,9 +1,12 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { countWithoutRealProductImage, hasRealCatalogProductImage, sortCatalogByImageQuality } from "@/lib/catalog-image-quality";
 import styles from "./CatalogFilters.module.css";
 
 type SortKey = "trending" | "price-low" | "price-high" | "name";
+
+/** Cards rendered per step; thousands of cards at once freezes the page and floods last-sale lookups. */
+const PAGE_SIZE = 60;
 
 type Props = {
   products: CatalogProductSummary[];
@@ -87,6 +90,23 @@ export function CatalogFilters({ products, hideWithoutProductPhoto = false, chil
       return a.title.localeCompare(b.title);
     });
   }, [brand, hideWithoutProductPhoto, products, query, sort, type]);
+
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  useEffect(() => setShownCount(PAGE_SIZE), [filtered]);
+  const shown = useMemo(() => filtered.slice(0, shownCount), [filtered, shownCount]);
+  const hasMore = shown.length < filtered.length;
+  const showMore = useCallback(() => setShownCount((n) => n + PAGE_SIZE), []);
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) showMore();
+    }, { rootMargin: "800px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, showMore, shown.length]);
+
   const activeCount = [query.trim(), brand !== "all", type !== "all", sort !== "trending"].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -160,12 +180,20 @@ export function CatalogFilters({ products, hideWithoutProductPhoto = false, chil
         ) : null}
       </section>
       <p className={styles.count}>
-        Showing {filtered.length} of {products.length} products
+        Showing {shown.length} of {filtered.length} products
+        {filtered.length !== products.length ? ` (filtered from ${products.length})` : ""}
         {hiddenPhotoCount ? ` · ${hiddenPhotoCount} hidden (no product photo)` : ""}
         {brand !== "all" ? ` · brand: ${brands.find(([s]) => s === brand)?.[1] ?? brand}` : ""}
         {query.trim() ? ` · search: “${query.trim()}”` : ""}
       </p>
-      {children(filtered)}
+      {children(shown)}
+      {hasMore ? (
+        <div ref={sentinel} className={styles.loadMoreWrap}>
+          <button type="button" className={styles.clearBtn} onClick={showMore}>
+            Load more
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

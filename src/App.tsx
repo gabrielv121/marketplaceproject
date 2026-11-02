@@ -1,38 +1,45 @@
 import { Analytics } from "@vercel/analytics/react";
+import { lazy, type ComponentType } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { AboutPage } from "@/pages/AboutPage";
-import { AccountPage } from "@/pages/AccountPage";
-import { AdminPage } from "@/pages/AdminPage";
-import { ActivityCatalogPage } from "@/pages/ActivityCatalogPage";
-import { BrandCatalogPage } from "@/pages/BrandCatalogPage";
-import { BrandsPage } from "@/pages/BrandsPage";
-import { CatalogIndexPage } from "@/pages/CatalogIndexPage";
-import { CategoryCatalogPage } from "@/pages/CategoryCatalogPage";
-import { HelpPage } from "@/pages/HelpPage";
 import { HomePage } from "@/pages/HomePage";
-import {
-  AccessibilityPage,
-  BuyerProtectionPage,
-  CookiesPage,
-  FeesPage,
-  LegalIndexPage,
-  PrivacyPage,
-  ProhibitedItemsPage,
-  SellerAgreementPage,
-  ShippingReturnsPage,
-  TermsPage,
-} from "@/pages/LegalPages";
-import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { NewArrivalsPage } from "@/pages/NewArrivalsPage";
-import { NotFoundPage } from "@/pages/NotFoundPage";
-import { ProductPage } from "@/pages/ProductPage";
-import { SearchPage } from "@/pages/SearchPage";
-import { SellPage } from "@/pages/SellPage";
-import { SignupPage } from "@/pages/SignupPage";
-import { TradeDetailPage } from "@/pages/TradeDetailPage";
-import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
+
+/** Code-split a page that is a named export; the home page stays in the main bundle. */
+function lazyPage<M, K extends keyof M>(load: () => Promise<M>, name: K) {
+  return lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+}
+
+const AboutPage = lazyPage(() => import("@/pages/AboutPage"), "AboutPage");
+const AccountPage = lazyPage(() => import("@/pages/AccountPage"), "AccountPage");
+const AdminPage = lazyPage(() => import("@/pages/AdminPage"), "AdminPage");
+const ActivityCatalogPage = lazyPage(() => import("@/pages/ActivityCatalogPage"), "ActivityCatalogPage");
+const AuthCallbackPage = lazyPage(() => import("@/pages/AuthCallbackPage"), "AuthCallbackPage");
+const BrandCatalogPage = lazyPage(() => import("@/pages/BrandCatalogPage"), "BrandCatalogPage");
+const BrandsPage = lazyPage(() => import("@/pages/BrandsPage"), "BrandsPage");
+const CatalogIndexPage = lazyPage(() => import("@/pages/CatalogIndexPage"), "CatalogIndexPage");
+const CategoryCatalogPage = lazyPage(() => import("@/pages/CategoryCatalogPage"), "CategoryCatalogPage");
+const HelpPage = lazyPage(() => import("@/pages/HelpPage"), "HelpPage");
+const LoginPage = lazyPage(() => import("@/pages/LoginPage"), "LoginPage");
+const NewArrivalsPage = lazyPage(() => import("@/pages/NewArrivalsPage"), "NewArrivalsPage");
+const NotFoundPage = lazyPage(() => import("@/pages/NotFoundPage"), "NotFoundPage");
+const ProductPage = lazyPage(() => import("@/pages/ProductPage"), "ProductPage");
+const SearchPage = lazyPage(() => import("@/pages/SearchPage"), "SearchPage");
+const SellPage = lazyPage(() => import("@/pages/SellPage"), "SellPage");
+const SignupPage = lazyPage(() => import("@/pages/SignupPage"), "SignupPage");
+const TradeDetailPage = lazyPage(() => import("@/pages/TradeDetailPage"), "TradeDetailPage");
+const VerifyEmailPage = lazyPage(() => import("@/pages/VerifyEmailPage"), "VerifyEmailPage");
+
+const legalPages = () => import("@/pages/LegalPages");
+const AccessibilityPage = lazyPage(legalPages, "AccessibilityPage");
+const BuyerProtectionPage = lazyPage(legalPages, "BuyerProtectionPage");
+const CookiesPage = lazyPage(legalPages, "CookiesPage");
+const FeesPage = lazyPage(legalPages, "FeesPage");
+const LegalIndexPage = lazyPage(legalPages, "LegalIndexPage");
+const PrivacyPage = lazyPage(legalPages, "PrivacyPage");
+const ProhibitedItemsPage = lazyPage(legalPages, "ProhibitedItemsPage");
+const SellerAgreementPage = lazyPage(legalPages, "SellerAgreementPage");
+const ShippingReturnsPage = lazyPage(legalPages, "ShippingReturnsPage");
+const TermsPage = lazyPage(legalPages, "TermsPage");
 
 export default function App() {
   return (

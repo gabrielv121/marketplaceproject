@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUOTA_STOP = 900;
 
 function parseArgs(argv) {
-  const args = { limit: 400, handle: null };
+  const args = { limit: 400, handle: null, sneakersOnly: false, order: "updated", audiences: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const next = argv[i + 1];
@@ -17,6 +17,15 @@ function parseArgs(argv) {
       i++;
     } else if (arg === "--handle" && next) {
       args.handle = next;
+      i++;
+    } else if (arg === "--sneakers-only") {
+      args.sneakersOnly = true;
+    } else if (arg === "--order" && next) {
+      if (next !== "updated" && next !== "trend") throw new Error("--order must be updated or trend");
+      args.order = next;
+      i++;
+    } else if (arg === "--audiences" && next) {
+      args.audiences = next.split(",").map((a) => a.trim()).filter(Boolean);
       i++;
     }
   }
@@ -150,18 +159,23 @@ async function fetchProduct(handle, apiKey) {
   return { product: json.data ?? json, quota };
 }
 
-async function loadHandles(supabase) {
+async function loadHandles(supabase, args) {
   const rows = [];
   const pageSize = 1000;
   let offset = 0;
   for (;;) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("catalog_products")
       .select("handle")
       .eq("published", true)
-      .contains("tags", ["kicksdb"])
-      .order("updated_at", { ascending: false })
-      .range(offset, offset + pageSize - 1);
+      .contains("tags", ["kicksdb"]);
+    if (args.sneakersOnly) query = query.eq("variant_size_preset", "shoe");
+    if (args.audiences?.length) query = query.in("audience", args.audiences);
+    query =
+      args.order === "trend"
+        ? query.order("trend_score", { ascending: false, nullsFirst: false }).order("handle")
+        : query.order("updated_at", { ascending: false });
+    const { data, error } = await query.range(offset, offset + pageSize - 1);
     if (error) throw error;
     if (!data?.length) break;
     rows.push(...data.map((row) => row.handle));
@@ -221,7 +235,7 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const synced = await loadSynced(supabase);
-  const handles = await loadHandles(supabase);
+  const handles = await loadHandles(supabase, args);
   const queue = [];
   if (args.handle) queue.push(args.handle);
   for (const handle of handles) {
