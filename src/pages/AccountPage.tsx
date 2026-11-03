@@ -25,6 +25,7 @@ import {
 import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
 import { fetchCatalogSummariesByHandles } from "@/lib/catalog-supabase";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
+import { deletePriceAlert, fetchMyPriceAlerts, type PriceAlertRow } from "@/lib/price-alerts";
 import { buyerTradeTotalCents } from "@/lib/buyer-pricing";
 import { formatMoney } from "@/lib/money-format";
 import { parseToCents } from "@/lib/money-parse";
@@ -408,6 +409,7 @@ export function AccountPage() {
   const [productPreviews, setProductPreviews] = useState<Record<string, ProductPreview>>({});
   const [favoriteHandles, setFavoriteHandles] = useState<string[]>([]);
   const [showAllFavorites, setShowAllFavorites] = useState(false);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlertRow[]>([]);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addressDraft, setAddressDraft] = useState<Omit<Address, "id">>(emptyAddress);
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
@@ -451,6 +453,9 @@ export function AccountPage() {
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Could not load account");
     }
+    void fetchMyPriceAlerts()
+      .then(setPriceAlerts)
+      .catch(() => setPriceAlerts([]));
   }, [p2p, user]);
 
   useEffect(() => {
@@ -463,8 +468,9 @@ export function AccountPage() {
     for (const row of bids) handles.add(row.product_handle);
     for (const row of trades) handles.add(row.product_handle);
     for (const handle of favoriteHandles) handles.add(handle);
+    for (const row of priceAlerts) handles.add(row.product_handle);
     return [...handles].filter(Boolean).sort();
-  }, [bids, favoriteHandles, listings, trades]);
+  }, [bids, favoriteHandles, listings, priceAlerts, trades]);
 
   useEffect(() => {
     if (!previewHandles.length) {
@@ -579,6 +585,14 @@ export function AccountPage() {
     void rpcCancelBid(id)
       .then(() => void refresh())
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not cancel bid"))
+      .finally(() => setBusyId(null));
+  };
+
+  const onRemovePriceAlert = (id: string) => {
+    setBusyId(id);
+    void deletePriceAlert(id)
+      .then(() => setPriceAlerts((rows) => rows.filter((r) => r.id !== id)))
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : "Could not remove alert"))
       .finally(() => setBusyId(null));
   };
 
@@ -1311,6 +1325,36 @@ export function AccountPage() {
                       </div>
                     </form>
                   ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={styles.subSection}>
+          <h3 className={styles.h3}>Price alerts</h3>
+          {priceAlerts.length === 0 ? (
+            <p className={styles.empty}>No price alerts. Set one from a product page to hear when a size drops.</p>
+          ) : (
+            <div className={styles.stackList}>
+              {priceAlerts.map((row) => (
+                <div key={row.id} className={styles.listRow}>
+                  {productMini(row.product_handle, row.size_label, `/product/${row.product_handle}`)}
+                  <div className={styles.bidFoot}>
+                    <span>
+                      {row.status === "triggered" && row.triggered_price_cents != null
+                        ? `Hit ${formatMoney(moneyFromCents(row.triggered_price_cents, "USD"))}`
+                        : `At or below ${formatMoney(moneyFromCents(row.target_cents, "USD"))}`}
+                    </span>
+                    <span className={styles.status}>{row.status === "triggered" ? "Triggered" : "Watching"}</span>
+                    <div className={styles.inlineActions}>
+                      <button type="button" className={styles.linkBtn} disabled={busyId === row.id} onClick={() => onRemovePriceAlert(row.id)}>
+                        Remove
+                      </button>
+                      <Link to={`/product/${row.product_handle}`} className={styles.linkBtn}>
+                        View
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,9 +1,11 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PagedCatalog } from "@/components/PagedCatalog";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import styles from "./CategoryCatalogPage.module.css";
 
 export function NewArrivalsPage() {
+  useDocumentMeta("New arrivals", "The latest sneakers and streetwear added to VRNA.");
   return (
     <div>
       <Breadcrumbs items={[{ label: "Home", to: "/" }, { label: "New arrivals" }]} />

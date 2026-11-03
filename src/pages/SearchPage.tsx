@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { PagedCatalog } from "@/components/PagedCatalog";
 import { ProductGrid } from "@/components/ProductGrid";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { logSearchEvent } from "@/lib/analytics-events";
 import { isRailSearchQuery, searchCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
@@ -21,6 +22,8 @@ export function SearchPage() {
   // Tagged with its query so a previous search's count never shows next to the new query.
   const [result, setResult] = useState<{ q: string; count: number } | null>(null);
   const total = result?.q === q ? result.count : null;
+
+  useDocumentMeta(q ? `Search: ${q}` : "Search");
 
   const railQuery = isRailSearchQuery(q);
   const terms = useMemo(() => tokenizeCatalogSearchQuery(q), [q]);

@@ -293,6 +293,71 @@ export async function fetchCatalogPage(query: CatalogPageQuery): Promise<Catalog
   };
 }
 
+const RELATED_AUDIENCES: Record<CatalogAudienceFilter, CatalogAudienceFilter[]> = {
+  men: ["men", "unisex"],
+  women: ["women", "unisex"],
+  kids: ["kids"],
+  unisex: ["men", "women", "unisex"],
+};
+
+/** First words of the title that name the model line, e.g. "Air Jordan 4" or "Nike Dunk Low". */
+function relatedModelPrefix(title: string, shoe: boolean): string | null {
+  const words = title
+    .replace(/[%_,()"]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const take = shoe ? 3 : 2;
+  if (words.length <= take) return null;
+  return words.slice(0, take).join(" ");
+}
+
+/** "You may also like": same model line first, then trending items from the same brand and type. */
+export async function fetchRelatedProducts(product: CatalogProductSummary, limit = 12): Promise<CatalogProductSummary[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const base = () => {
+    let q = sb
+      .from("catalog_products")
+      .select(CATALOG_CARD_COLUMNS)
+      .eq("published", true)
+      .eq("has_photo", true)
+      .contains("tags", ["kicksdb"])
+      .neq("handle", product.handle)
+      .not("handle", "in", blockedHandlesFilter());
+    if (product.audience) q = q.in("audience", RELATED_AUDIENCES[product.audience]);
+    return q;
+  };
+
+  const prefix = relatedModelPrefix(product.title, product.variantSizePreset === "shoe");
+  const sameModel = prefix
+    ? base()
+        .ilike("title", `${prefix}%`)
+        .order("trend_score", { ascending: false, nullsFirst: false })
+        .limit(limit)
+    : null;
+  let sameBrand = base();
+  if (product.brand) sameBrand = sameBrand.eq("brand", product.brand);
+  if (product.productType) sameBrand = sameBrand.eq("product_type", product.productType);
+  const brandQuery = product.brand || product.productType
+    ? sameBrand.order("trend_score", { ascending: false, nullsFirst: false }).limit(limit * 2)
+    : null;
+
+  const [modelRes, brandRes] = await Promise.all([sameModel, brandQuery]);
+  const rows = [
+    ...((modelRes?.data ?? []) as unknown as CatalogProductRow[]),
+    ...((brandRes?.data ?? []) as unknown as CatalogProductRow[]),
+  ];
+  const seen = new Set<string>();
+  const out: CatalogProductSummary[] = [];
+  for (const row of rows) {
+    if (seen.has(row.handle)) continue;
+    seen.add(row.handle);
+    out.push(withResolvedFeaturedImage(rowToSummary(row)));
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export type CatalogFacet = { name: string; count: number };
 
 export async function fetchCatalogFacets(query: {

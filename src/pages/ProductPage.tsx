@@ -37,8 +37,11 @@ import {
   type OpenBidRow,
   type RecentSaleRow,
 } from "@/lib/p2p";
-import { resolveProductDetailByHandle } from "@/lib/catalog-supabase";
-import type { CatalogProductDetail } from "@/lib/catalog-product";
+import { fetchRelatedProducts, resolveProductDetailByHandle } from "@/lib/catalog-supabase";
+import type { CatalogProductDetail, CatalogProductSummary } from "@/lib/catalog-product";
+import { ProductRail } from "@/components/ProductRail";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import { createPriceAlert, deletePriceAlert, fetchMyPriceAlerts, type PriceAlertRow } from "@/lib/price-alerts";
 import { recordProductView } from "@/lib/recently-viewed";
 import { logProductView } from "@/lib/analytics-events";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
@@ -110,6 +113,11 @@ export function ProductPage() {
   const sizePickedByUserRef = useRef(false);
   const [emailVerified, setEmailVerified] = useState(true);
   const [verifyBusy, setVerifyBusy] = useState(false);
+  const [related, setRelated] = useState<CatalogProductSummary[]>([]);
+  const [myAlerts, setMyAlerts] = useState<PriceAlertRow[]>([]);
+  const [alertPrice, setAlertPrice] = useState("");
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   const authReturnPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -156,6 +164,29 @@ export function ProductPage() {
     });
     logProductView({ productHandle: product.handle, path: `/product/${product.handle}` });
   }, [product, loading, user?.id]);
+
+  useDocumentMeta(
+    product?.title ?? null,
+    product ? `Shop the ${product.title} on VRNA. Every item verified before it ships.` : null,
+  );
+
+  useEffect(() => {
+    if (!product) {
+      setRelated([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchRelatedProducts(product)
+      .then((rows) => {
+        if (!cancelled) setRelated(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setRelated([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product]);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,6 +431,66 @@ export function ProductPage() {
   }, [myBids, product, selectedRow, activeSizeLabel]);
 
   const highestOpenBidAtSize = selectedRow ? highestBidForSize(bids, activeSizeLabel) : null;
+
+  useEffect(() => {
+    if (!user || !product || !p2p) {
+      setMyAlerts([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchMyPriceAlerts(product.handle)
+      .then((rows) => {
+        if (!cancelled) setMyAlerts(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setMyAlerts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, product, p2p]);
+
+  const myAlertAtSize = selectedRow
+    ? (myAlerts.find((a) => a.status === "active" && sizeLabelsMatch(a.size_label, activeSizeLabel)) ?? null)
+    : null;
+  const platformCentsAtSize =
+    platformInStock && platformOffer && activeSizeLabel ? platformCentsForSize(platformOffer, activeSizeLabel) : null;
+  const lowestAskCentsAtSize = [lowestPeerListing?.price_cents ?? null, platformCentsAtSize].reduce<number | null>(
+    (low, c) => (c == null ? low : low == null ? c : Math.min(low, c)),
+    null,
+  );
+
+  const onCreateAlert = () => {
+    if (!product || !selectedRow) return;
+    setAlertMsg(null);
+    const cents = parseToCents(alertPrice);
+    if (cents == null) {
+      setAlertMsg("Enter a valid price.");
+      return;
+    }
+    if (lowestAskCentsAtSize != null && cents >= lowestAskCentsAtSize) {
+      setAlertMsg(`This size is already ${formatMoney(moneyFromCents(lowestAskCentsAtSize, currency))}. Pick a lower price.`);
+      return;
+    }
+    setAlertBusy(true);
+    void createPriceAlert({ productHandle: product.handle, sizeLabel: activeSizeLabel, targetCents: cents })
+      .then((row) => {
+        setMyAlerts((rows) => [row, ...rows]);
+        setAlertPrice("");
+        setAlertMsg("Alert set. We'll notify you when this size hits your price.");
+      })
+      .catch((e: unknown) => setAlertMsg(e instanceof Error ? e.message : "Could not set alert."))
+      .finally(() => setAlertBusy(false));
+  };
+
+  const onRemoveAlert = (id: string) => {
+    setAlertMsg(null);
+    setAlertBusy(true);
+    void deletePriceAlert(id)
+      .then(() => setMyAlerts((rows) => rows.filter((r) => r.id !== id)))
+      .catch((e: unknown) => setAlertMsg(e instanceof Error ? e.message : "Could not remove alert."))
+      .finally(() => setAlertBusy(false));
+  };
 
   useEffect(() => {
     if (!user || !p2p) {
@@ -789,6 +880,7 @@ export function ProductPage() {
                 onClick={() => {
                   sizePickedByUserRef.current = true;
                   setSelectedVariantId(row.id);
+                  setAlertMsg(null);
                 }}
               >
                 <span className={styles.sizeLabel}>{row.label}</span>
@@ -867,6 +959,54 @@ export function ProductPage() {
                     ? "VRNA inventory is already authenticated and sourced from a trusted supplier. Checkout skips the seller shipment — we ship it to you after payment."
                     : "Reserves the listing, then opens Stripe Checkout with item price, a 3% processing fee, and verified delivery shipping."}
               </p>
+              {p2p && selectedRow ? (
+                <div className={styles.alertBox}>
+                  <p className={styles.alertTitle}>Price alert · {activeSizeLabel}</p>
+                  {!user ? (
+                    <p className={styles.hint}>
+                      <Link to={`/login?${authNextQuery}`}>Sign in</Link> to get notified when this size drops.
+                    </p>
+                  ) : myAlertAtSize ? (
+                    <div className={styles.alertRow}>
+                      <span>
+                        Notify me at <strong>{formatMoney(moneyFromCents(myAlertAtSize.target_cents, currency))}</strong> or
+                        less
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.textBtn}
+                        disabled={alertBusy}
+                        onClick={() => onRemoveAlert(myAlertAtSize.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.alertRow}>
+                      <input
+                        className={styles.input}
+                        inputMode="decimal"
+                        aria-label={`Alert price (${currency})`}
+                        placeholder={
+                          lowestAskCentsAtSize != null
+                            ? `Below ${formatMoney(moneyFromCents(lowestAskCentsAtSize, currency))}`
+                            : `Target price (${currency})`
+                        }
+                        value={alertPrice}
+                        onChange={(e) => setAlertPrice(e.target.value)}
+                      />
+                      <button type="button" className={styles.secondary} disabled={alertBusy} onClick={onCreateAlert}>
+                        {alertBusy ? "Saving…" : "Notify me"}
+                      </button>
+                    </div>
+                  )}
+                  {alertMsg ? (
+                    <p className={styles.hint} role="status">
+                      {alertMsg}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -1142,6 +1282,14 @@ export function ProductPage() {
           </div>
         </div>
       </div>
+      {related.length ? (
+        <section className={styles.related} aria-labelledby="related-title">
+          <h2 id="related-title" className={styles.relatedTitle}>
+            You may also like
+          </h2>
+          <ProductRail products={related} />
+        </section>
+      ) : null}
     </div>
   );
 }

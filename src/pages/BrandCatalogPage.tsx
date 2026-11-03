@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { ProductGrid } from "@/components/ProductGrid";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { loadCatalogBrands, loadCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { normalizeBrandSlug } from "@/lib/catalog-supabase";
@@ -14,6 +15,7 @@ export function BrandCatalogPage() {
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [brandName, setBrandName] = useState<string>(brandSlug);
   const [loading, setLoading] = useState(true);
+  useDocumentMeta(loading ? null : brandName, `Shop ${brandName} sneakers and streetwear on VRNA. Every item verified.`);
 
   useEffect(() => {
     let cancelled = false;

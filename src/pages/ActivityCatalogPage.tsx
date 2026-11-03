@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { BackButton } from "@/components/BackButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PagedCatalog } from "@/components/PagedCatalog";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import { SHOP_ACTIVITIES } from "@/lib/home-feed";
 import styles from "./CategoryCatalogPage.module.css";
@@ -9,6 +10,7 @@ import styles from "./CategoryCatalogPage.module.css";
 export function ActivityCatalogPage() {
   const { activitySlug = "" } = useParams();
   const meta = SHOP_ACTIVITIES.find((a) => a.slug === activitySlug);
+  useDocumentMeta(meta ? `${meta.title} shoes & apparel` : null, meta ? `Footwear and apparel picked for ${meta.title.toLowerCase()} on VRNA.` : null);
 
   if (!meta) {
     return (

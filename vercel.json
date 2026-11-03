@@ -7,5 +7,19 @@
       "permanent": false
     }
   ],
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    {
+      "source": "/product/:handle",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawler|spider|facebookexternalhit|facebot|twitterbot|whatsapp|slack|discord|telegram|linkedin|pinterest|embedly|skype|applebot|preview).*"
+        }
+      ],
+      "destination": "/api/product-meta?handle=:handle"
+    },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }

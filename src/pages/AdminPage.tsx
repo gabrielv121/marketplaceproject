@@ -34,6 +34,7 @@ import { formatMoney } from "@/lib/money-format";
 import { moneyFromCents } from "@/lib/p2p";
 import { isP2pConfigured } from "@/lib/supabase";
 import { AdminVerificationPanel } from "@/pages/admin/AdminVerificationPanel";
+import { AdminErrorsPanel } from "@/pages/admin/AdminErrorsPanel";
 import styles from "./AdminPage.module.css";
 
 type TabId =
@@ -45,7 +46,8 @@ type TabId =
   | "sellers"
   | "search"
   | "auth"
-  | "activity";
+  | "activity"
+  | "errors";
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "home", label: "Home" },
@@ -57,6 +59,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: "search", label: "Search" },
   { id: "auth", label: "Auth Queue" },
   { id: "activity", label: "Live Activity" },
+  { id: "errors", label: "Errors" },
 ];
 
 const LISTING_STATUS_OPTIONS: Array<"all" | AdminListingStatus> = [
@@ -855,6 +858,8 @@ export function AdminPage() {
           {!activity.length ? <p className={styles.empty}>No recent activity.</p> : null}
         </section>
       ) : null}
+
+      {tab === "errors" ? <AdminErrorsPanel range={range} /> : null}
     </div>
   );
 }

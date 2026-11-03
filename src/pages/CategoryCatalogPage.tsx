@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { PagedCatalog } from "@/components/PagedCatalog";
 import { ProductGrid } from "@/components/ProductGrid";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { getDepartmentBySlug } from "@/lib/catalog-taxonomy";
 import { loadCatalogProducts } from "@/lib/catalog-products";
 import type { CatalogAudienceFilter } from "@/lib/catalog-supabase";
@@ -22,6 +23,7 @@ export function CategoryCatalogPage() {
   const { departmentSlug = "" } = useParams();
   const dept = getDepartmentBySlug(departmentSlug);
   const audiences = dept ? AISLE_AUDIENCES[dept.slug] : undefined;
+  useDocumentMeta(dept ? `${dept.title} — sneakers & streetwear` : null, dept?.description);
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

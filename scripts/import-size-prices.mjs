@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const QUOTA_STOP = 900;
 
 function parseArgs(argv) {
-  const args = { limit: 400, handle: null, sneakersOnly: false, order: "updated", audiences: null };
+  const args = { limit: 400, handle: null, sneakersOnly: false, order: "updated", audiences: null, refreshOlderThanDays: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const next = argv[i + 1];
@@ -26,6 +26,12 @@ function parseArgs(argv) {
       i++;
     } else if (arg === "--audiences" && next) {
       args.audiences = next.split(",").map((a) => a.trim()).filter(Boolean);
+      i++;
+    } else if (arg === "--refresh-older-than" && next) {
+      args.refreshOlderThanDays = Number(next);
+      if (!Number.isFinite(args.refreshOlderThanDays) || args.refreshOlderThanDays < 1) {
+        throw new Error("--refresh-older-than must be a number of days (1 or more)");
+      }
       i++;
     }
   }
@@ -185,18 +191,20 @@ async function loadHandles(supabase, args) {
   return rows;
 }
 
+/** handle → last sync time (ms). */
 async function loadSynced(supabase) {
-  const synced = new Set();
+  const synced = new Map();
   const pageSize = 1000;
   let offset = 0;
   for (;;) {
     const { data, error } = await supabase
       .from("platform_size_price_sync")
-      .select("product_handle")
+      .select("product_handle,synced_at")
+      .order("product_handle")
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
     if (!data?.length) break;
-    for (const row of data) synced.add(row.product_handle);
+    for (const row of data) synced.set(row.product_handle, Date.parse(row.synced_at) || 0);
     if (data.length < pageSize) break;
     offset += pageSize;
   }
@@ -238,12 +246,21 @@ async function main() {
   const handles = await loadHandles(supabase, args);
   const queue = [];
   if (args.handle) queue.push(args.handle);
-  for (const handle of handles) {
-    if (handle === args.handle || synced.has(handle)) continue;
-    queue.push(handle);
+  if (args.refreshOlderThanDays) {
+    const cutoff = Date.now() - args.refreshOlderThanDays * 86_400_000;
+    const stale = handles
+      .filter((handle) => handle !== args.handle && synced.has(handle) && synced.get(handle) < cutoff)
+      .sort((a, b) => synced.get(a) - synced.get(b));
+    queue.push(...stale);
+    console.log(`Refresh queue: ${stale.length} synced more than ${args.refreshOlderThanDays} days ago, oldest first.`);
+  } else {
+    for (const handle of handles) {
+      if (handle === args.handle || synced.has(handle)) continue;
+      queue.push(handle);
+    }
+    console.log(`Size-price queue: ${queue.length} unsynced.`);
   }
-
-  console.log(`Size-price queue: ${queue.length} unsynced. This run will fetch up to ${args.limit}.`);
+  console.log(`This run will fetch up to ${args.limit}.`);
   let fetched = 0;
   let priced = 0;
   let missing = 0;

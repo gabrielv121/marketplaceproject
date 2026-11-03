@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
+import { installErrorReporting } from "@/lib/error-reporting";
 import App from "./App";
 import "./index.css";
 
@@ -12,6 +13,7 @@ if (window.location.hostname === "marketplaceproject-two.vercel.app") {
   next.hostname = "vrna.io";
   window.location.replace(next.toString());
 } else {
+  installErrorReporting();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <AuthProvider>

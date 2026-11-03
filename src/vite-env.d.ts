@@ -8,3 +8,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Short git SHA of the deploy (Vercel), or "local". Set in vite.config.ts. */
+declare const __APP_RELEASE__: string;

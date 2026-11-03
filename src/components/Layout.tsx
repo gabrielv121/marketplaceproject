@@ -1,6 +1,7 @@
 ﻿import { Suspense, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AuthBar } from "@/components/AuthBar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SetupBanner } from "@/components/SetupBanner";
 import {
@@ -206,9 +207,11 @@ export function Layout() {
 
       <main className={styles.main}>
         <SetupBanner />
-        <Suspense fallback={<p className={styles.pageLoading}>Loading…</p>}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary key={location.pathname} fallbackClassName={styles.pageLoading}>
+          <Suspense fallback={<p className={styles.pageLoading}>Loading…</p>}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <footer className={styles.footer}>
         <p>

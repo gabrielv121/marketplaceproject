@@ -1,0 +1,40 @@
+name: Monthly KicksDB size prices
+
+on:
+  schedule:
+    # 12:00 UTC on the 2nd, after the KicksDB monthly quota resets.
+    - cron: "0 12 2 * *"
+  workflow_dispatch:
+    inputs:
+      new_limit:
+        description: "Unpriced sneakers to price"
+        default: "450"
+      refresh_limit:
+        description: "Oldest priced sneakers to refresh"
+        default: "150"
+
+concurrency:
+  group: kicksdb-import
+  cancel-in-progress: false
+
+jobs:
+  size-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KICKSDB_API_KEY: ${{ secrets.KICKSDB_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Budget: about 600 calls here plus about 6 a day from the daily job stays under the ~1,000 monthly quota.
+      # The script also stops on its own once the month's quota counter reaches 900.
+      - name: Price the most popular unpriced sneakers
+        run: node scripts/import-size-prices.mjs --sneakers-only --order trend --audiences men,unisex --limit ${{ inputs.new_limit || '450' }}
+      - name: Refresh the stalest size prices
+        run: node scripts/import-size-prices.mjs --sneakers-only --order trend --refresh-older-than 30 --limit ${{ inputs.refresh_limit || '150' }}
