@@ -9,6 +9,23 @@ export function isStockxPlaceholderImageUrl(url: string | null | undefined): boo
   return PLACEHOLDER_URL.test(url.trim());
 }
 
+/**
+ * StockX's image CDN resizes on request. About half the catalog was imported with 140px thumbnails,
+ * so ask for the width the slot actually needs (at 2x for retina screens).
+ */
+export function stockxSizedImageUrl(url: string, width: number): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== "images.stockx.com" || !u.pathname.startsWith("/images/")) return url;
+    u.searchParams.set("w", String(width));
+    u.searchParams.set("h", String(Math.round((width * 5) / 7)));
+    u.searchParams.set("dpr", "2");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 /** First featured or gallery URL that is not a StockX placeholder. */
 export function pickBestProductImageUrl(
   featured: string | null | undefined,

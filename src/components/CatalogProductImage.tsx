@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
-import { pickBestProductImageUrl, isStockxPlaceholderImageUrl } from "@/lib/catalog-image-quality";
+import {
+  pickBestProductImageUrl,
+  isStockxPlaceholderImageUrl,
+  stockxSizedImageUrl,
+} from "@/lib/catalog-image-quality";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 
 type Props = {
@@ -8,6 +12,8 @@ type Props = {
   alt?: string;
   className?: string;
   loading?: "lazy" | "eager";
+  /** Display width in CSS pixels; StockX photos are requested at this size (2x). */
+  width?: number;
 };
 
 function fallbackChain(product: Props["product"], failed: Set<string>): string | null {
@@ -24,7 +30,7 @@ function fallbackChain(product: Props["product"], failed: Set<string>): string |
   );
 }
 
-export function CatalogProductImage({ product, alt, className, loading = "lazy" }: Props) {
+export function CatalogProductImage({ product, alt, className, loading = "lazy", width = 320 }: Props) {
   const initial = useMemo(() => resolveFeaturedImageUrl(product), [product]);
   const [src, setSrc] = useState<string | null>(initial);
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
@@ -38,7 +44,7 @@ export function CatalogProductImage({ product, alt, className, loading = "lazy" 
 
   return (
     <img
-      src={src}
+      src={stockxSizedImageUrl(src, width)}
       alt={alt ?? product.title}
       className={className}
       loading={loading}

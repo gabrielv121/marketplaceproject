@@ -370,7 +370,7 @@ export function TradeDetailPage() {
       <section className={styles.hero}>
         <div className={styles.productMedia}>
           {product && resolveFeaturedImageUrl(product) ? (
-            <CatalogProductImage product={product} className={styles.productImage} loading="eager" />
+            <CatalogProductImage product={product} className={styles.productImage} loading="eager" width={500} />
           ) : (
             <span className={styles.productPlaceholder}>VR</span>
           )}

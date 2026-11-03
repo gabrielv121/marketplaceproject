@@ -25,6 +25,7 @@ import {
 import { requestWelcomeOrVerifyEmail } from "@/lib/email-verification";
 import { fetchCatalogSummariesByHandles } from "@/lib/catalog-supabase";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
+import { stockxSizedImageUrl } from "@/lib/catalog-image-quality";
 import { deletePriceAlert, fetchMyPriceAlerts, type PriceAlertRow } from "@/lib/price-alerts";
 import { buyerTradeTotalCents } from "@/lib/buyer-pricing";
 import { formatMoney } from "@/lib/money-format";
@@ -1705,7 +1706,7 @@ export function AccountPage() {
           <div className={showAllFavorites ? `${styles.favoriteGrid} ${styles.favoriteGridExpanded}` : styles.favoriteGrid}>
             {favoriteItems.map((item) => (
               <ReturnLink key={item.handle} to={`/product/${item.handle}`} className={styles.favoriteCard}>
-                {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <span className={styles.productThumbPlaceholder}>VR</span>}
+                {item.imageUrl ? <img src={stockxSizedImageUrl(item.imageUrl, 240)} alt="" loading="lazy" /> : <span className={styles.productThumbPlaceholder}>VR</span>}
                 <span>{item.title}</span>
                 <small>{item.handle}</small>
               </ReturnLink>

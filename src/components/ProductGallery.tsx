@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CatalogProductSummary } from "@/lib/catalog-product";
+import { stockxSizedImageUrl } from "@/lib/catalog-image-quality";
 import { productSlideSources } from "@/lib/product-gallery";
 import styles from "@/pages/ProductPage.module.css";
 
@@ -68,7 +69,7 @@ export function ProductGallery({ product }: Props) {
         }}
       >
         <img
-          src={current}
+          src={stockxSizedImageUrl(current, 700)}
           alt={`${product.title}, photo ${Math.min(index, count - 1) + 1} of ${count}`}
           className={styles.image}
           referrerPolicy="no-referrer"

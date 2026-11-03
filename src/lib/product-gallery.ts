@@ -2,7 +2,8 @@ import type { CatalogProductSummary } from "@/lib/catalog-product";
 import { isStockxPlaceholderImageUrl } from "@/lib/catalog-image-quality";
 import { resolveFeaturedImageUrl } from "@/lib/catalog-images";
 
-const SPIN_FRAMES = [1, 10, 19, 28];
+// 360 spin frames to show as extra angles. Frame 1 is the same side shot as the main product photo, so skip it.
+const SPIN_FRAMES = [5, 10, 19, 28];
 
 function pushUnique(list: string[], seen: Set<string>, raw: string | null | undefined) {
   const url = raw?.trim();
