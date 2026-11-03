@@ -1287,7 +1287,9 @@ export function ProductPage() {
           <h2 id="related-title" className={styles.relatedTitle}>
             You may also like
           </h2>
-          <ProductRail products={related} />
+          <div className={styles.relatedScroll}>
+            <ProductRail products={related} />
+          </div>
         </section>
       ) : null}
     </div>
