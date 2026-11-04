@@ -34,22 +34,33 @@ export function CatalogProductImage({ product, alt, className, loading = "lazy",
   const initial = useMemo(() => resolveFeaturedImageUrl(product), [product]);
   const [src, setSrc] = useState<string | null>(initial);
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
+  // Some StockX photos only exist at the stored size, so a resized request can 404.
+  const [resizeFailed, setResizeFailed] = useState(false);
 
   useEffect(() => {
     setFailed(new Set());
+    setResizeFailed(false);
     setSrc(resolveFeaturedImageUrl(product));
   }, [product.handle, product.featuredImageUrl, product.imageGallery]);
 
   if (!src) return null;
 
+  const sized = stockxSizedImageUrl(src, width);
+  const shown = resizeFailed ? src : sized;
+
   return (
     <img
-      src={stockxSizedImageUrl(src, width)}
+      src={shown}
       alt={alt ?? product.title}
       className={className}
       loading={loading}
       referrerPolicy="no-referrer"
       onError={() => {
+        if (shown !== src) {
+          setResizeFailed(true);
+          return;
+        }
+        setResizeFailed(false);
         const nextFailed = new Set(failed);
         nextFailed.add(src);
         const next = fallbackChain(product, nextFailed);

@@ -23,10 +23,13 @@ export function ProductGallery({ product }: Props) {
   const [slides, setSlides] = useState<string[]>(sources.known);
   const [index, setIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
+  // Some StockX photos only exist at the stored size, so a resized request can 404.
+  const [resizeFailed, setResizeFailed] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setSlides(sources.known);
     setIndex(0);
+    setResizeFailed(new Set());
     if (sources.extras.length === 0) return;
     let cancelled = false;
     void Promise.all(sources.extras.map(async (url) => ((await probeImage(url)) ? url : null))).then((results) => {
@@ -53,6 +56,7 @@ export function ProductGallery({ product }: Props) {
 
   const count = slides.length;
   const current = slides[Math.min(index, count - 1)];
+  const shown = resizeFailed.has(current) ? current : stockxSizedImageUrl(current, 700);
   const go = (delta: number) => setIndex((value) => (value + delta + count) % count);
 
   return (
@@ -69,11 +73,15 @@ export function ProductGallery({ product }: Props) {
         }}
       >
         <img
-          src={stockxSizedImageUrl(current, 700)}
+          src={shown}
           alt={`${product.title}, photo ${Math.min(index, count - 1) + 1} of ${count}`}
           className={styles.image}
           referrerPolicy="no-referrer"
           onError={() => {
+            if (shown !== current) {
+              setResizeFailed((set) => new Set(set).add(current));
+              return;
+            }
             setSlides((currentSlides) => currentSlides.filter((url) => url !== current));
             setIndex(0);
           }}

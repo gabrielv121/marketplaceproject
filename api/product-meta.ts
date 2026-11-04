@@ -39,10 +39,20 @@ function previewImage(raw: string): string {
   }
 }
 
-function productTags(p: ProductRow): string {
+/** Some StockX photos only exist at the stored size; keep the original if the large one 404s. */
+async function workingPreviewImage(photo: string): Promise<string> {
+  const large = previewImage(photo);
+  if (large === photo) return photo;
+  try {
+    const res = await fetch(large, { method: "HEAD" });
+    return res.ok ? large : photo;
+  } catch {
+    return photo;
+  }
+}
+
+function productTags(p: ProductRow, image: string): string {
   const url = `${SITE_URL}/product/${encodeURIComponent(p.handle)}`;
-  const photo = p.featured_image_url || p.image_gallery?.find(Boolean);
-  const image = photo ? previewImage(photo) : `${SITE_URL}/apple-touch-icon.png`;
   const price = Number(p.price_min);
   const title = `${p.title} | VRNA`;
   const description = [
@@ -85,7 +95,11 @@ export default async function handler(request: Request): Promise<Response> {
   let status = 200;
   try {
     const product = handle ? await loadProduct(handle) : null;
-    if (product) html = html.replace(SEO_BLOCK, productTags(product));
+    if (product) {
+      const photo = product.featured_image_url || product.image_gallery?.find(Boolean);
+      const image = photo ? await workingPreviewImage(photo) : `${SITE_URL}/apple-touch-icon.png`;
+      html = html.replace(SEO_BLOCK, productTags(product, image));
+    }
     else status = 404;
   } catch {
     // Fall back to the default tags in index.html.

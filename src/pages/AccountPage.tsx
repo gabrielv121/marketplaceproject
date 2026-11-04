@@ -1706,7 +1706,19 @@ export function AccountPage() {
           <div className={showAllFavorites ? `${styles.favoriteGrid} ${styles.favoriteGridExpanded}` : styles.favoriteGrid}>
             {favoriteItems.map((item) => (
               <ReturnLink key={item.handle} to={`/product/${item.handle}`} className={styles.favoriteCard}>
-                {item.imageUrl ? <img src={stockxSizedImageUrl(item.imageUrl, 240)} alt="" loading="lazy" /> : <span className={styles.productThumbPlaceholder}>VR</span>}
+                {item.imageUrl ? (
+                  <img
+                    src={stockxSizedImageUrl(item.imageUrl, 240)}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (img.dataset.original || !item.imageUrl) return;
+                      img.dataset.original = "1";
+                      img.src = item.imageUrl;
+                    }}
+                  />
+                ) : <span className={styles.productThumbPlaceholder}>VR</span>}
                 <span>{item.title}</span>
                 <small>{item.handle}</small>
               </ReturnLink>
