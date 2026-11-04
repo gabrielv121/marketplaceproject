@@ -143,7 +143,7 @@ export default async function handler(request: Request): Promise<Response> {
     if (product) {
       const photo = product.featured_image_url || product.image_gallery?.find(Boolean);
       const [image, askCents] = await Promise.all([
-        photo ? workingPreviewImage(photo) : Promise.resolve(`${SITE_URL}/apple-touch-icon.png`),
+        photo ? workingPreviewImage(photo) : Promise.resolve(`${SITE_URL}/og-image.jpg`),
         loadAskCents(product.handle),
       ]);
       const tags = productTags(product, image, askCents);
