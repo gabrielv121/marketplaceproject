@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { PagedCatalog } from "@/components/PagedCatalog";
 import { ProductGrid } from "@/components/ProductGrid";
+import { SearchSuggestions } from "@/components/SearchSuggestions";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { logSearchEvent } from "@/lib/analytics-events";
 import { isRailSearchQuery, searchCatalogProducts } from "@/lib/catalog-products";
@@ -16,6 +17,7 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const q = params.get("q")?.trim() ?? "";
   const [input, setInput] = useState(q);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export function SearchPage() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    setSuggestOpen(false);
     const next = input.trim();
     setParams(next ? { q: next } : {});
   };
@@ -96,13 +99,24 @@ export function SearchPage() {
       </header>
 
       <form className={styles.searchBox} role="search" onSubmit={submit}>
-        <input
-          className={styles.input}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Search sneakers, brands, sizes, tags..."
-          autoFocus
-        />
+        <SearchSuggestions input={input} open={suggestOpen} onClose={() => setSuggestOpen(false)}>
+          {(comboProps) => (
+            <input
+              {...comboProps}
+              className={styles.input}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setSuggestOpen(true);
+              }}
+              onBlur={() => setSuggestOpen(false)}
+              placeholder="Search sneakers, brands, sizes, tags..."
+              aria-label="Search products"
+              autoComplete="off"
+              autoFocus
+            />
+          )}
+        </SearchSuggestions>
         {hasActiveSearch ? (
           <button type="button" className={styles.actionBtn} data-mode="clear" onClick={clearSearch}>
             Clear

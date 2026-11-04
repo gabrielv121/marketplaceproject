@@ -1,4 +1,5 @@
 import type { BookEntry, Money } from "@/types/marketplace";
+import { sendPendingPriceAlertEmails } from "./price-alerts";
 import { getSupabase } from "./supabase";
 
 export type ActiveListingRow = {
@@ -240,6 +241,7 @@ export async function insertListing(input: {
     }
     throw error;
   }
+  sendPendingPriceAlertEmails();
   return listingId;
 }
 
@@ -370,6 +372,7 @@ export async function rpcUpdateActiveListing(input: {
     if (raw.includes("verification_requirements_required")) throw new Error("Accept the verification requirements before saving.");
     throw error;
   }
+  sendPendingPriceAlertEmails();
 }
 
 export async function rpcCancelReservedTrade(tradeId: string): Promise<void> {

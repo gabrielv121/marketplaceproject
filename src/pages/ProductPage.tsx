@@ -42,6 +42,8 @@ import type { CatalogProductDetail, CatalogProductSummary } from "@/lib/catalog-
 import { ProductRail } from "@/components/ProductRail";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { createPriceAlert, deletePriceAlert, fetchMyPriceAlerts, type PriceAlertRow } from "@/lib/price-alerts";
+import { fetchPriceHistory, type PriceHistoryRow } from "@/lib/price-history";
+import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { recordProductView } from "@/lib/recently-viewed";
 import { logProductView } from "@/lib/analytics-events";
 import { notifyBidMatch, startCheckoutForTrade, startSellerOnboarding } from "@/lib/checkout";
@@ -118,6 +120,7 @@ export function ProductPage() {
   const [alertPrice, setAlertPrice] = useState("");
   const [alertBusy, setAlertBusy] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
+  const [priceHistory, setPriceHistory] = useState<{ handle: string; rows: PriceHistoryRow[] }>({ handle: "", rows: [] });
 
   const authReturnPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -260,6 +263,22 @@ export function ProductPage() {
       cancelled = true;
     };
   }, [handle, p2pTick]);
+
+  const productHandle = product?.handle ?? "";
+  useEffect(() => {
+    if (!isP2pConfigured() || !productHandle) return;
+    let cancelled = false;
+    void fetchPriceHistory(productHandle)
+      .then((rows) => {
+        if (!cancelled) setPriceHistory({ handle: productHandle, rows });
+      })
+      .catch(() => {
+        if (!cancelled) setPriceHistory({ handle: productHandle, rows: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productHandle, p2pTick]);
 
   const currency = product?.priceRange.currency ?? "USD";
   const p2p = isP2pConfigured();
@@ -1280,6 +1299,15 @@ export function ProductPage() {
               </ul>
             </div>
           </div>
+
+          <PriceHistoryChart
+            key={product.handle}
+            rows={priceHistory.handle === product.handle ? priceHistory.rows : []}
+            sales={sales}
+            sizeLabel={activeSizeLabel}
+            sizeDisplay={selectedRow?.label ?? ""}
+            currency={currency}
+          />
         </div>
       </div>
       {related.length ? (

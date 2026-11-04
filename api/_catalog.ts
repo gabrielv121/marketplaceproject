@@ -24,6 +24,19 @@ export async function restGet(path: string, init?: { count?: boolean }): Promise
   return res;
 }
 
+/** Calls a PostgREST RPC with the anon key. */
+export async function rpcPost<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const cfg = supabaseConfig();
+  if (!cfg) throw new Error("Supabase env missing");
+  const res = await fetch(`${cfg.url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  return (await res.json()) as T;
+}
+
 export function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

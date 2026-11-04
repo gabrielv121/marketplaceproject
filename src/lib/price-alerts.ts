@@ -50,6 +50,18 @@ export async function createPriceAlert(input: {
   return data as PriceAlertRow;
 }
 
+/** Fire-and-forget: emails alert owners whose alerts fired from a new or repriced ask. */
+export function sendPendingPriceAlertEmails(): void {
+  const sb = getSupabase();
+  if (!sb) return;
+  void sb.functions
+    .invoke("send-price-alert-emails", { body: { site_url: window.location.origin } })
+    .then(({ error }) => {
+      if (error) console.warn("send-price-alert-emails failed", error);
+    })
+    .catch(() => {});
+}
+
 export async function deletePriceAlert(id: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase not configured");

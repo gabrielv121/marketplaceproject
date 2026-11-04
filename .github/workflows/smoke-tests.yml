@@ -1,0 +1,39 @@
+name: Smoke tests
+
+on:
+  # Vercel reports each finished deployment back to GitHub.
+  deployment_status:
+  schedule:
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to test"
+        default: "https://vrna.io"
+
+jobs:
+  smoke:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      # Production deploys are tested on the public domain; per-deploy Vercel URLs can sit behind login.
+      BASE_URL: ${{ inputs.base_url || 'https://vrna.io' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7

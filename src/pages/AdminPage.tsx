@@ -35,6 +35,7 @@ import { moneyFromCents } from "@/lib/p2p";
 import { isP2pConfigured } from "@/lib/supabase";
 import { AdminVerificationPanel } from "@/pages/admin/AdminVerificationPanel";
 import { AdminErrorsPanel } from "@/pages/admin/AdminErrorsPanel";
+import { AdminCatalogPanel } from "@/pages/admin/AdminCatalogPanel";
 import styles from "./AdminPage.module.css";
 
 type TabId =
@@ -47,6 +48,7 @@ type TabId =
   | "search"
   | "auth"
   | "activity"
+  | "catalog"
   | "errors";
 
 const TABS: Array<{ id: TabId; label: string }> = [
@@ -59,6 +61,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: "search", label: "Search" },
   { id: "auth", label: "Auth Queue" },
   { id: "activity", label: "Live Activity" },
+  { id: "catalog", label: "Catalog" },
   { id: "errors", label: "Errors" },
 ];
 
@@ -859,6 +862,7 @@ export function AdminPage() {
         </section>
       ) : null}
 
+      {tab === "catalog" ? <AdminCatalogPanel /> : null}
       {tab === "errors" ? <AdminErrorsPanel range={range} /> : null}
     </div>
   );

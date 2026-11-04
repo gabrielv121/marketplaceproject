@@ -38,3 +38,15 @@ jobs:
         run: node scripts/import-size-prices.mjs --sneakers-only --order trend --audiences men,unisex --limit ${{ inputs.new_limit || '450' }}
       - name: Refresh the stalest size prices
         run: node scripts/import-size-prices.mjs --sneakers-only --order trend --refresh-older-than 30 --limit ${{ inputs.refresh_limit || '150' }}
+      # New platform prices can fire price alerts; the function emails up to 50 per call.
+      - name: Email triggered price alerts
+        if: always()
+        run: |
+          for i in $(seq 1 20); do
+            res=$(curl -sS -X POST "$SUPABASE_URL/functions/v1/send-price-alert-emails" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"site_url":"https://vrna.io"}')
+            echo "$res"
+            [ "$(echo "$res" | jq -r '.claimed // 0')" -gt 0 ] || break
+          done

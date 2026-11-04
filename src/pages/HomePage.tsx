@@ -6,7 +6,7 @@ import { ProductRail } from "@/components/ProductRail";
 import { useAuth } from "@/context/AuthContext";
 import { DEPARTMENTS } from "@/lib/catalog-taxonomy";
 import { loadHomeCatalogProducts } from "@/lib/catalog-products";
-import { fetchNewestCatalogProducts } from "@/lib/catalog-supabase";
+import { fetchFeaturedProducts, fetchNewestCatalogProducts } from "@/lib/catalog-supabase";
 import { fetchMyAddresses, fetchMyBids } from "@/lib/account-data";
 import { fetchCatalogDemandScores } from "@/lib/catalog-demand";
 import { fetchMyFavoriteHandles } from "@/lib/favorites";
@@ -71,6 +71,17 @@ export function HomePage() {
   const [bidHandles, setBidHandles] = useState<string[]>([]);
   const [newest, setNewest] = useState<CatalogProductSummary[]>([]);
   const [place, setPlace] = useState(guestPlace);
+  const [staffPicks, setStaffPicks] = useState<CatalogProductSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFeaturedProducts(N).then((rows) => {
+      if (!cancelled) setStaffPicks(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -429,6 +440,16 @@ export function HomePage() {
                   <p className={styles.emptyRail}>Browse the catalog — items you click will show up here.</p>
                 )}
               </div>
+            </HomeSection>
+          ) : null}
+
+          {staffPicks.length ? (
+            <HomeSection
+              variant="market"
+              title="Staff picks"
+              titleInfo="Hand-picked by the VRNA team."
+            >
+              <ProductGrid products={staffPicks} layout="homeSix" />
             </HomeSection>
           ) : null}
 

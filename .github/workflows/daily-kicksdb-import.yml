@@ -31,3 +31,15 @@ jobs:
       # Five calls: per-size asks for the newest unsynced sneakers (KicksDB quota is about 1,000 a month).
       - name: Sync size prices for new sneakers
         run: node scripts/import-size-prices.mjs --sneakers-only --order updated --limit 5
+      # New platform prices can fire price alerts; the function emails up to 50 per call.
+      - name: Email triggered price alerts
+        if: always()
+        run: |
+          for i in $(seq 1 10); do
+            res=$(curl -sS -X POST "$SUPABASE_URL/functions/v1/send-price-alert-emails" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"site_url":"https://vrna.io"}')
+            echo "$res"
+            [ "$(echo "$res" | jq -r '.claimed // 0')" -gt 0 ] || break
+          done

@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test:smoke": "playwright test",
     "catalog:import": "node scripts/import-catalog.mjs",
     "catalog:dry-run": "node scripts/import-catalog.mjs --dry-run",
     "kicks:import": "node scripts/import-kicksdb.mjs",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@playwright/test": "^1.64.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",

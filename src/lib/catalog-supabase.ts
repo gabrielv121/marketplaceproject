@@ -178,6 +178,21 @@ export async function fetchNewestCatalogProducts(limit = 24): Promise<CatalogPro
   return (data as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row)));
 }
 
+/** Products an admin pinned, newest pin first, for the home page "Staff picks" row. */
+export async function fetchFeaturedProducts(limit = 6): Promise<CatalogProductSummary[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from("catalog_products")
+    .select(CATALOG_CARD_COLUMNS)
+    .eq("published", true)
+    .not("featured_at", "is", null)
+    .order("featured_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return ((data ?? []) as unknown as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row)));
+}
+
 /** Card columns only — skips description and source_url, which tiles never show. */
 const CATALOG_CARD_COLUMNS =
   "id,handle,title,brand,department_slug,tags,product_type,home_rails,activities,variant_size_preset,featured_image_url,price_min,price_max,currency,published,trend_score,image_gallery,category,gender,created_at,audience";
@@ -291,6 +306,27 @@ export async function fetchCatalogPage(query: CatalogPageQuery): Promise<Catalog
     products: ((data ?? []) as unknown as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row))),
     total: offset === 0 ? (count ?? null) : null,
   };
+}
+
+/** Search box suggestions: trending products whose title or brand contains every typed word. */
+export async function fetchSearchSuggestions(query: string, limit = 6): Promise<CatalogProductSummary[]> {
+  const sb = getSupabase();
+  const terms = searchTerms(query);
+  if (!sb || !terms.length) return [];
+  let q = sb
+    .from("catalog_products")
+    .select(CATALOG_CARD_COLUMNS)
+    .eq("published", true)
+    .eq("has_photo", true)
+    .contains("tags", ["kicksdb"])
+    .not("handle", "in", blockedHandlesFilter());
+  for (const term of terms) {
+    const pattern = `%${term}%`;
+    q = q.or(`title.ilike.${pattern},brand.ilike.${pattern}`);
+  }
+  const { data, error } = await q.order("trend_score", { ascending: false, nullsFirst: false }).limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as unknown as CatalogProductRow[]).map((row) => withResolvedFeaturedImage(rowToSummary(row)));
 }
 
 const RELATED_AUDIENCES: Record<CatalogAudienceFilter, CatalogAudienceFilter[]> = {

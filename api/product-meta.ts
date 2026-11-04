@@ -1,4 +1,4 @@
-import { SITE_URL, escapeXml, restGet } from "./_catalog";
+import { SITE_URL, escapeXml, restGet, rpcPost } from "./_catalog";
 
 export const config = { runtime: "edge" };
 
@@ -51,9 +51,53 @@ async function workingPreviewImage(photo: string): Promise<string> {
   }
 }
 
-function productTags(p: ProductRow, image: string): string {
+type PlatformOfferRow = { quantity_available: number; size_prices: Record<string, number> | null };
+type ListingRow = { price_cents: number };
+
+/** Every buyable ask on the page: in-stock VRNA size prices plus active peer listings. */
+async function loadAskCents(handle: string): Promise<number[]> {
+  const [offers, listings] = await Promise.all([
+    rpcPost<PlatformOfferRow[]>("list_platform_offer", { p_product_handle: handle }).catch(() => []),
+    rpcPost<ListingRow[]>("list_active_listings", { p_product_handle: handle }).catch(() => []),
+  ]);
+  const cents: number[] = [];
+  for (const offer of offers) {
+    if (offer.quantity_available > 0) cents.push(...Object.values(offer.size_prices ?? {}));
+  }
+  cents.push(...listings.map((l) => l.price_cents));
+  return cents.filter((c) => Number.isFinite(c) && c > 0);
+}
+
+/** schema.org Product markup so Google can show price and availability in results. */
+function productJsonLd(p: ProductRow, image: string, url: string, description: string, askCents: number[]): string {
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: p.title,
+    image: [image],
+    description,
+    url,
+    sku: p.handle,
+  };
+  if (p.brand) data.brand = { "@type": "Brand", name: p.brand };
+  if (askCents.length) {
+    data.offers = {
+      "@type": "AggregateOffer",
+      priceCurrency: "USD",
+      lowPrice: (Math.min(...askCents) / 100).toFixed(2),
+      highPrice: (Math.max(...askCents) / 100).toFixed(2),
+      offerCount: askCents.length,
+      availability: "https://schema.org/InStock",
+      url,
+    };
+  }
+  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  return `<script type="application/ld+json">${json}</script>`;
+}
+
+function productTags(p: ProductRow, image: string, askCents: number[]): string {
   const url = `${SITE_URL}/product/${encodeURIComponent(p.handle)}`;
-  const price = Number(p.price_min);
+  const price = askCents.length ? Math.min(...askCents) / 100 : Number(p.price_min);
   const title = `${p.title} | VRNA`;
   const description = [
     `Shop the ${p.title} on VRNA.`,
@@ -81,6 +125,7 @@ function productTags(p: ProductRow, image: string): string {
     `<meta name="twitter:description" content="${d}" />`,
     `<meta name="twitter:image" content="${img}" />`,
     p.brand ? `<meta property="product:brand" content="${escapeXml(p.brand)}" />` : "",
+    productJsonLd(p, image, url, description, askCents),
     "<!-- seo:end -->",
   ]
     .filter(Boolean)
@@ -97,8 +142,12 @@ export default async function handler(request: Request): Promise<Response> {
     const product = handle ? await loadProduct(handle) : null;
     if (product) {
       const photo = product.featured_image_url || product.image_gallery?.find(Boolean);
-      const image = photo ? await workingPreviewImage(photo) : `${SITE_URL}/apple-touch-icon.png`;
-      html = html.replace(SEO_BLOCK, productTags(product, image));
+      const [image, askCents] = await Promise.all([
+        photo ? workingPreviewImage(photo) : Promise.resolve(`${SITE_URL}/apple-touch-icon.png`),
+        loadAskCents(product.handle),
+      ]);
+      const tags = productTags(product, image, askCents);
+      html = html.replace(SEO_BLOCK, () => tags);
     }
     else status = 404;
   } catch {
